@@ -16,8 +16,11 @@ import java.util.zip.DataFormatException;
 public class Table {
     final File path;
     final int base = 16;
-    HashMap<String, String> data = new HashMap<String, String>();
     String name;
+    HashMap<String, String> data = new HashMap<String, String>();
+    HashMap<String, String> backup = new HashMap<String, String>(); //JUnit
+    boolean saved = true;
+
 
     public Table(Path globalDirectory, String tableName) {
         name = tableName;
@@ -30,6 +33,7 @@ public class Table {
         try {
             data = new HashMap<String, String>();
             readTable();
+            backup = data; //JUnit
         } catch (IOException e) {
             System.err.println("Error creating table: " + e.getMessage());
             System.exit(1);
@@ -52,6 +56,13 @@ public class Table {
         }
     }
 
+    public int getSize() throws Exception {
+        if (data == null) {
+            return 0;
+        }
+       return data.size();
+    }
+
     public void delete() throws Exception {
         FileUtils.remove(path);
     }
@@ -61,6 +72,8 @@ public class Table {
         number = Math.abs(number);
         return number % 16;
     }
+
+
 
     private int getFileNumber(String key) {
         int number = key.getBytes()[0];
@@ -201,6 +214,34 @@ public class Table {
             System.out.println(str + " " + data.get(str));
         }
 
+    }
+
+    //JUnit
+
+    public int getDifference() throws Exception {
+        //new key
+        //removed key
+        //new value with old key
+        int diff = 0;
+        for (String currentKey : data.keySet()) {
+            if (backup.get(currentKey) == null) {
+                diff++;
+            } else {
+                if (backup.get(currentKey) != data.get(currentKey)) {
+                    diff++;
+                }
+            }
+        }
+        for (String oldKey : backup.keySet()) {
+            if (data.get(oldKey) == null) {
+                diff++;
+            }
+        }
+        return diff;
+    }
+
+    public void wasChanged() {
+        saved = false;
     }
 
 }

@@ -13,6 +13,9 @@ public class UseCommand extends Command {
         if (!checkArguments(args)) {
             throw new IllegalArgumentException("invalid usage");
         }
+        //надо понять, писать ли таблицу в файл здесь
+        //допилить сообщение об ошибке
+        //не забыть, что вместо таблицы может быть null
         DbMain.saveCurrentTable();
         String tableName = args[0];
         if (!DbMain.tableExists(tableName)) {

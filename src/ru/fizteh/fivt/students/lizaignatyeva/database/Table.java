@@ -15,11 +15,11 @@ import java.util.zip.DataFormatException;
 
 public class Table {
     final File path;
-    final int base = 16;
-    String name;
-    HashMap<String, String> data = new HashMap<String, String>();
-    HashMap<String, String> backup = new HashMap<String, String>(); //JUnit
-    boolean saved = true;
+    private final int base = 16;
+    public String name;
+    private HashMap<String, String> data = new HashMap<String, String>();
+    private HashMap<String, String> backup = new HashMap<String, String>(); //JUnit
+    private boolean saved = true;
 
 
     public Table(Path globalDirectory, String tableName) {
@@ -56,6 +56,10 @@ public class Table {
         }
     }
 
+    public String getName() {
+        return name;
+    }
+
     public int getSize() throws Exception {
         if (data == null) {
             return 0;
@@ -72,7 +76,6 @@ public class Table {
         number = Math.abs(number);
         return number % 16;
     }
-
 
 
     private int getFileNumber(String key) {
@@ -216,9 +219,37 @@ public class Table {
 
     }
 
+    public String get(String key) throws Exception {
+        return data.get(key);
+    }
+
+    public void put(String key, String value) throws Exception {
+        data.put(key, value);
+    }
+
+    public boolean containsKey(String key) throws Exception {
+        return data.containsKey(key);
+    }
+
+    public void remove(String key) throws Exception {
+        data.remove(key);
+    }
+
     //JUnit
 
-    public int getDifference() throws Exception {
+    public int commit() throws Exception {
+        backup = data;
+        saved = true;
+        return getChangesAmount();
+    }
+
+    public int rollback() throws Exception {
+        data = backup;
+        saved = true;
+        return getChangesAmount();
+    }
+
+    private int getChangesAmount() throws Exception {
         //new key
         //removed key
         //new value with old key
@@ -227,7 +258,7 @@ public class Table {
             if (backup.get(currentKey) == null) {
                 diff++;
             } else {
-                if (backup.get(currentKey) != data.get(currentKey)) {
+                if (!backup.get(currentKey).equals(data.get(currentKey))) {
                     diff++;
                 }
             }

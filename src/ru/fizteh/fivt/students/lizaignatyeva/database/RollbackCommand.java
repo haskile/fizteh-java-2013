@@ -14,9 +14,7 @@ public class RollbackCommand extends Command {
             throw new IllegalArgumentException("invalid usage");
         }
         Table table = DbMain.getCurrentTable();
-        int diff = table.getDifference();
-        table.data = table.backup;
-        table.saved = true;
+        int diff = table.rollback();
         System.out.println(diff);
 
     }

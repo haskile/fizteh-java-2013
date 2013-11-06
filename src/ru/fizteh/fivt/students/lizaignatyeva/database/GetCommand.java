@@ -19,7 +19,7 @@ public class GetCommand extends Command {
             return;
         }
         String key = args[0];
-        String value = table.data.get(key);
+        String value = table.get(key);
         if (value == null) {
             System.out.println("not found");
         } else {

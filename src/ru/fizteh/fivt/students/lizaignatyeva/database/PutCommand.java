@@ -23,18 +23,18 @@ public class PutCommand extends Command {
         String key = args[0];
         String value = args[1];
 
-        if (table.data.containsKey(key)) {
-            if (!table.data.get(key).equals(value)) {
+        if (table.containsKey(key)) {
+            if (!table.get(key).equals(value)) {
                 table.wasChanged();
             }
             System.out.println("overwrite");
-            System.out.println(table.data.get(key));
-            table.data.remove(key);
-            table.data.put(key, value);
+            System.out.println(table.get(key));
+            table.remove(key);
+            table.put(key, value);
         } else {
             table.wasChanged();
             System.out.println("new");
-            table.data.put(key, value);
+            table.put(key, value);
         }
 
     }

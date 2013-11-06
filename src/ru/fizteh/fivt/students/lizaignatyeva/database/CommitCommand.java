@@ -15,9 +15,7 @@ public class CommitCommand extends Command {
             throw new IllegalArgumentException("invalid usage");
         }
         Table table = DbMain.getCurrentTable();
-        int diff = table.getDifference();
-        table.backup = table.data;
-        table.saved = true;
+        int diff = table.commit();
         System.out.println(diff);
 
     }

@@ -19,8 +19,8 @@ public class RemoveCommand extends Command{
             return;
         }
         String key = args[0];
-        if (table.data.containsKey(key)) {
-            table.data.remove(key);
+        if (table.containsKey(key)) {
+            table.remove(key);
             table.wasChanged();
             System.out.println("removed");
         } else {

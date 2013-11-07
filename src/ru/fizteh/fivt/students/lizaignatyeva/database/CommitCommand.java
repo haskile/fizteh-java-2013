@@ -17,6 +17,5 @@ public class CommitCommand extends Command {
         Table table = DbMain.getCurrentTable();
         int diff = table.commit();
         System.out.println(diff);
-
     }
 }

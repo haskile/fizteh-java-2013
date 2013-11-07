@@ -70,6 +70,8 @@ public class DbMain {
         commandsMap.put("use", new UseCommand());
         commandsMap.put("create", new CreateCommand());
         commandsMap.put("drop", new DropCommand());
+        commandsMap.put("commit", new CommitCommand());
+        commandsMap.put("rollback", new RollbackCommand());
     }
 
     private static void scan() {

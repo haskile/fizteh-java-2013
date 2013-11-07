@@ -14,6 +14,7 @@ public class PutCommand extends Command {
             throw new IllegalArgumentException("invalid usage");
         }
 
+
         Table table = DbMain.getCurrentTable();
         if (table == null) {
             System.out.println("no table");
@@ -22,6 +23,8 @@ public class PutCommand extends Command {
         //System.err.println("HERE");
         String key = args[0];
         String value = args[1];
+
+
 
         if (table.containsKey(key)) {
             if (!table.get(key).equals(value)) {

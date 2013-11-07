@@ -19,18 +19,25 @@ public class UseCommand extends Command {
         //а бывают ли роллбэки при новом запуске? нет, явно нет - таблица меняется только при сохраненных изменениях.
         //ок, давайте каждый раз писать таблицу
         Table table = DbMain.getCurrentTable();
-        if (!table.saved()) {
-            int diff = getChangesAmount();
-            System.err.println(Integer.toString(diff) + " unsaved changes");
+        if (table != null) {
+            if (!table.isSaved()) {
+                //System.err.println("HERE??");
+                int diff = table.getChangesAmount();
+                System.err.println(Integer.toString(diff) + " unsaved changes");
+                return;
+            }
+            //System.err.println("HERE");
+            DbMain.saveCurrentTable();
+           // System.err.println("HERE");
         }
-        DbMain.saveCurrentTable();
-
         String tableName = args[0];
         if (!DbMain.tableExists(tableName)) {
             System.out.println(tableName + " not exists");
             return;
         }
+        //System.err.println("HERE");
         DbMain.setCurrentTable(tableName);
+        //System.err.println("HERE");
         System.out.println("using " + tableName);
 
     }

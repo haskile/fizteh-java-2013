@@ -18,10 +18,10 @@ public class Table {
     private final int base = 16;
     public String name;
     private HashMap<String, String> data = new HashMap<String, String>();
-    private HashMap<String, String> backup = new HashMap<String, String>(); //JUnit
+    private HashMap<String, String> backup = new HashMap<String, String>();
     private boolean saved = true;
 
-
+    @SuppressWarnings("unchecked")
     public Table(Path globalDirectory, String tableName) {
         name = tableName;
         path = globalDirectory.resolve(tableName).toFile();
@@ -33,7 +33,8 @@ public class Table {
         try {
             data = new HashMap<String, String>();
             readTable();
-            backup = data; //JUnit
+            backup = (HashMap<String, String>) data.clone();
+            System.err.println("created successfully");
         } catch (IOException e) {
             System.err.println("Error creating table: " + e.getMessage());
             System.exit(1);
@@ -237,38 +238,55 @@ public class Table {
 
     //JUnit
 
+    @SuppressWarnings("unchecked")
     public int commit() throws Exception {
-        backup = data;
+        int diff = getChangesAmount();
+        backup = (HashMap<String, String>) data.clone();
         saved = true;
-        return getChangesAmount();
+        return diff;
     }
 
+    @SuppressWarnings("unchecked")
     public int rollback() throws Exception {
-        data = backup;
+        int diff = getChangesAmount();
+        data = (HashMap<String, String>) backup.clone();
         saved = true;
-        return getChangesAmount();
+        return diff;
     }
 
-    private int getChangesAmount() throws Exception {
+    public int getChangesAmount() throws Exception {
         //new key
         //removed key
         //new value with old key
         int diff = 0;
+        //System.err.println("yep");
         for (String currentKey : data.keySet()) {
             if (backup.get(currentKey) == null) {
+               // System.err.println("case 1");
+
                 diff++;
             } else {
                 if (!backup.get(currentKey).equals(data.get(currentKey))) {
+                   // System.err.println("case 2");
                     diff++;
                 }
             }
         }
         for (String oldKey : backup.keySet()) {
             if (data.get(oldKey) == null) {
+               // System.err.println("case 3");
                 diff++;
             }
         }
         return diff;
+    }
+
+    public boolean isSaved() {
+        return saved;
+    }
+
+    public void wasSaved() {
+        saved = true;
     }
 
     public void wasChanged() {

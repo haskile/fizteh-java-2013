@@ -31,7 +31,7 @@ public class FileMap implements Table, AutoCloseable {
     private final Lock write = readWriteLock.writeLock();
     private final Lock read  = readWriteLock.readLock();
     String nameTable;
-    MyHashMap tableData = new MyHashMap();
+    MyLazyHashMap tableData;
     ThreadLocal<MyHashMap> changeTable = new ThreadLocal<MyHashMap>() {
         @Override
         protected MyHashMap initialValue() {
@@ -44,11 +44,13 @@ public class FileMap implements Table, AutoCloseable {
     FileMapProvider parent;
     List<Class<?>> columnType = new ArrayList<Class<?>>();
 
+
     public FileMap(Path pathDb, String nameTable, FileMapProvider parent) throws Exception {
         this.nameTable = nameTable;
         this.pathDb = pathDb;
         this.parent = parent;
         this.mySystem = new CommandShell(pathDb.toString(), false, false);
+        this.tableData = new MyLazyHashMap(pathDb.resolve(nameTable));
 
         File theDir = new File(String.valueOf(pathDb.resolve(nameTable)));
         if (!theDir.exists()) {
@@ -137,6 +139,7 @@ public class FileMap implements Table, AutoCloseable {
         this.parent = parent;
         this.columnType = columnType;
         this.mySystem = new CommandShell(pathDb.toString(), false, false);
+        this.tableData = new MyLazyHashMap(pathDb.resolve(nameTable));
 
         File theDir = new File(String.valueOf(pathDb.resolve(nameTable)));
         if (!theDir.exists()) {
@@ -203,7 +206,7 @@ public class FileMap implements Table, AutoCloseable {
                 }
 
                 try {
-                    loadTableFile(randomFile, tableData, nameDir.getName());
+                    checkTableFile(randomFile,nameDir.getName());
                 } catch (Exception e) {
                     e.addSuppressed(new ErrorFileMap("Error in file " + randomFile.getAbsolutePath()));
                     throw e;
@@ -212,7 +215,7 @@ public class FileMap implements Table, AutoCloseable {
         }
     }
 
-    public void loadTableFile(File randomFile, MyHashMap dbMap, String nameDir) throws Exception {
+    public void checkTableFile(File randomFile, String nameDir) throws Exception {
         if (randomFile.isDirectory()) {
             throw new ErrorFileMap("data file can't be a directory");
         }
@@ -262,7 +265,7 @@ public class FileMap implements Table, AutoCloseable {
 
                     arrayByte = new byte[point2 - point1];
                     dbFile.readFully(arrayByte);
-                    String value = new String(arrayByte, StandardCharsets.UTF_8);
+                    //String value = new String(arrayByte, StandardCharsets.UTF_8);
 
                     arrayByte = new byte[vectorByte.size()];
                     for (int i = 0; i < vectorByte.size(); ++i) {
@@ -273,7 +276,7 @@ public class FileMap implements Table, AutoCloseable {
                     if (tableData.getHashDir(key) != intDir || tableData.getHashFile(key) != intFile) {
                         throw new ErrorFileMap("wrong key in the file");
                     }
-                    dbMap.put(key, parent.deserialize(this, value));
+                    //dbMap.put(key, parent.deserialize(this, value));
                     vectorByte.clear();
                     dbFile.seek(currentPoint);
                 } else {

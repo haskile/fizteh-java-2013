@@ -40,6 +40,7 @@ public class FileMap implements Table, AutoCloseable {
     };
     volatile boolean tableDrop = false;
     volatile boolean isTableClose = false;
+    volatile int sizeDataInFiles;
     FileMapProvider parent;
     List<Class<?>> columnType = new ArrayList<Class<?>>();
 
@@ -57,6 +58,10 @@ public class FileMap implements Table, AutoCloseable {
                 e.addSuppressed(new ErrorFileMap("I can't create a folder table " + nameTable));
                 throw e;
             }
+            writeSizeTsv(0);
+            this.sizeDataInFiles = 0;
+        } else {
+            loadSizeFile();
         }
 
         loadTypeFile(pathDb);
@@ -77,7 +82,7 @@ public class FileMap implements Table, AutoCloseable {
                 sb.append(s);
             }
         } catch (Exception e) {
-            throw new IOException("not found signature.tsv", e);
+            throw new IOException("not found " + fileName, e);
         }
         if (sb.length() == 0) {
             throw new IOException("tsv file is empty");
@@ -97,6 +102,13 @@ public class FileMap implements Table, AutoCloseable {
         }
     }
 
+    private void writeSizeTsv(int newSize) throws FileNotFoundException {
+        Path pathTsv = pathDb.resolve(nameTable).resolve("size.tsv");
+        try (PrintWriter out = new PrintWriter(pathTsv.toFile().getAbsoluteFile())) {
+            out.print(newSize);
+        }
+    }
+
     private void loadTypeFile(Path pathDb) throws IOException {
         String fileStr = readFileTsv(pathDb.resolve(nameTable).resolve("signature.tsv").toString());
         StringTokenizer token = new StringTokenizer(fileStr);
@@ -107,6 +119,15 @@ public class FileMap implements Table, AutoCloseable {
                 throw new IllegalArgumentException(String.format("wrong type %s", tok));
             }
             columnType.add(type);
+        }
+    }
+
+    private void loadSizeFile() throws IOException, ErrorFileMap {
+        String fileStr = readFileTsv(pathDb.resolve(nameTable).resolve("size.tsv").toString());
+        try {
+            this.sizeDataInFiles = Integer.valueOf(fileStr);
+        } catch (Exception e) {
+            throw new ErrorFileMap("not correct size in size.tsv");
         }
     }
 
@@ -125,6 +146,10 @@ public class FileMap implements Table, AutoCloseable {
                 e.addSuppressed(new ErrorFileMap("I can't create a folder table " + nameTable));
                 throw e;
             }
+            writeSizeTsv(0);
+            this.sizeDataInFiles = 0;
+        } else {
+            loadSizeFile();
         }
 
         writeFileTsv();
@@ -150,7 +175,7 @@ public class FileMap implements Table, AutoCloseable {
         }
 
         for (File nameDir : listFileMap) {
-            if (nameDir.getName().equals("signature.tsv")) {
+            if (nameDir.getName().equals("signature.tsv") || nameDir.getName().equals("size.tsv")) {
                 continue;
             }
             if (!nameDir.isDirectory()) {
@@ -537,13 +562,7 @@ public class FileMap implements Table, AutoCloseable {
             throw new IllegalStateException("table was deleted");
         }
 
-        int size = 0;
-        read.lock();
-        try {
-            size = tableData.size();
-        } finally {
-            read.unlock();
-        }
+        int tmpSize = this.sizeDataInFiles;
 
         for (String key : changeTable.get().keySet()) {
 
@@ -557,17 +576,17 @@ public class FileMap implements Table, AutoCloseable {
 
             if (containsKey) {
                 if (changeTable.get().get(key) == null) {
-                    --size;
+                    --tmpSize;
                 }
             } else {
                 if (changeTable.get().get(key) != null) {
-                    ++size;
+                    ++tmpSize;
                 }
             }
 
         }
 
-        return size;
+        return tmpSize;
     }
 
     public int commit() {
@@ -606,7 +625,10 @@ public class FileMap implements Table, AutoCloseable {
             err = e;
         } finally {
             try {
+                int currentSize = this.size();
                 refreshTableFiles(changedKey);
+                writeSizeTsv(currentSize);
+                this.sizeDataInFiles = currentSize;
             } catch (Exception errRefresh) {
                 if (err == null) {
                     err = errRefresh;

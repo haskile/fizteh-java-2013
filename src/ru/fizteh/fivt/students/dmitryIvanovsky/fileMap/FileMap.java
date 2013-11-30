@@ -594,6 +594,7 @@ public class FileMap implements Table, AutoCloseable {
             throw new IllegalStateException("table was deleted");
         }
         int count = 0;
+        int currentSize = this.size();
         Set<String> changedKey = new HashSet<>();
         Exception err = null;
         write.lock();
@@ -625,7 +626,6 @@ public class FileMap implements Table, AutoCloseable {
             err = e;
         } finally {
             try {
-                int currentSize = this.size();
                 refreshTableFiles(changedKey);
                 writeSizeTsv(currentSize);
                 this.sizeDataInFiles = currentSize;

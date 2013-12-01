@@ -14,13 +14,15 @@ import ru.fizteh.fivt.storage.structured.Table;
 import ru.fizteh.fivt.storage.structured.TableProvider;
 import ru.fizteh.fivt.students.demidov.basicclasses.BasicTableProvider;
 
-public class StoreableTableProvider extends BasicTableProvider<StoreableTable> implements TableProvider {
+public class StoreableTableProvider extends BasicTableProvider<StoreableTable> implements TableProvider, AutoCloseable {
 	public StoreableTableProvider(String root) throws IOException {
 		super(root);
 	}
 	
 	public StoreableTable createTable(String name, List<Class<?>> columnTypes) throws IOException {
-		if ((name == null) || (!(name.matches("\\w+")))) {
+	    providerCloseCheck();
+	    
+	    if ((name == null) || (!(name.matches("\\w+")))) {
 			throw new IllegalArgumentException("wrong table name " + name);
 		}
 		
@@ -66,6 +68,8 @@ public class StoreableTableProvider extends BasicTableProvider<StoreableTable> i
 	}
 
 	public StoreableImplementation deserialize(Table table, String value) throws ParseException {
+	    providerCloseCheck();
+	    
 	    providerLock.readLock().lock();
 		try {
 			return StoreableUtils.deserialize(table, value);
@@ -77,6 +81,8 @@ public class StoreableTableProvider extends BasicTableProvider<StoreableTable> i
 	}
 
 	public String serialize(Table table, Storeable value) throws ColumnFormatException {
+	    providerCloseCheck();
+	    
 	    providerLock.readLock().lock();
 		try {
 			return StoreableUtils.serialize(table, value);
@@ -88,6 +94,8 @@ public class StoreableTableProvider extends BasicTableProvider<StoreableTable> i
 	}
 
 	public StoreableImplementation createFor(Table table) {
+	    providerCloseCheck();
+	    
 	    providerLock.readLock().lock();
 		try {
 		    return new StoreableImplementation(table);
@@ -97,6 +105,8 @@ public class StoreableTableProvider extends BasicTableProvider<StoreableTable> i
 	}
 
 	public StoreableImplementation createFor(Table table, List<?> values) throws ColumnFormatException {
+	    providerCloseCheck();
+	    
 	    StoreableImplementation builtStoreable = null;
 	    
 	    providerLock.readLock().lock();	   
@@ -115,6 +125,20 @@ public class StoreableTableProvider extends BasicTableProvider<StoreableTable> i
 
 		return builtStoreable;
 	}
+	
+	public String toString() {
+        return getClass().getSimpleName() + "[" + (new File(root)).getAbsolutePath() + "]";
+    }
+	
+    public void close() {
+        if (!(closeIndicator)) {
+            closeIndicator = true;
+            
+            for (String key: tables.keySet()) {
+                tables.get(key).close();
+            }   
+        }
+    }
 
 	public void readFilesMaps() throws IOException {
 		for (String subdirectory : (new File(root)).list()) {

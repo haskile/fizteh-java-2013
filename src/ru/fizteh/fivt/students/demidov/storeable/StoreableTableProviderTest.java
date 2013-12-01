@@ -20,11 +20,11 @@ public class StoreableTableProviderTest {
 	private List<Object> value, incorrectValue, shortValue, longValue;
 	private String serializedValue = "<row><col>12</col><col>3.14</col><col>just string</col></row>";
 	private String incorrectSerializedValue = "<row><trouble>12</trouble><a>3.14</a><c>just string</c></row>";
+	private File tempDirectory;
 	
 	@Before
 	public void setUp() throws IOException {
 		try {
-			File tempDirectory = null;
 			try {
 				tempDirectory = File.createTempFile("StoreableTableProviderTest", null);
 			} catch (IOException catchedException) {
@@ -49,6 +49,11 @@ public class StoreableTableProviderTest {
 		shortValue = new ArrayList<Object>() {{add(Integer.valueOf("12"));}};
 		longValue = new ArrayList<Object>() {{add(Integer.valueOf("12")); add(Double.valueOf("3.14")); add(String.valueOf("just string")); add(Boolean.valueOf("true"));}};
 	}	
+	
+	@Test
+    public void checkToString() {
+        Assert.assertEquals(currentProvider.toString(), "StoreableTableProvider[" + tempDirectory.getAbsolutePath() + "]");
+    }
 
 	@Test 
 	public void serializeCorrectValue() throws IOException {
@@ -155,4 +160,42 @@ public class StoreableTableProviderTest {
 	public void removeTableWithNullParameter() {
 		currentProvider.removeTable(null);
 	}
+	
+	//close tests
+	@Test (expected = IllegalStateException.class)
+	public void getFromClosed() {
+	    currentProvider.close();
+	    currentProvider.getTable("stillbornTable");
+	}
+	
+	@Test (expected = IllegalStateException.class)
+	public void createTableFromClosed() throws IOException {
+	    currentProvider.close();
+	    currentProvider.createTable("stillbornTable", null);
+	}
+	
+    @Test (expected = IllegalStateException.class)
+    public void createForFromClosed() {
+        currentProvider.close();
+        currentProvider.createFor(null);
+    }
+
+	@Test (expected = IllegalStateException.class)
+	public void removeFromClosed() {
+	    currentProvider.close();
+	    currentProvider.removeTable("stillbornTable");
+	}
+
+    @Test
+    public void closeTwice() {
+        currentProvider.close();
+        currentProvider.close();
+    }
+
+    @Test
+    public void getClosedTable() throws IOException {
+        StoreableTable table = currentProvider.createTable("createdTable", type);
+        table.close();
+        Assert.assertNotSame(table, currentProvider.getTable("createdTable"));
+    }
 }

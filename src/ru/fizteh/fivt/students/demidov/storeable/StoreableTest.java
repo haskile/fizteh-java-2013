@@ -48,6 +48,11 @@ public class StoreableTest {
 		value.setColumnAt(6, 3.14);
 	}
 
+	@Test
+    public void toStringTest() {
+        Assert.assertEquals("StoreableImplementation[-1204,just string,865123456711,5,true,2.71,3.14]", value.toString());
+    }
+	
 	//test get from correct column
 	@Test
 	public void getIntFromColumn() {

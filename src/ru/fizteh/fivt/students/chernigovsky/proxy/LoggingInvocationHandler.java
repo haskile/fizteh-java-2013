@@ -42,7 +42,8 @@ public class LoggingInvocationHandler implements InvocationHandler {
     }
 
     private String getLog(Method method, Object[] args, Object returnValue, Throwable thrown) throws XMLStreamException {
-        XMLStreamWriter xmlStreamWriter = XMLOutputFactory.newInstance().createXMLStreamWriter(new StringWriter());
+        StringWriter stringWriter = new StringWriter();
+        XMLStreamWriter xmlStreamWriter = XMLOutputFactory.newInstance().createXMLStreamWriter(stringWriter);
         IdentityHashMap<Iterable, Boolean> identityHashMap = new IdentityHashMap<Iterable, Boolean>();
 
         xmlStreamWriter.writeStartElement("invoke");
@@ -83,7 +84,7 @@ public class LoggingInvocationHandler implements InvocationHandler {
 
         xmlStreamWriter.writeEndElement();
 
-        return xmlStreamWriter.toString() + System.lineSeparator();
+        return stringWriter.toString() + System.lineSeparator();
     }
 
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable{

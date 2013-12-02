@@ -82,6 +82,7 @@ public class LoggingInvocationHandler implements InvocationHandler {
         }
 
         xmlStreamWriter.writeEndElement();
+        xmlStreamWriter.writeCharacters("\n");
 
         return xmlStreamWriter.toString();
     }

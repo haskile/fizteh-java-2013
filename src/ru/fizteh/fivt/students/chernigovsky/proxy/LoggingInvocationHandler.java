@@ -72,13 +72,9 @@ public class LoggingInvocationHandler implements InvocationHandler {
             xmlStreamWriter.writeStartElement("thrown");
             xmlStreamWriter.writeCharacters(thrown.toString());
             xmlStreamWriter.writeEndElement();
-        } else if (returnValue != void.class) {
+        } else if (returnValue != void.class && returnValue != null) {
             xmlStreamWriter.writeStartElement("return");
-            if (returnValue == null) {
-                xmlStreamWriter.writeEmptyElement("null");
-            } else {
-                xmlStreamWriter.writeCharacters(returnValue.toString());
-            }
+            xmlStreamWriter.writeCharacters(returnValue.toString());
             xmlStreamWriter.writeEndElement();
         }
 

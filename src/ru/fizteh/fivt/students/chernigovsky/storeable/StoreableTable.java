@@ -4,6 +4,7 @@ import ru.fizteh.fivt.storage.structured.ColumnFormatException;
 import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.students.chernigovsky.junit.AbstractTable;
 
+import java.io.File;
 import java.util.List;
 
 public class StoreableTable extends AbstractTable<Storeable> implements ExtendedStoreableTable {
@@ -51,6 +52,15 @@ public class StoreableTable extends AbstractTable<Storeable> implements Extended
         return tableProvider.serialize(this, firstValue).equals(tableProvider.serialize(this, secondValue));
     }
 
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
 
+        builder.append(getClass().getSimpleName());
+        builder.append("[");
+        builder.append(new File(tableProvider.getDbDirectory(), getName()).getAbsolutePath());
+        builder.append("]");
+
+        return builder.toString();
+    }
 
 }

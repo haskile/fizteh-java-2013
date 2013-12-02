@@ -232,4 +232,15 @@ public class StoreableTableProvider extends AbstractTableProvider<ExtendedStorea
 
         return storeable;
     }
+
+    public String toString() {
+        StringBuilder builder = new StringBuilder();
+
+        builder.append(getClass().getSimpleName());
+        builder.append("[");
+        builder.append(getDbDirectory().getAbsolutePath());
+        builder.append("]");
+
+        return builder.toString();
+    }
 }

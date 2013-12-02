@@ -124,7 +124,8 @@ abstract public class BasicTable<ElementType> {
 		int changesNumber = getChangesNumber();
 		if (changesNumber != 0) {
 			autoCommit();
-		}		
+		}	
+		filesMap.writeData();  
 		readWriteLock.writeLock().unlock();
 		
 		putDiff.get().clear();
@@ -208,6 +209,6 @@ abstract public class BasicTable<ElementType> {
         }
     }
 	
-	abstract public String serialize(ElementType value) throws IOException;	
-	abstract public ElementType deserialize(String value) throws IOException;
+    public abstract String serialize(ElementType value) throws IOException;	
+    public abstract ElementType deserialize(String value) throws IOException;
 }

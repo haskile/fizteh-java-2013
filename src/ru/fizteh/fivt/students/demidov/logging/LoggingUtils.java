@@ -2,7 +2,6 @@ package ru.fizteh.fivt.students.demidov.logging;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
-import java.io.Writer;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
@@ -12,16 +11,16 @@ import java.util.Set;
 public class LoggingUtils {
     static final Set<Object> addedArguments = Collections.newSetFromMap(new IdentityHashMap<Object, Boolean>());
     
-    static public void writeLog(JSONObject jsonObject, Object object, Method method, Object[] arguments, Writer writer) {
+    static public void writeLog(JSONObject jsonObject, Object object, Method method, Object[] arguments) {
         JSONArray jsonArray = new JSONArray();        
         jsonObject.put("timestamp", System.currentTimeMillis());
         jsonObject.put("class", object.getClass().getName());
         
         jsonObject.put("method", method.getName());
+       
         if (arguments != null) {
             logIterable(jsonArray, Arrays.asList(arguments));
-        }
-        
+        }        
         jsonObject.put("arguments", jsonArray);
     }
 
@@ -33,10 +32,10 @@ public class LoggingUtils {
             return;
         }
             
-        if (value.getClass().isArray()) {
+        if (value instanceof Iterable) {
+            logIterable(jsonArray, (Iterable) value);
+        } else if (value.getClass().isArray()) {
             logIterable(jsonArray, Arrays.asList((Object[]) value));
-        } else if (value instanceof Iterable) {
-            logIterable(jsonArray, (Iterable)value);
         } else {
             jsonObject.put("returnValue", value);
             return;
@@ -45,22 +44,22 @@ public class LoggingUtils {
         jsonObject.put("returnValue", jsonArray);
     }
 
-    static public void logIterable(JSONArray jsonArray, Iterable arguments) {
+    static private void logIterable(JSONArray jsonArray, Iterable arguments) {
         addedArguments.add(arguments);
         
         for (Object currentArgument: arguments) {
-            if (currentArgument != null) {
+            if (currentArgument == null) {
+                jsonArray.put(currentArgument);
+            } else if (currentArgument instanceof Iterable) {
                 if (!(addedArguments.contains(currentArgument))) {
                     JSONArray currentArray = new JSONArray();
-                    logIterable(currentArray, (Iterable)currentArgument);
+                    logIterable(currentArray, (Iterable) currentArgument);
                     jsonArray.put(currentArray);
                 } else {
                     jsonArray.put("cyclic");
                 }
             } else if (currentArgument.getClass().isArray()) {
                 jsonArray.put(currentArgument.toString());
-            } else if (currentArgument instanceof Iterable) {
-                jsonArray.put(currentArgument);
             } else {
                 jsonArray.put(currentArgument);
             }

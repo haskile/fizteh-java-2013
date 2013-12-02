@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -31,12 +30,15 @@ public class StoreableTableTest {
 			if (!tempDirectory.mkdir()) {
 				return;
 			}
-			currentProvider = new StoreableTableProvider(tempDirectory.getPath());
+			StoreableTableProviderFactory factory = new StoreableTableProviderFactory();
+            currentProvider = new StoreableTableProvider(factory, tempDirectory.getPath());
 		} catch (IllegalArgumentException catchedException) {
 			Assert.fail("unable to create StoreableTableProvider example");
-		}
+		} 
 		
-		type = new ArrayList<Class<?>>() {{add(Integer.class); add(Double.class); add(String.class);}};
+		type = new ArrayList<Class<?>>() { {
+		    add(Integer.class); add(Double.class); add(String.class);
+		} };
 		currentTable = currentProvider.createTable("createdTable", type);
 		
 		value1 = new StoreableImplementation(currentTable);

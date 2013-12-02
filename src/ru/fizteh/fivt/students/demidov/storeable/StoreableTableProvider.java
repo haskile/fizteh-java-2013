@@ -15,8 +15,11 @@ import ru.fizteh.fivt.storage.structured.TableProvider;
 import ru.fizteh.fivt.students.demidov.basicclasses.BasicTableProvider;
 
 public class StoreableTableProvider extends BasicTableProvider<StoreableTable> implements TableProvider, AutoCloseable {
-	public StoreableTableProvider(String root) throws IOException {
-		super(root);
+    private StoreableTableProviderFactory factory;
+    
+	public StoreableTableProvider(StoreableTableProviderFactory factory, String root) throws IOException {
+	    super(root);
+	    this.factory = factory;
 	}
 	
 	public StoreableTable createTable(String name, List<Class<?>> columnTypes) throws IOException {
@@ -66,7 +69,31 @@ public class StoreableTableProvider extends BasicTableProvider<StoreableTable> i
 			providerLock.writeLock().unlock();
 		}
 	}
-
+	
+	public StoreableTable getTable(String name) {    
+	    providerCloseCheck();
+	    
+        if ((name == null) || (!(name.matches("\\w+")))) {
+            throw new IllegalArgumentException("wrong table name: " + name);
+        }
+        
+        providerLock.readLock().lock();     
+        
+        try {
+            if ((tables.get(name) == null) && (new File(root, name).isDirectory())) {
+                try {
+                    tables.put(name, new StoreableTable(root + File.separator + name, name, this));
+                    tables.get(name).getFilesMap().readData();
+                } catch (IOException catchedException) {
+                    //do nothing
+                }
+            }
+            return tables.get(name);
+        } finally {     
+            providerLock.readLock().unlock();
+        }
+    }
+	
 	public StoreableImplementation deserialize(Table table, String value) throws ParseException {
 	    providerCloseCheck();
 	    
@@ -132,11 +159,12 @@ public class StoreableTableProvider extends BasicTableProvider<StoreableTable> i
 	
     public void close() {
         if (!(closeIndicator)) {
-            closeIndicator = true;
+            factory.closeTableProvider(this);
             
             for (String key: tables.keySet()) {
                 tables.get(key).close();
             }   
+            closeIndicator = true;
         }
     }
 

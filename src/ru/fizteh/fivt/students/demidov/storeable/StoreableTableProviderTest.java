@@ -16,8 +16,12 @@ import ru.fizteh.fivt.storage.structured.Table;
 
 public class StoreableTableProviderTest {
 	private StoreableTableProvider currentProvider;
-	private List<Class<?>> type, incorrectType;
-	private List<Object> value, incorrectValue, shortValue, longValue;
+	private List<Class<?>> type;
+	private List<Class<?>> incorrectType;
+	private List<Object> value;
+	private List<Object> incorrectValue;
+	private List<Object> shortValue;
+	private List<Object> longValue;
 	private String serializedValue = "<row><col>12</col><col>3.14</col><col>just string</col></row>";
 	private String incorrectSerializedValue = "<row><trouble>12</trouble><a>3.14</a><c>just string</c></row>";
 	private File tempDirectory;
@@ -36,38 +40,53 @@ public class StoreableTableProviderTest {
 			if (!tempDirectory.mkdir()) {
 				return;
 			}
-			currentProvider = new StoreableTableProvider(tempDirectory.getPath());
+			StoreableTableProviderFactory factory = new StoreableTableProviderFactory();
+            currentProvider = new StoreableTableProvider(factory, tempDirectory.getPath());
 		} catch (IllegalArgumentException catchedException) {
 			Assert.fail("unable to create StoreableTableProvider example");
 		}
 		
-		type = new ArrayList<Class<?>>() {{add(Integer.class); add(Double.class); add(String.class);}};
-		incorrectType = new ArrayList<Class<?>>() {{add(Double.class); add(Float.class); add(Boolean.class);}};
+		type = new ArrayList<Class<?>>() { {
+		    add(Integer.class); add(Double.class); add(String.class); 
+		} };
+		incorrectType = new ArrayList<Class<?>>() { {
+		    add(Double.class); add(Float.class); add(Boolean.class); 
+		} };
 
-		value = new ArrayList<Object>() {{add(Integer.valueOf("12")); add(Double.valueOf("3.14")); add(String.valueOf("just string"));}};
-		incorrectValue = new ArrayList<Object>() {{add(Float.valueOf("2.7f")); add(Boolean.valueOf("true")); add(new String("put it back"));}};
-		shortValue = new ArrayList<Object>() {{add(Integer.valueOf("12"));}};
-		longValue = new ArrayList<Object>() {{add(Integer.valueOf("12")); add(Double.valueOf("3.14")); add(String.valueOf("just string")); add(Boolean.valueOf("true"));}};
+		value = new ArrayList<Object>() { {
+		    add(Integer.valueOf("12")); add(Double.valueOf("3.14")); add(String.valueOf("just string"));
+		} };
+		incorrectValue = new ArrayList<Object>() { {
+		    add(Float.valueOf("2.7f")); add(Boolean.valueOf("true")); add(new String("put it back"));
+		} };
+		shortValue = new ArrayList<Object>() { {
+		    add(Integer.valueOf("12"));
+		} };
+		longValue = new ArrayList<Object>() { {
+		    add(Integer.valueOf("12")); add(Double.valueOf("3.14")); add(String.valueOf("just string")); add(Boolean.valueOf("true"));
+		} };
 	}	
 	
 	@Test
     public void checkToString() {
-        Assert.assertEquals(currentProvider.toString(), "StoreableTableProvider[" + tempDirectory.getAbsolutePath() + "]");
+        Assert.assertEquals(currentProvider.toString(), 
+                "StoreableTableProvider[" + tempDirectory.getAbsolutePath() + "]");
     }
 
 	@Test 
 	public void serializeCorrectValue() throws IOException {
 		Table table = currentProvider.createTable("createdTable", type);
 		Storeable gotStoreable = currentProvider.createFor(table, value);
-		Assert.assertEquals("incorrect serialization", serializedValue, currentProvider.serialize(table, gotStoreable));
+		Assert.assertEquals("incorrect serialization", serializedValue, 
+		        currentProvider.serialize(table, gotStoreable));
 	}
 
 	@Test(expected = ColumnFormatException.class)
 	public void serializeIncorrectValue() throws IOException {
 		Table table = currentProvider.createTable("firstTable", type);
-		StoreableImplementation alienStoreable = new StoreableImplementation(currentProvider.createTable("secondTable", incorrectType));
-		alienStoreable.setColumnAt(0, 2.71);
-		System.out.println(currentProvider.serialize(table, alienStoreable));
+		StoreableImplementation alien = new StoreableImplementation(currentProvider.createTable("secondTable", incorrectType));
+		alien.setColumnAt(0, 2.71);
+		System.out.println(currentProvider.serialize(table, alien));
 	}
 
 	@Test 
@@ -113,7 +132,8 @@ public class StoreableTableProviderTest {
 	@Test
 	public void getTableAfterCreate() throws IOException {
 		Table createdTable = currentProvider.createTable("createdTable", type);
-		Assert.assertEquals("should be createdTable", "createdTable", currentProvider.getTable("createdTable").getName());
+		Assert.assertEquals("should be createdTable", 
+		        "createdTable", currentProvider.getTable("createdTable").getName());
 		Table table = currentProvider.getTable("createdTable");
 		Assert.assertSame("expected the same table as created", createdTable, table);
 		table = currentProvider.getTable("createdTable");

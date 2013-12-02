@@ -7,10 +7,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-
 import ru.fizteh.fivt.students.demidov.shell.Utils;
 
-abstract public class BasicTableProvider<TableType> {
+abstract public class BasicTableProvider<TableType extends BasicTable> {
 	protected Map<String, TableType> tables;
 	protected ReadWriteLock providerLock;
 	protected String root;
@@ -28,14 +27,12 @@ abstract public class BasicTableProvider<TableType> {
 		}
 	}
 	
-	public TableType getTable(String name) {
-	    providerCloseCheck();
-	    
+	public TableType getTable(String name) {	    
 		if ((name == null) || (!(name.matches("\\w+")))) {
 			throw new IllegalArgumentException("wrong table name: " + name);
 		}
 		
-		providerLock.readLock().lock();		
+		providerLock.readLock().lock();				
 		try {
 			return tables.get(name);
 		} finally {		
@@ -74,6 +71,6 @@ abstract public class BasicTableProvider<TableType> {
         }
     }
 	
-	abstract public TableType createTable(String name);
-	abstract public TableType createTable(String name, List<Class<?>> columnTypes) throws IOException;
+    public abstract TableType createTable(String name);
+    public abstract TableType createTable(String name, List<Class<?>> columnTypes) throws IOException;
 }

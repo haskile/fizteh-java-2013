@@ -25,18 +25,28 @@ public class LoggingInvocationHandler implements InvocationHandler {
                 throw catchedException.getTargetException();
             }
         } else {
-            JSONObject jsonObject = new JSONObject();
+            ThreadLocal<JSONObject> jsonObject = new ThreadLocal<JSONObject>() {
+                public JSONObject initialValue() {
+                    return new JSONObject();
+                }
+            };
+            
+            LoggingUtils.writeLog(jsonObject.get(), object, method, args);
             try {
                 result = method.invoke(object, args);
-                if (!(method.getReturnType().equals(void.class))) {
-                    LoggingUtils.logReturnValue(jsonObject, result);
+                if (method.getReturnType() != void.class) {
+                    LoggingUtils.logReturnValue(jsonObject.get(), result);
                 }
             } catch (InvocationTargetException catchedException) {
-                jsonObject.put("thrown", catchedException.getTargetException().toString());
-                writer.write(jsonObject.toString(2) + '\n');
+                jsonObject.get().put("thrown", catchedException.getTargetException().toString());
+                synchronized (writer) {
+                    writer.write(jsonObject.get().toString(2) + '\n');
+                }
                 throw catchedException.getTargetException();
             }
-            writer.write(jsonObject.toString(2) + '\n');
+            synchronized (writer) {
+                writer.write(jsonObject.get().toString(2) + '\n');
+            }
         }
             
         return result;

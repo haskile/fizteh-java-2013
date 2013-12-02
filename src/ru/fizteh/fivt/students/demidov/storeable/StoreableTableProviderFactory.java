@@ -26,26 +26,30 @@ public class StoreableTableProviderFactory implements TableProviderFactory, Auto
 			throw new IOException("non-existing dir");
 		}
 		
-		StoreableTableProvider createdProvider = new StoreableTableProvider(dir);
+		StoreableTableProvider createdProvider = new StoreableTableProvider(this, dir);
 		
 		createdTableProviders.add(createdProvider);
 		
 		return createdProvider;			
 	}
 	
-    public void providerFactoryCloseCheck() {
+    public void closeTableProvider(StoreableTableProvider tableProvider) {
+        providerFactoryCloseCheck();
+        createdTableProviders.remove(tableProvider);
+    }  
+	
+    private void providerFactoryCloseCheck() {
         if (closeIndicator) {
             throw new IllegalStateException("table provider factory is closed");
         }
     }
 	
 	public void close() {
-	    if (!(closeIndicator)) {
-	        closeIndicator = true;
-	        
+	    if (!(closeIndicator)) {	        
 	        for (StoreableTableProvider currentProvider: createdTableProviders) {
 	            currentProvider.close();
 	        }
+	        closeIndicator = true;
 	    }
 	}
 }

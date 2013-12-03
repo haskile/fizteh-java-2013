@@ -9,12 +9,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public abstract class AbstractTable<ValueType> {
-    private volatile HashMap<String, ValueType> hashMap;
-    private ThreadLocal<HashMap<String, ValueType>> changedEntries;
-    private ThreadLocal<HashMap<String, ValueType>> removedEntries;
-    private ReadWriteLock tableLock;
-    private boolean autoCommit;
-    private String tableName;
+    protected volatile HashMap<String, ValueType> hashMap;
+    protected ThreadLocal<HashMap<String, ValueType>> changedEntries;
+    protected ThreadLocal<HashMap<String, ValueType>> removedEntries;
+    protected ReadWriteLock tableLock;
+    protected boolean autoCommit;
+    protected String tableName;
     private final Pattern pattern = Pattern.compile("\\s");
 
     public Set<Map.Entry<String, ValueType>> getEntrySet() {

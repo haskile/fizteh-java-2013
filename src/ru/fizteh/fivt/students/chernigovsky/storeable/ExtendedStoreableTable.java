@@ -7,8 +7,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public interface ExtendedStoreableTable extends Table {
+public interface ExtendedStoreableTable extends Table, AutoCloseable {
     Set<Map.Entry<String, Storeable>> getEntrySet();
     int getDiffCount();
-    public void setColumnTypeList(List<Class<?>> newColumnTypeList);
+    void setColumnTypeList(List<Class<?>> newColumnTypeList);
+    void close();
+    boolean isClosed();
 }

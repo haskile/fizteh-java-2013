@@ -87,7 +87,7 @@ public class LoggingInvocationHandler implements InvocationHandler {
         return stringWriter.toString() + System.lineSeparator();
     }
 
-    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable{
+    public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
         if (!Object.class.equals(method.getDeclaringClass())) {
             Throwable thrown = null;
             Object returnValue = null;
@@ -95,11 +95,16 @@ public class LoggingInvocationHandler implements InvocationHandler {
             try {
                 returnValue = method.invoke(implementation, args);
             } catch (InvocationTargetException ex) {
-                thrown = ex.getCause();
+                thrown = ex.getTargetException();
             }
 
             writer.append(getLog(method, args, returnValue, thrown));
 
+            if (thrown != null) {
+                throw thrown;
+            }
+
+            return returnValue;
         }
 
         try {

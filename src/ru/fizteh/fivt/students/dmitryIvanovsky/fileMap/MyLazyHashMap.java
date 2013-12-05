@@ -8,31 +8,58 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.*;
 
-public class MyLazyHashMap extends MyHashMap {
+class FileIsNotExist extends Exception {
+    public FileIsNotExist() {
+        super();
+    }
+}
+
+public class MyLazyHashMap {
     Path pathTable;
     int size;
-    Set<String> keySet;
     final int numberDir = 16;
     final int numberFile = 16;
+    boolean loadFile[][] = new boolean[16][16];
     Map<String, Storeable>[][] arrayMap = new HashMap[numberDir][numberFile];
+    FileMapProvider provider;
+    FileMap fileMap;
 
-    MyLazyHashMap(Path pathTable) {
+    MyLazyHashMap(Path pathTable, FileMapProvider provider, FileMap fileMap) {
         for (int i = 0; i < numberDir; ++i) {
             for (int j = 0; j < numberFile; ++j) {
                 arrayMap[i][j] = new HashMap<>();
+                loadFile[i][j] = false;
             }
         }
         size = 0;
-        keySet = new HashSet<>();
         this.pathTable = pathTable;
+        this.provider = provider;
+        this.fileMap = fileMap;
     }
 
-    public void loadTableFile(File randomFile, MyHashMap dbMap, String nameDir) throws Exception {
+    private boolean isFileLoad(String key) {
+        return loadFile[getHashDir(key)][getHashFile(key)];
+    }
+
+    private void loadFile(String key) throws Exception {
+        if (!isFileLoad(key)) {
+            int dir = getHashDir(key);
+            int file = getHashFile(key);
+            loadTableFile(dir, file);
+            loadFile[dir][file] = true;
+        }
+    }
+
+    public void loadTableFile(int intDir, int intFile) throws Exception {
+        File randomFile = pathTable.resolve(String.valueOf(intDir) + ".dir").resolve(String.valueOf(intFile) + ".dat").toFile();
+
+        if (!randomFile.exists()) {
+            throw new FileIsNotExist();
+        }
+
         if (randomFile.isDirectory()) {
             throw new ErrorFileMap("data file can't be a directory");
         }
-        int intDir = FileMapUtils.getCode(nameDir);
-        int intFile = FileMapUtils.getCode(randomFile.getName());
 
         RandomAccessFile dbFile = null;
         Exception error = null;
@@ -85,12 +112,11 @@ public class MyLazyHashMap extends MyHashMap {
                     }
                     String key = new String(arrayByte, StandardCharsets.UTF_8);
 
-                    if (dbMap.getHashDir(key) != intDir || dbMap.getHashFile(key) != intFile) {
+                    if (getHashDir(key) != intDir || getHashFile(key) != intFile) {
                         throw new ErrorFileMap("wrong key in the file");
                     }
 
-                    //TODO imprortant place
-                    //dbMap.put(key, parent.deserialize(this, value));
+                    arrayMap[intDir][intFile].put(key, provider.deserialize(fileMap, value));
 
                     vectorByte.clear();
                     dbFile.seek(currentPoint);
@@ -113,28 +139,40 @@ public class MyLazyHashMap extends MyHashMap {
     }
 
     private Map<String, Storeable> initMap(String key) {
-        Map<String, Storeable> map = arrayMap[getHashDir(key)][getHashFile(key)];
-        return map;
+        return arrayMap[getHashDir(key)][getHashFile(key)];
     }
 
     public Storeable get(String key) {
-        return initMap(key).get(key);
+        try {
+            loadFile(key);
+            return initMap(key).get(key);
+        } catch (FileIsNotExist e) {
+            return null;
+        } catch (Exception e) {
+            throw new IllegalStateException("Error with open file with key = " + key, e);
+        }
     }
 
     public void put(String key, Storeable value) {
-        if (!keySet.contains(key)) {
-            keySet.add(key);
-            ++size;
+        try {
+            loadFile(key);
+        } catch (FileIsNotExist e) {
+            //pass
+        } catch (Exception e) {
+            throw new IllegalStateException("Error with open file with key = " + key, e);
         }
         initMap(key).put(key, value);
     }
 
     public void remove(String key) {
-        if (keySet.contains(key)) {
-            keySet.remove(key);
-            --size;
+        try {
+            loadFile(key);
+            initMap(key).remove(key);
+        } catch (FileIsNotExist e) {
+            //pass
+        } catch (Exception e) {
+            throw new IllegalStateException("Error with open file with key = " + key, e);
         }
-        initMap(key).remove(key);
     }
 
     public int getHashDir(String key) {
@@ -155,24 +193,15 @@ public class MyLazyHashMap extends MyHashMap {
         return nfile;
     }
 
-    public boolean isEmpty() {
-        return (size == 0);
-    }
-
-    public Set<String> keySet() {
-        return keySet;
-    }
-
     public Boolean containsKey(String key) {
-        return (keySet.contains(key));
-    }
-
-    public void clear() {
-        for (String key : keySet) {
-            initMap(key).remove(key);
+        try {
+            loadFile(key);
+            return initMap(key).containsKey(key);
+        } catch (FileIsNotExist e) {
+            return false;
+        } catch (Exception e) {
+            throw new IllegalStateException("Error with open file with key = " + key, e);
         }
-        keySet = new HashSet<>();
-        size = 0;
     }
 
     public Map<String, Storeable> getMap(int i, int j) {

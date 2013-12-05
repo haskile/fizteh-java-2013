@@ -44,13 +44,12 @@ public class FileMap implements Table, AutoCloseable {
     FileMapProvider parent;
     List<Class<?>> columnType = new ArrayList<Class<?>>();
 
-
     public FileMap(Path pathDb, String nameTable, FileMapProvider parent) throws Exception {
         this.nameTable = nameTable;
         this.pathDb = pathDb;
         this.parent = parent;
         this.mySystem = new CommandShell(pathDb.toString(), false, false);
-        this.tableData = new MyLazyHashMap(pathDb.resolve(nameTable));
+        this.tableData = new MyLazyHashMap(pathDb.resolve(nameTable), parent, this);
 
         File theDir = new File(String.valueOf(pathDb.resolve(nameTable)));
         if (!theDir.exists()) {
@@ -139,7 +138,7 @@ public class FileMap implements Table, AutoCloseable {
         this.parent = parent;
         this.columnType = columnType;
         this.mySystem = new CommandShell(pathDb.toString(), false, false);
-        this.tableData = new MyLazyHashMap(pathDb.resolve(nameTable));
+        this.tableData = new MyLazyHashMap(pathDb.resolve(nameTable), parent, this);
 
         File theDir = new File(String.valueOf(pathDb.resolve(nameTable)));
         if (!theDir.exists()) {
@@ -312,6 +311,7 @@ public class FileMap implements Table, AutoCloseable {
         }
 
         for (Integer changedFile : changedFiles) {
+
             Integer numDir = changedFile / tableData.numberFile;
             Integer numFile = changedFile % tableData.numberFile;
             Path refreshDir = pathDb.resolve(nameTable).resolve(numDir.toString() + ".dir");

@@ -31,7 +31,7 @@ public class FileMap implements Table, AutoCloseable {
     private final Lock write = readWriteLock.writeLock();
     private final Lock read  = readWriteLock.readLock();
     String nameTable;
-    MyHashMap tableData = new MyHashMap();
+    MyLazyHashMap tableData;
     ThreadLocal<MyHashMap> changeTable = new ThreadLocal<MyHashMap>() {
         @Override
         protected MyHashMap initialValue() {
@@ -40,14 +40,17 @@ public class FileMap implements Table, AutoCloseable {
     };
     volatile boolean tableDrop = false;
     volatile boolean isTableClose = false;
+    volatile int sizeDataInFiles;
     FileMapProvider parent;
     List<Class<?>> columnType = new ArrayList<Class<?>>();
+
 
     public FileMap(Path pathDb, String nameTable, FileMapProvider parent) throws Exception {
         this.nameTable = nameTable;
         this.pathDb = pathDb;
         this.parent = parent;
         this.mySystem = new CommandShell(pathDb.toString(), false, false);
+        this.tableData = new MyLazyHashMap(pathDb.resolve(nameTable));
 
         File theDir = new File(String.valueOf(pathDb.resolve(nameTable)));
         if (!theDir.exists()) {
@@ -57,6 +60,10 @@ public class FileMap implements Table, AutoCloseable {
                 e.addSuppressed(new ErrorFileMap("I can't create a folder table " + nameTable));
                 throw e;
             }
+            writeSizeTsv(0);
+            this.sizeDataInFiles = 0;
+        } else {
+            loadSizeFile();
         }
 
         loadTypeFile(pathDb);
@@ -77,7 +84,7 @@ public class FileMap implements Table, AutoCloseable {
                 sb.append(s);
             }
         } catch (Exception e) {
-            throw new IOException("not found signature.tsv", e);
+            throw new IOException("not found " + fileName, e);
         }
         if (sb.length() == 0) {
             throw new IOException("tsv file is empty");
@@ -97,6 +104,13 @@ public class FileMap implements Table, AutoCloseable {
         }
     }
 
+    private void writeSizeTsv(int newSize) throws FileNotFoundException {
+        Path pathTsv = pathDb.resolve(nameTable).resolve("size.tsv");
+        try (PrintWriter out = new PrintWriter(pathTsv.toFile().getAbsoluteFile())) {
+            out.print(newSize);
+        }
+    }
+
     private void loadTypeFile(Path pathDb) throws IOException {
         String fileStr = readFileTsv(pathDb.resolve(nameTable).resolve("signature.tsv").toString());
         StringTokenizer token = new StringTokenizer(fileStr);
@@ -110,12 +124,22 @@ public class FileMap implements Table, AutoCloseable {
         }
     }
 
+    private void loadSizeFile() throws IOException, ErrorFileMap {
+        String fileStr = readFileTsv(pathDb.resolve(nameTable).resolve("size.tsv").toString());
+        try {
+            this.sizeDataInFiles = Integer.valueOf(fileStr);
+        } catch (Exception e) {
+            throw new ErrorFileMap("not correct size in size.tsv");
+        }
+    }
+
     public FileMap(Path pathDb, String nameTable, FileMapProvider parent, List<Class<?>> columnType) throws Exception {
         this.nameTable = nameTable;
         this.pathDb = pathDb;
         this.parent = parent;
         this.columnType = columnType;
         this.mySystem = new CommandShell(pathDb.toString(), false, false);
+        this.tableData = new MyLazyHashMap(pathDb.resolve(nameTable));
 
         File theDir = new File(String.valueOf(pathDb.resolve(nameTable)));
         if (!theDir.exists()) {
@@ -125,6 +149,10 @@ public class FileMap implements Table, AutoCloseable {
                 e.addSuppressed(new ErrorFileMap("I can't create a folder table " + nameTable));
                 throw e;
             }
+            writeSizeTsv(0);
+            this.sizeDataInFiles = 0;
+        } else {
+            loadSizeFile();
         }
 
         writeFileTsv();
@@ -150,7 +178,7 @@ public class FileMap implements Table, AutoCloseable {
         }
 
         for (File nameDir : listFileMap) {
-            if (nameDir.getName().equals("signature.tsv")) {
+            if (nameDir.getName().equals("signature.tsv") || nameDir.getName().equals("size.tsv")) {
                 continue;
             }
             if (!nameDir.isDirectory()) {
@@ -178,7 +206,7 @@ public class FileMap implements Table, AutoCloseable {
                 }
 
                 try {
-                    loadTableFile(randomFile, tableData, nameDir.getName());
+                    checkTableFile(randomFile,nameDir.getName());
                 } catch (Exception e) {
                     e.addSuppressed(new ErrorFileMap("Error in file " + randomFile.getAbsolutePath()));
                     throw e;
@@ -187,7 +215,7 @@ public class FileMap implements Table, AutoCloseable {
         }
     }
 
-    public void loadTableFile(File randomFile, MyHashMap dbMap, String nameDir) throws Exception {
+    public void checkTableFile(File randomFile, String nameDir) throws Exception {
         if (randomFile.isDirectory()) {
             throw new ErrorFileMap("data file can't be a directory");
         }
@@ -237,7 +265,7 @@ public class FileMap implements Table, AutoCloseable {
 
                     arrayByte = new byte[point2 - point1];
                     dbFile.readFully(arrayByte);
-                    String value = new String(arrayByte, StandardCharsets.UTF_8);
+                    //String value = new String(arrayByte, StandardCharsets.UTF_8);
 
                     arrayByte = new byte[vectorByte.size()];
                     for (int i = 0; i < vectorByte.size(); ++i) {
@@ -248,7 +276,7 @@ public class FileMap implements Table, AutoCloseable {
                     if (tableData.getHashDir(key) != intDir || tableData.getHashFile(key) != intFile) {
                         throw new ErrorFileMap("wrong key in the file");
                     }
-                    dbMap.put(key, parent.deserialize(this, value));
+                    //dbMap.put(key, parent.deserialize(this, value));
                     vectorByte.clear();
                     dbFile.seek(currentPoint);
                 } else {
@@ -537,13 +565,7 @@ public class FileMap implements Table, AutoCloseable {
             throw new IllegalStateException("table was deleted");
         }
 
-        int size = 0;
-        read.lock();
-        try {
-            size = tableData.size();
-        } finally {
-            read.unlock();
-        }
+        int tmpSize = this.sizeDataInFiles;
 
         for (String key : changeTable.get().keySet()) {
 
@@ -557,17 +579,17 @@ public class FileMap implements Table, AutoCloseable {
 
             if (containsKey) {
                 if (changeTable.get().get(key) == null) {
-                    --size;
+                    --tmpSize;
                 }
             } else {
                 if (changeTable.get().get(key) != null) {
-                    ++size;
+                    ++tmpSize;
                 }
             }
 
         }
 
-        return size;
+        return tmpSize;
     }
 
     public int commit() {
@@ -575,6 +597,7 @@ public class FileMap implements Table, AutoCloseable {
             throw new IllegalStateException("table was deleted");
         }
         int count = 0;
+        int currentSize = this.size();
         Set<String> changedKey = new HashSet<>();
         Exception err = null;
         write.lock();
@@ -607,6 +630,8 @@ public class FileMap implements Table, AutoCloseable {
         } finally {
             try {
                 refreshTableFiles(changedKey);
+                writeSizeTsv(currentSize);
+                this.sizeDataInFiles = currentSize;
             } catch (Exception errRefresh) {
                 if (err == null) {
                     err = errRefresh;

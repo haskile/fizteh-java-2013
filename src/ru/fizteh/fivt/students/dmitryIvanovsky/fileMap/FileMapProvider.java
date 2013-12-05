@@ -4,7 +4,6 @@ import ru.fizteh.fivt.storage.structured.ColumnFormatException;
 import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.storage.structured.Table;
 import ru.fizteh.fivt.storage.structured.TableProvider;
-import ru.fizteh.fivt.students.belousova.utils.FileUtils;
 import ru.fizteh.fivt.students.dmitryIvanovsky.shell.CommandAbstract;
 import ru.fizteh.fivt.students.dmitryIvanovsky.shell.CommandShell;
 
@@ -444,7 +443,11 @@ public class FileMapProvider implements CommandAbstract, TableProvider, AutoClos
         } catch (XMLStreamException e) {
             throw new RuntimeException(e);
         } finally {
-            FileUtils.closeStream(stringWriter);
+            try {
+                stringWriter.close();
+            } catch (IOException e) {
+                //pass
+            }
         }
         return stringWriter.toString();
     }

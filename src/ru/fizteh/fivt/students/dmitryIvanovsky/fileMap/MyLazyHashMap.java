@@ -8,26 +8,20 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.*;
 
-class FileIsNotExist extends Exception {
-    public FileIsNotExist() {
-        super();
-    }
-}
-
 public class MyLazyHashMap {
     Path pathTable;
     int size;
     final int numberDir = 16;
     final int numberFile = 16;
-    boolean loadFile[][] = new boolean[16][16];
-    Map<String, Storeable>[][] arrayMap = new HashMap[numberDir][numberFile];
+    boolean[][] loadFile = new boolean[16][16];
+    Map<String, Storeable>[][] arrayMap = new WeakHashMap[numberDir][numberFile];
     FileMapProvider provider;
     FileMap fileMap;
 
     MyLazyHashMap(Path pathTable, FileMapProvider provider, FileMap fileMap) {
         for (int i = 0; i < numberDir; ++i) {
             for (int j = 0; j < numberFile; ++j) {
-                arrayMap[i][j] = new HashMap<>();
+                arrayMap[i][j] = new WeakHashMap<>();
                 loadFile[i][j] = false;
             }
         }
@@ -51,7 +45,8 @@ public class MyLazyHashMap {
     }
 
     public void loadTableFile(int intDir, int intFile) throws Exception {
-        File randomFile = pathTable.resolve(String.valueOf(intDir) + ".dir").resolve(String.valueOf(intFile) + ".dat").toFile();
+        String strDir = String.valueOf(intDir) + ".dir";
+        File randomFile = pathTable.resolve(strDir).resolve(String.valueOf(intFile) + ".dat").toFile();
 
         if (!randomFile.exists()) {
             throw new FileIsNotExist();
@@ -208,4 +203,10 @@ public class MyLazyHashMap {
         return arrayMap[i][j];
     }
 
+}
+
+class FileIsNotExist extends Exception {
+    public FileIsNotExist() {
+        super();
+    }
 }

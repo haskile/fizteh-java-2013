@@ -35,14 +35,6 @@ public class MyLazyHashMap {
         return loadFile[getHashDir(key)][getHashFile(key)];
     }
 
-//    private void loadFile(String key) throws Exception {
-//        int dir = getHashDir(key);
-//        int file = getHashFile(key);
-//        if (!arrayMap[dir][file].containsKey(key)) {
-//            loadTableFile(dir, file);
-//            loadFile[dir][file] = true;
-//        }
-//    }
     private void loadFile(String key) throws Exception {
         int dir = getHashDir(key);
         int file = getHashFile(key);

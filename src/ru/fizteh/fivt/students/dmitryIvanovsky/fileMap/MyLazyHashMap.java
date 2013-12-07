@@ -36,9 +36,9 @@ public class MyLazyHashMap {
     }
 
     private void loadFile(String key) throws Exception {
-        if (!isFileLoad(key)) {
-            int dir = getHashDir(key);
-            int file = getHashFile(key);
+        int dir = getHashDir(key);
+        int file = getHashFile(key);
+        if (!arrayMap[dir][file].containsKey(key)) {
             loadTableFile(dir, file);
             loadFile[dir][file] = true;
         }

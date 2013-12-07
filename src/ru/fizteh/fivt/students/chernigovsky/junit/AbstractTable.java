@@ -1,5 +1,6 @@
 package ru.fizteh.fivt.students.chernigovsky.junit;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -144,7 +145,12 @@ public abstract class AbstractTable<ValueType> {
 
         ValueType ans = putting(key, value);
         if (autoCommit) {
-            commit();
+            try {
+                commit();
+            } catch (IOException ex) {
+                throw new IllegalStateException("Write error");
+            }
+
         }
         return ans;
 
@@ -182,7 +188,11 @@ public abstract class AbstractTable<ValueType> {
 
         ValueType ans = removing(key);
         if (autoCommit) {
-            commit();
+            try {
+                commit();
+            } catch (IOException ex) {
+                throw new IllegalStateException();
+            }
         }
         return ans;
 
@@ -222,7 +232,7 @@ public abstract class AbstractTable<ValueType> {
      *
      * @return Количество сохранённых ключей.
      */
-    public int commit() {
+    public int commit() throws IOException {
         int changed = getDiffCount();
 
         try {

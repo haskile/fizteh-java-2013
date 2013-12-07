@@ -5,6 +5,7 @@ import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.students.chernigovsky.junit.AbstractTable;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 public class StoreableTable extends AbstractTable<Storeable> implements ExtendedStoreableTable, AutoCloseable {
@@ -105,11 +106,15 @@ public class StoreableTable extends AbstractTable<Storeable> implements Extended
         return super.size();
     }
 
-    public int commit() {
+    public int commit() throws IOException {
         if (isClosed) {
             throw new IllegalStateException("table is closed");
         }
-        return super.commit();
+        int changed = super.commit();
+
+        StoreableUtils.writeTable(this, tableProvider);
+
+        return changed;
     }
 
     public int rollback() {

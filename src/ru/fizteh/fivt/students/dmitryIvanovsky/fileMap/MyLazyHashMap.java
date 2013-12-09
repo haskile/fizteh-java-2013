@@ -39,12 +39,12 @@ public class MyLazyHashMap {
         int dir = getHashDir(key);
         int file = getHashFile(key);
         if (!arrayMap[dir][file].containsKey(key)) {
-            loadTableFile(dir, file);
+            loadTableFile(dir, file, key);
             loadFile[dir][file] = true;
         }
     }
 
-    public void loadTableFile(int intDir, int intFile) throws Exception {
+    public void loadTableFile(int intDir, int intFile, String refKey) throws Exception {
         String strDir = String.valueOf(intDir) + ".dir";
         File randomFile = pathTable.resolve(strDir).resolve(String.valueOf(intFile) + ".dat").toFile();
 
@@ -111,7 +111,10 @@ public class MyLazyHashMap {
                         throw new ErrorFileMap("wrong key in the file");
                     }
 
-                    arrayMap[intDir][intFile].put(key, provider.deserialize(fileMap, value));
+                    if (key.equals(refKey)) {
+                        arrayMap[intDir][intFile].put(key, provider.deserialize(fileMap, value));
+                        break;
+                    }
 
                     vectorByte.clear();
                     dbFile.seek(currentPoint);

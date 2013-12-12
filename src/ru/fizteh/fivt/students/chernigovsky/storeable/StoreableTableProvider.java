@@ -280,7 +280,7 @@ public class StoreableTableProvider extends AbstractTableProvider<ExtendedStorea
             return null;
         }
         if (table.isClosed()) {
-            StoreableTable newTable = table.myClone();
+            StoreableTable newTable = new StoreableTable(table);
             tableHashMap.put(newTable.getName(), newTable);
             return newTable;
         } else {
@@ -298,12 +298,16 @@ public class StoreableTableProvider extends AbstractTableProvider<ExtendedStorea
 
 
 
-    public void close() {
+    public synchronized void close() {
         if (isClosed) {
             return;
         }
         for (Map.Entry<String, ExtendedStoreableTable> entry : tableHashMap.entrySet()) {
-            entry.getValue().close();
+            try {
+                entry.getValue().close();
+            } catch (Exception ex) {
+                throw new RuntimeException("close error");
+            }
         }
         isClosed = true;
     }

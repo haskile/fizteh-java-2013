@@ -11,6 +11,5 @@ public interface ExtendedStoreableTable extends Table, AutoCloseable {
     Set<Map.Entry<String, Storeable>> getEntrySet();
     int getDiffCount();
     void setColumnTypeList(List<Class<?>> newColumnTypeList);
-    void close();
     boolean isClosed();
 }

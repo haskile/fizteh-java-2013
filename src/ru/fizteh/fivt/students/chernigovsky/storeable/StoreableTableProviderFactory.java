@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class StoreableTableProviderFactory implements TableProviderFactory, AutoCloseable {
-    private ArrayList<StoreableTableProvider> tableProviderList;
+    private final ArrayList<StoreableTableProvider> tableProviderList;
     private boolean isClosed;
 
     public StoreableTableProviderFactory() {
@@ -35,7 +35,7 @@ public class StoreableTableProviderFactory implements TableProviderFactory, Auto
         return tableProvider;
     }
 
-    public void close() {
+    public synchronized void close() {
         if (isClosed) {
             return;
         }

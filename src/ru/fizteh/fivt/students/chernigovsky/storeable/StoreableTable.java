@@ -9,9 +9,16 @@ import java.io.IOException;
 import java.util.List;
 
 public class StoreableTable extends AbstractTable<Storeable> implements ExtendedStoreableTable, AutoCloseable {
-    List<Class<?>> columnTypeList;
-    ExtendedStoreableTableProvider tableProvider;
+    protected List<Class<?>> columnTypeList;
+    protected final ExtendedStoreableTableProvider tableProvider;
     boolean isClosed;
+
+    public StoreableTable(StoreableTable table) {
+        super(table);
+        isClosed = false;
+        tableProvider = table.tableProvider;
+        columnTypeList = table.columnTypeList;
+    }
 
     public String getName(){
         if (isClosed) {
@@ -124,7 +131,7 @@ public class StoreableTable extends AbstractTable<Storeable> implements Extended
         return super.rollback();
     }
 
-    public void close() {
+    public synchronized void close() {
         if (isClosed) {
             return;
         }
@@ -136,13 +143,4 @@ public class StoreableTable extends AbstractTable<Storeable> implements Extended
         return isClosed;
     }
 
-    public StoreableTable myClone() {
-        StoreableTable table = new StoreableTable(tableName, autoCommit, columnTypeList, tableProvider);
-        table.hashMap = hashMap;
-        table.changedEntries = changedEntries;
-        table.removedEntries = removedEntries;
-        table.tableLock = tableLock;
-        table.isClosed = false;
-        return table;
-    }
 }

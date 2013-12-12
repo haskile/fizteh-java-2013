@@ -10,10 +10,10 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public abstract class AbstractTableProvider<TableType> {
     protected static final String TABLE_NAME_FORMAT = "[A-Za-zА-Яа-я0-9]+";
-    protected HashMap<String, TableType> tableHashMap;
-    private File dbDirectory;
-    protected boolean autoCommit;
-    protected ReadWriteLock tableProviderLock;
+    protected final HashMap<String, TableType> tableHashMap;
+    private final File dbDirectory;
+    protected final boolean autoCommit;
+    protected final ReadWriteLock tableProviderLock;
 
     public AbstractTableProvider(File newDbDirectory, boolean flag) {
         tableProviderLock = new ReentrantReadWriteLock(false);

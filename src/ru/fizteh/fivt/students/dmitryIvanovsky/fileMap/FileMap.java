@@ -253,28 +253,29 @@ public class FileMap implements Table, AutoCloseable {
                 byte currentByte = dbFile.readByte();
                 if (currentByte == '\0') {
                     int point1 = dbFile.readInt();
-                    if (separator == -1) {
-                        separator = point1;
-                    }
+
+//                    if (separator == -1) {
+//                        separator = point1;
+//                    }
                     long currentPoint = dbFile.getFilePointer();
+//
+//                    while (dbFile.getFilePointer() != separator) {
+//                        if (dbFile.readByte() == '\0') {
+//                            break;
+//                        }
+//                    }
 
-                    while (dbFile.getFilePointer() != separator) {
-                        if (dbFile.readByte() == '\0') {
-                            break;
-                        }
-                    }
-
-                    int point2;
-                    if (dbFile.getFilePointer() == separator) {
-                        point2 = (int) dbFile.length();
-                    } else {
-                        point2 = dbFile.readInt();
-                    }
+//                    int point2;
+//                    if (dbFile.getFilePointer() == separator) {
+//                        point2 = (int) dbFile.length();
+//                    } else {
+//                        point2 = dbFile.readInt();
+//                    }
 
                     dbFile.seek(point1);
 
-                    arrayByte = new byte[point2 - point1];
-                    dbFile.readFully(arrayByte);
+                    //arrayByte = new byte[point2 - point1];
+                    //dbFile.readFully(arrayByte);
                     //String value = new String(arrayByte, StandardCharsets.UTF_8);
 
 

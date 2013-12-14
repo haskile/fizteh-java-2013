@@ -53,6 +53,7 @@ public class FileMap implements Table, AutoCloseable {
         this.tableData = new MyLazyHashMap(pathDb.resolve(nameTable), parent, this);
 
         File theDir = new File(String.valueOf(pathDb.resolve(nameTable)));
+        boolean flag = false;
         if (!theDir.exists()) {
             try {
                 mySystem.mkdir(new String[]{pathDb.resolve(nameTable).toString()});
@@ -63,13 +64,15 @@ public class FileMap implements Table, AutoCloseable {
             writeSizeTsv(0);
             this.sizeDataInFiles = 0;
         } else {
-            loadSizeFile();
+            flag = true;
         }
-
-        loadTypeFile(pathDb);
 
         try {
             loadTable(nameTable);
+            loadTypeFile(pathDb);
+            if (flag) {
+                loadSizeFile();
+            }
         } catch (Exception e) {
             e.addSuppressed(new ErrorFileMap("Format error storage table " + nameTable));
             throw e;
@@ -273,7 +276,7 @@ public class FileMap implements Table, AutoCloseable {
                     arrayByte = new byte[point2 - point1];
                     dbFile.readFully(arrayByte);
                     //String value = new String(arrayByte, StandardCharsets.UTF_8);
-                    tableSize += 1;
+
 
                     arrayByte = new byte[vectorByte.size()];
                     for (int i = 0; i < vectorByte.size(); ++i) {
@@ -286,6 +289,8 @@ public class FileMap implements Table, AutoCloseable {
                     }
 
                     //dbMap.put(key, parent.deserialize(this, value));
+                    tableSize += 1;
+
                     vectorByte.clear();
                     dbFile.seek(currentPoint);
                 } else {

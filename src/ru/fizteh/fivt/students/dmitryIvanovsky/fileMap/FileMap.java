@@ -30,6 +30,7 @@ public class FileMap implements Table, AutoCloseable {
     private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
     private final Lock write = readWriteLock.writeLock();
     private final Lock read  = readWriteLock.readLock();
+    private int tableSize = 0;
     String nameTable;
     MyLazyHashMap tableData;
     ThreadLocal<MyHashMap> changeTable = new ThreadLocal<MyHashMap>() {
@@ -176,7 +177,11 @@ public class FileMap implements Table, AutoCloseable {
             throw new ErrorFileMap(pathDb + " empty table");
         }
 
+        boolean haveSize = false;
         for (File nameDir : listFileMap) {
+            if (nameDir.getName().equals("size.tsv")) {
+                haveSize = true;
+            }
             if (nameDir.getName().equals("signature.tsv") || nameDir.getName().equals("size.tsv")) {
                 continue;
             }
@@ -211,6 +216,9 @@ public class FileMap implements Table, AutoCloseable {
                     throw e;
                 }
             }
+        }
+        if (!haveSize) {
+            writeSizeTsv(tableSize);
         }
     }
 
@@ -265,6 +273,7 @@ public class FileMap implements Table, AutoCloseable {
                     arrayByte = new byte[point2 - point1];
                     dbFile.readFully(arrayByte);
                     //String value = new String(arrayByte, StandardCharsets.UTF_8);
+                    tableSize += 1;
 
                     arrayByte = new byte[vectorByte.size()];
                     for (int i = 0; i < vectorByte.size(); ++i) {
@@ -275,6 +284,7 @@ public class FileMap implements Table, AutoCloseable {
                     if (tableData.getHashDir(key) != intDir || tableData.getHashFile(key) != intFile) {
                         throw new ErrorFileMap("wrong key in the file");
                     }
+
                     //dbMap.put(key, parent.deserialize(this, value));
                     vectorByte.clear();
                     dbFile.seek(currentPoint);

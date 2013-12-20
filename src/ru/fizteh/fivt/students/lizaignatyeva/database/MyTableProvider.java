@@ -1,7 +1,6 @@
 package ru.fizteh.fivt.students.lizaignatyeva.database;
 
-import ru.fizteh.fivt.storage.strings.Table;
-import ru.fizteh.fivt.storage.strings.TableProvider;
+import ru.fizteh.fivt.storage.structured.TableProvider;
 
 import java.io.File;
 import java.io.IOException;

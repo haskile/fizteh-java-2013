@@ -1,7 +1,8 @@
 package ru.fizteh.fivt.students.lizaignatyeva.database;
 
-import ru.fizteh.fivt.storage.strings.*;
-import ru.fizteh.fivt.storage.strings.Table;
+import ru.fizteh.fivt.storage.structured.Storeable;
+import ru.fizteh.fivt.storage.structured.Table;
+import ru.fizteh.fivt.storage.structured.TableProvider;
 
 import java.io.*;
 import java.nio.BufferUnderflowException;
@@ -10,45 +11,40 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.text.ParseException;
+import java.util.*;
 import java.util.zip.DataFormatException;
 
 
 public class MyTable implements Table {
-    public class TableExistsException extends Exception {
-        public TableExistsException(String message) {
-            super(message);
-        }
-
-        public TableExistsException() {
-        }
-    }
-
-    public class TableDoesNotExistException extends Exception {
-        public TableDoesNotExistException() {
-        }
-
-        public TableDoesNotExistException(String message) {
-            super(message);
-        }
-    }
-
+    private boolean isValid;
     private Path globalDirectory;
     private String name;
-    private HashMap<String, String> data;
-    private HashMap<String, String> uncommitedData;
+    private HashMap<String, Storeable> data;
+    private HashMap<String, Storeable> uncommitedData;
     private int currentSize;
+    private StoreableSignature columnTypes;
+    private MyTableProvider tableProvider;
+    private static final String CONFIG_FILE = "signature.tsv";
 
-    private final int base = 16;
+    private static final int base = 16;
 
 
-    public MyTable(Path globalDirectory, String name) {
+    public MyTable(Path globalDirectory, String name, StoreableSignature columnTypes, MyTableProvider tableProvider) {
+        this.isValid = true;
         this.globalDirectory = globalDirectory;
         this.name = name;
         this.currentSize = 0;
+        this.columnTypes = columnTypes;
+        this.tableProvider = tableProvider;
         this.data = new HashMap<>();
         this.uncommitedData = new HashMap<>();
+    }
+
+    private void checkValidness() {
+        if (!isValid) {
+            throw new IllegalStateException("This table has been deleted");
+        }
     }
 
     @Override
@@ -57,7 +53,18 @@ public class MyTable implements Table {
     }
 
     @Override
-    public String get(String key) {
+    public int getColumnsCount() {
+        return columnTypes.getColumnsCount();
+    }
+
+    @Override
+    public Class<?> getColumnType(int columnIndex) throws IndexOutOfBoundsException {
+        return columnTypes.getColumnClass(columnIndex);
+    }
+
+    @Override
+    public Storeable get(String key) {
+        checkValidness();
         if (key == null) {
             throw new IllegalArgumentException("Table.get: null key provided");
         }
@@ -71,14 +78,15 @@ public class MyTable implements Table {
     }
 
     @Override
-    public String put(String key, String value) {
+    public Storeable put(String key, Storeable value) {
+        checkValidness();
         if (key == null) {
             throw new IllegalArgumentException("Table.put: null key provided");
         }
         if (value == null) {
             throw new IllegalArgumentException("Table.put: null value provided");
         }
-        String result = null;
+        Storeable result = null;
         if (uncommitedData.containsKey(key)) {
             result = uncommitedData.get(key);
         } else if (data.containsKey(key)) {
@@ -92,11 +100,12 @@ public class MyTable implements Table {
     }
 
     @Override
-    public String remove(String key) {
+    public Storeable remove(String key) {
+        checkValidness();
         if (key == null) {
             throw new IllegalArgumentException("Table.remove: null key provided");
         }
-        String result = null;
+        Storeable result = null;
         if (uncommitedData.containsKey(key)) {
             result = uncommitedData.get(key);
             uncommitedData.put(key, null);
@@ -114,14 +123,16 @@ public class MyTable implements Table {
 
     @Override
     public int size() {
+        checkValidness();
         return currentSize;
     }
 
     @Override
     public int commit() {
+        checkValidness();
         int result = keysToCommit();
         for (String key : uncommitedData.keySet()) {
-            String value = uncommitedData.get(key);
+            Storeable value = uncommitedData.get(key);
             if (value == null) {
                 if (data.containsKey(key)) {
                     data.remove(key);
@@ -141,6 +152,7 @@ public class MyTable implements Table {
 
     @Override
     public int rollback() {
+        checkValidness();
         int result = keysToCommit();
         uncommitedData = new HashMap<>();
         currentSize = data.size();
@@ -153,7 +165,7 @@ public class MyTable implements Table {
             keys.add(key);
         }
         for (String key : uncommitedData.keySet()) {
-            String value = uncommitedData.get(key);
+            Storeable value = uncommitedData.get(key);
             if (value == null) {
                 keys.remove(key);
             } else {
@@ -164,6 +176,7 @@ public class MyTable implements Table {
     }
 
     public boolean exists() {
+        checkValidness();
         try {
             File path = globalDirectory.resolve(name).toFile();
             return path.isDirectory();
@@ -172,25 +185,61 @@ public class MyTable implements Table {
         return false;
     }
 
-    public void read() throws DataFormatException {
-        data = new HashMap<>();
-        uncommitedData = new HashMap<>();
+    private final static HashMap<String, Class> supportedClasses = new HashMap<>();
 
+    static {
+        supportedClasses.put("int", Integer.class);
+        supportedClasses.put("long", Long.class);
+        supportedClasses.put("byte", Byte.class);
+        supportedClasses.put("float", Float.class);
+        supportedClasses.put("double", Double.class);
+        supportedClasses.put("boolean", Boolean.class);
+        supportedClasses.put("string", String.class);
+    }
+
+    public static MyTable read(Path globalDirectory, String name, MyTableProvider tableProvider)
+                throws IOException, DataFormatException
+    {
+        StoreableSignature columnTypes = readStoreableSignature(globalDirectory.resolve(name));
+        MyTable table = new MyTable(globalDirectory, name, columnTypes, tableProvider);
         File path = globalDirectory.resolve(name).toFile();
         File[] subDirs = path.listFiles();
         if (subDirs == null) {
-            return;
+            return table;
         }
         for (File dir: subDirs) {
+            if (dir.getName().equals(CONFIG_FILE)) {
+                continue;
+            }
             if (!dir.isDirectory() || !isValidDirectoryName(dir.getName())) {
                 throw new DataFormatException("Table '" + name + "' contains strange file: '" + dir.getName() + "'");
             }
-            readDirectory(dir);
+            table.readDirectory(dir);
         }
-        recalcSize();
+        table.recalcSize();
+        return table;
     }
 
-    private void readDirectory(File dir) throws DataFormatException {
+    private static StoreableSignature readStoreableSignature(Path directory) throws IOException, DataFormatException {
+        File file = directory.resolve(CONFIG_FILE).toFile();
+        if (!file.exists() || !file.isFile()) {
+            throw new DataFormatException(CONFIG_FILE + " does not exist or is not a file");
+        }
+        ArrayList<Class<?>> classes = new ArrayList<>();
+        try (Scanner scanner = new Scanner(file)) {
+            while (scanner.hasNext()) {
+                String className = scanner.next();
+                if (!supportedClasses.containsKey(className)) {
+                    throw new DataFormatException("Class " + className + " is not supported");
+                } else {
+                    classes.add(supportedClasses.get(className));
+                }
+            }
+        }
+        return new StoreableSignature(classes);
+    }
+
+    private void readDirectory(File dir) throws DataFormatException, IOException {
         File[] filesInDirectory = dir.listFiles();
         if (filesInDirectory == null) {
             return;
@@ -199,11 +248,7 @@ public class MyTable implements Table {
             if (!file.isFile() || !isValidFileName(file.getName())) {
                 throw new DataFormatException("Table '" + name + "' contains strange file: '" + file.getName() + "'");
             }
-            try {
-                readFile(file.getCanonicalPath(), dir.getName(), file.getName());
-            } catch (IOException e) {
-                throw new DataFormatException("Failed to fetch files for table: " + name);
-            }
+            readFile(file.getCanonicalPath(), dir.getName(), file.getName());
         }
     }
 
@@ -219,8 +264,10 @@ public class MyTable implements Table {
         }
     }
 
-    private void readEntry(ByteBuffer buffer, String dirName, String fileName) throws BufferUnderflowException,
-            DataFormatException {
+    private void readEntry(ByteBuffer buffer, String dirName, String fileName)
+            throws BufferUnderflowException,
+                   DataFormatException
+    {
         int keyLength = buffer.getInt();
         if (keyLength > buffer.remaining() || keyLength < 0) {
             throw new DataFormatException("too long key buffer");
@@ -243,14 +290,20 @@ public class MyTable implements Table {
         if (data.containsKey(key)) {
             throw new DataFormatException("duplicating keys: " + key);
         }
-        data.put(key, value);
+        Storeable storeable;
+        try {
+            storeable = tableProvider.deserialize(this, value);
+        } catch (ParseException e) {
+            throw new DataFormatException("Incorrect data: failed to deserialize json");
+        }
+        data.put(key, storeable);
     }
 
-    private boolean isValidKey(String key, String dirName, String fileName) {
+    private static boolean isValidKey(String key, String dirName, String fileName) {
         return getDirName(key).equals(dirName) && getFileName(key).equals(fileName);
     }
 
-    private boolean isValidDirectoryName(String name) {
+    private static boolean isValidDirectoryName(String name) {
         for (int i = 0; i < base; ++i) {
             if (name.equals(Integer.toString(i) + ".dir")) {
                 return true;
@@ -259,7 +312,7 @@ public class MyTable implements Table {
         return false;
     }
 
-    private boolean isValidFileName(String name) {
+    private static boolean isValidFileName(String name) {
         for (int i = 0; i < base; ++i) {
             if (name.equals(Integer.toString(i) + ".dat")) {
                 return true;
@@ -269,6 +322,7 @@ public class MyTable implements Table {
     }
 
     public void write() throws IOException {
+        checkValidness();
         File path = globalDirectory.resolve(name).toFile();
         try {
             FileUtils.remove(path);
@@ -278,7 +332,7 @@ public class MyTable implements Table {
         }
         FileUtils.mkDir(path.getAbsolutePath());
         for (String key: data.keySet()) {
-            String value = data.get(key);
+            String value = tableProvider.serialize(this, data.get(key));
             File directory = FileUtils.mkDir(path.getAbsolutePath()
                     + File.separator + getDirName(key));
             File file = FileUtils.mkFile(directory, getFileName(key));
@@ -306,23 +360,23 @@ public class MyTable implements Table {
         return uncommitedData.size();
     }
 
-    private int getDirNumber(String key) {
+    private static int getDirNumber(String key) {
         int number = key.getBytes()[0];
         number = Math.abs(number);
         return number % base;
     }
 
-    private int getFileNumber(String key) {
+    private static int getFileNumber(String key) {
         int number = key.getBytes()[0];
         number = Math.abs(number);
         return number / base % base;
     }
 
-    private String getDirName(String key) {
+    private static String getDirName(String key) {
         return String.format("%d.dir", getDirNumber(key));
     }
 
-    private String getFileName(String key) {
+    private static String getFileName(String key) {
         return String.format("%d.dat", getFileNumber(key));
     }
 

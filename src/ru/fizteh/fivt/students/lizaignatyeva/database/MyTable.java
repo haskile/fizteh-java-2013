@@ -16,29 +16,12 @@ import java.util.zip.DataFormatException;
 
 
 public class MyTable implements Table {
-    public class TableExistsException extends Exception {
-        public TableExistsException(String message) {
-            super(message);
-        }
-
-        public TableExistsException() {
-        }
-    }
-
-    public class TableDoesNotExistException extends Exception {
-        public TableDoesNotExistException() {
-        }
-
-        public TableDoesNotExistException(String message) {
-            super(message);
-        }
-    }
-
     private Path globalDirectory;
     private String name;
     private HashMap<String, String> data;
     private HashMap<String, String> uncommitedData;
     private int currentSize;
+    private int currentChanges;
 
     private final int base = 16;
 
@@ -47,6 +30,7 @@ public class MyTable implements Table {
         this.globalDirectory = globalDirectory;
         this.name = name;
         this.currentSize = 0;
+        this.currentChanges = 0;
         this.data = new HashMap<>();
         this.uncommitedData = new HashMap<>();
     }
@@ -78,6 +62,7 @@ public class MyTable implements Table {
         if (value == null) {
             throw new IllegalArgumentException("Table.put: null value provided");
         }
+        currentChanges ++;
         String result = null;
         if (uncommitedData.containsKey(key)) {
             result = uncommitedData.get(key);
@@ -104,6 +89,7 @@ public class MyTable implements Table {
             if (data.containsKey(key)) {
                 result = data.get(key);
                 uncommitedData.put(key, null);
+                currentChanges ++;
             }
         }
         if (result != null) {
@@ -135,15 +121,17 @@ public class MyTable implements Table {
         } catch (IOException e) {
             throw new RuntimeException("Failed to write changes in table '" + name + "' to disk");
         }
+        currentChanges = 0;
         uncommitedData = new HashMap<>();
         return result;
     }
 
     @Override
     public int rollback() {
-        int result = keysToCommit();
+        int result = currentChanges;
         uncommitedData = new HashMap<>();
         currentSize = data.size();
+        currentChanges = 0;
         return result;
     }
 
@@ -175,6 +163,7 @@ public class MyTable implements Table {
     public void read() throws DataFormatException {
         data = new HashMap<>();
         uncommitedData = new HashMap<>();
+        currentChanges = 0;
 
         File path = globalDirectory.resolve(name).toFile();
         File[] subDirs = path.listFiles();

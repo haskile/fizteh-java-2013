@@ -21,7 +21,6 @@ public class MyTable implements Table {
     private HashMap<String, String> data;
     private HashMap<String, String> uncommitedData;
     private int currentSize;
-    private int currentChanges;
 
     private final int base = 16;
 
@@ -30,7 +29,6 @@ public class MyTable implements Table {
         this.globalDirectory = globalDirectory;
         this.name = name;
         this.currentSize = 0;
-        this.currentChanges = 0;
         this.data = new HashMap<>();
         this.uncommitedData = new HashMap<>();
     }
@@ -62,7 +60,6 @@ public class MyTable implements Table {
         if (value == null) {
             throw new IllegalArgumentException("Table.put: null value provided");
         }
-        currentChanges ++;
         String result = null;
         if (uncommitedData.containsKey(key)) {
             result = uncommitedData.get(key);
@@ -84,12 +81,15 @@ public class MyTable implements Table {
         String result = null;
         if (uncommitedData.containsKey(key)) {
             result = uncommitedData.get(key);
-            uncommitedData.put(key, null);
+            if (data.containsKey(key)) {
+                uncommitedData.put(key, null);
+            } else {
+                uncommitedData.remove(key);
+            }
         } else {
             if (data.containsKey(key)) {
                 result = data.get(key);
                 uncommitedData.put(key, null);
-                currentChanges ++;
             }
         }
         if (result != null) {
@@ -121,17 +121,15 @@ public class MyTable implements Table {
         } catch (IOException e) {
             throw new RuntimeException("Failed to write changes in table '" + name + "' to disk");
         }
-        currentChanges = 0;
         uncommitedData = new HashMap<>();
         return result;
     }
 
     @Override
     public int rollback() {
-        int result = currentChanges;
+        int result = keysToCommit();
         uncommitedData = new HashMap<>();
         currentSize = data.size();
-        currentChanges = 0;
         return result;
     }
 
@@ -163,7 +161,6 @@ public class MyTable implements Table {
     public void read() throws DataFormatException {
         data = new HashMap<>();
         uncommitedData = new HashMap<>();
-        currentChanges = 0;
 
         File path = globalDirectory.resolve(name).toFile();
         File[] subDirs = path.listFiles();

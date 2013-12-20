@@ -1,8 +1,6 @@
 package ru.fizteh.fivt.students.lizaignatyeva.database.commands;
 
-import ru.fizteh.fivt.storage.strings.Table;
 import ru.fizteh.fivt.students.lizaignatyeva.database.Database;
-import ru.fizteh.fivt.students.lizaignatyeva.database.DbMain;
 import ru.fizteh.fivt.students.lizaignatyeva.database.MyTable;
 import ru.fizteh.fivt.students.lizaignatyeva.shell.Command;
 

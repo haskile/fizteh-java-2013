@@ -4,6 +4,7 @@ import ru.fizteh.fivt.storage.strings.Table;
 import ru.fizteh.fivt.storage.strings.TableProvider;
 import ru.fizteh.fivt.storage.strings.TableProviderFactory;
 
+import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class MyTableProviderFactory implements TableProviderFactory {
@@ -18,6 +19,10 @@ public class MyTableProviderFactory implements TableProviderFactory {
         }
         if (dir.isEmpty()) {
             throw new IllegalArgumentException("TableProviderFactory.create: path is empty");
+        }
+        Path path = Paths.get(dir);
+        if (!path.toFile().isDirectory()) {
+            throw new IllegalArgumentException("TableProviderFactory.create: there is no directory " + dir);
         }
         return new MyTableProvider(Paths.get(dir));
     }

@@ -84,7 +84,7 @@ public class MyTable implements Table {
         } else if (data.containsKey(key)) {
             result = data.get(key);
         }
-        if (result != null) {
+        if (result == null) {
             currentSize++;
         }
         uncommitedData.put(key, value);
@@ -135,6 +135,7 @@ public class MyTable implements Table {
         } catch (IOException e) {
             throw new RuntimeException("Failed to write changes in table '" + name + "' to disk");
         }
+        uncommitedData = new HashMap<>();
         return result;
     }
 
@@ -142,6 +143,7 @@ public class MyTable implements Table {
     public int rollback() {
         int result = keysToCommit();
         uncommitedData = new HashMap<>();
+        currentSize = data.size();
         return result;
     }
 

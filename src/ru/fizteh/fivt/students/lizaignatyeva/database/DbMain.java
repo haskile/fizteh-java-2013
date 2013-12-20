@@ -35,6 +35,7 @@ public class DbMain {
             provider = providerFactory.create(dir);
         } catch (IllegalArgumentException e) {
             System.out.println(e.getMessage());
+            System.exit(1);
             return;
         }
 

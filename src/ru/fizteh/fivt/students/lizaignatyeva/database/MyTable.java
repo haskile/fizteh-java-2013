@@ -72,7 +72,7 @@ public class MyTable implements Table {
 
     @Override
     public String put(String key, String value) {
-        if (key == null) {
+        if (key == null || key.equals("")) {
             throw new IllegalArgumentException("Table.put: null key provided");
         }
         if (value == null) {

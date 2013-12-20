@@ -9,7 +9,7 @@ import java.nio.file.Paths;
 
 public class MyTableProviderFactory implements TableProviderFactory {
     private boolean isValidName(String name) {
-        return name != null;
+        return name != null && !name.equals("");
     }
 
     @Override

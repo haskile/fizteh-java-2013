@@ -2,6 +2,7 @@ package ru.fizteh.fivt.students.lizaignatyeva.database;
 
 import ru.fizteh.fivt.storage.structured.TableProviderFactory;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -11,16 +12,16 @@ public class MyTableProviderFactory implements TableProviderFactory {
     }
 
     @Override
-    public MyTableProvider create(String dir) {
+    public MyTableProvider create(String dir) throws IOException {
         if (!isValidName(dir)) {
             throw new IllegalArgumentException("TableProviderFactory.create: name '" + dir + "' is invalid");
         }
         if (dir.isEmpty()) {
-            throw new IllegalArgumentException("TableProviderFactory.create: path is empty");
+            throw new IOException("TableProviderFactory.create: path is empty");
         }
         Path path = Paths.get(dir);
         if (!path.toFile().isDirectory()) {
-            throw new IllegalArgumentException("TableProviderFactory.create: there is no directory " + dir);
+            throw new IOException("TableProviderFactory.create: there is no directory " + dir);
         }
         return new MyTableProvider(path);
     }

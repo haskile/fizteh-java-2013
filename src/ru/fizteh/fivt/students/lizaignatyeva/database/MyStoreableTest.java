@@ -68,6 +68,18 @@ public class MyStoreableTest {
         assertEquals(storeable.getStringAt(6), "test");
     }
 
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void testLesserBound() {
+        MyStoreable storeable = new MyStoreable(storeableSignature);
+        storeable.getColumnAt(-1);
+    }
+
+    @Test(expected = IndexOutOfBoundsException.class)
+    public void testUpperBound() {
+        MyStoreable storeable = new MyStoreable(storeableSignature);
+        storeable.getColumnAt(storeable.size());
+    }
+
     @Test(expected = ColumnFormatException.class)
     public void testIncorrectSetRequest01() {
         MyStoreable storeable = new MyStoreable(storeableSignature);

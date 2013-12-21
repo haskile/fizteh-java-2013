@@ -1,5 +1,6 @@
 package ru.fizteh.fivt.students.lizaignatyeva.database.commands;
 
+import ru.fizteh.fivt.storage.structured.ColumnFormatException;
 import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.students.lizaignatyeva.database.BadTypeException;
 import ru.fizteh.fivt.students.lizaignatyeva.database.Database;
@@ -28,6 +29,8 @@ public class PutCommand extends Command {
                     System.out.println(oldValue);
                 }
             } catch (BadTypeException e) {
+                System.out.println(String.format("wrong type (%s)", e.getMessage()));
+            } catch (ColumnFormatException e) {
                 System.out.println(String.format("wrong type (%s)", e.getMessage()));
             } catch (Exception e) {
                 //cry and do nothing

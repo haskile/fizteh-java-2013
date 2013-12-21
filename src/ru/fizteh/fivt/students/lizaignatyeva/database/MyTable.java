@@ -80,6 +80,10 @@ public class MyTable implements Table {
         checkValidness();
         checkKey(key);
         checkValue(value);
+        Storeable realValue = tableProvider.createFor(this);
+        for (int index = 0; index < getColumnsCount(); index ++) {
+            realValue.setColumnAt(index, value.getColumnAt(index));
+        }
         Storeable result = null;
         if (uncommitedData.containsKey(key)) {
             result = uncommitedData.get(key);
@@ -89,7 +93,7 @@ public class MyTable implements Table {
         if (result == null) {
             currentSize++;
         }
-        uncommitedData.put(key, value);
+        uncommitedData.put(key, realValue);
         return result;
     }
 

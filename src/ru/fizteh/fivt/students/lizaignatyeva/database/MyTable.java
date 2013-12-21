@@ -1,5 +1,6 @@
 package ru.fizteh.fivt.students.lizaignatyeva.database;
 
+import ru.fizteh.fivt.storage.structured.ColumnFormatException;
 import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.storage.structured.Table;
 
@@ -95,7 +96,7 @@ public class MyTable implements Table {
             throw new IllegalArgumentException("Table.put: inconsistent Storeable provided");
         }
         if (!myStoreable.storeableSignature.equals(columnTypes)) {
-            throw new IllegalArgumentException("Table.put: inconsistent Storeable provided");
+            throw new ColumnFormatException("Table.put: inconsistent Storeable provided");
         }
         Storeable result = null;
         if (uncommitedData.containsKey(key)) {

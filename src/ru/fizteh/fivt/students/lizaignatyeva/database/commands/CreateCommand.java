@@ -38,14 +38,10 @@ public class CreateCommand extends Command {
             return;
         }
         params = paramsBuilder.substring(1, params.length() - 1);
-        String[] classNames = params.split(",");
-        String[] trimmedClassNames = new String[classNames.length];
-        for (int index = 0; index < classNames.length; index ++) {
-            trimmedClassNames[index] = classNames[index].trim();
-        }
+        String[] classNames = params.split(" ");
         MyTable table;
         try {
-            table = database.tableProvider.createTable(tableName, MyTable.convert(trimmedClassNames));
+            table = database.tableProvider.createTable(tableName, MyTable.convert(classNames));
         } catch (BadTypeException e) {
             System.out.println(String.format("wrong type (%s)", e.getMessage()));
             return;

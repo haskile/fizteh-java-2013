@@ -21,7 +21,11 @@ public class MyTableProviderFactory implements TableProviderFactory {
         }
         Path path = Paths.get(dir);
         if (!path.toFile().exists()) {
-            throw new IOException("TableProviderFactory.create: there is no directory " + dir);
+            try {
+                FileUtils.mkDir(path.toFile().getCanonicalPath());
+            } catch (Exception e) {
+                throw new IOException("TableProviderFactory.create: there is no directory " + dir);
+            }
         }
         if (!path.toFile().isDirectory()) {
             throw new IllegalArgumentException("TableProviderFactory.create: " + dir + " is not a directory");

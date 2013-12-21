@@ -1,11 +1,16 @@
 package ru.fizteh.fivt.students.dmitryIvanovsky.fileMap;
 
+import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.servlet.ServletHolder;
 import ru.fizteh.fivt.storage.structured.ColumnFormatException;
 import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.storage.structured.Table;
 import ru.fizteh.fivt.storage.structured.TableProvider;
+import ru.fizteh.fivt.students.dmitryIvanovsky.ServletHolder.*;
 import ru.fizteh.fivt.students.dmitryIvanovsky.shell.CommandAbstract;
 import ru.fizteh.fivt.students.dmitryIvanovsky.shell.CommandShell;
+import ru.fizteh.fivt.students.dmitryIvanovsky.shell.ErrorShell;
 
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLOutputFactory;
@@ -19,12 +24,7 @@ import java.io.StringWriter;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.HashSet;
+import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -44,6 +44,10 @@ public class FileMapProvider implements CommandAbstract, TableProvider, AutoClos
     boolean out;
     boolean isProviderClose;
     Map<String, FileMap> mapFileMap = new HashMap<>();
+    Server server = null;
+    private static final int PORT = 8080;
+    private int currentPort = -1;
+    TransactionPool pool;
 
     final HashSet allowType = new HashSet(){ {
         add(String.class);
@@ -66,6 +70,8 @@ public class FileMapProvider implements CommandAbstract, TableProvider, AutoClos
             put("size",     new Object[] {"multiSize",     false, 0 });
             put("commit",   new Object[] {"multiCommit",   false, 0 });
             put("rollback", new Object[] {"multiRollback", false, 0 });
+            put("starthttp", new Object[] {"starthttp", true,  1 });
+            put("stophttp",  new Object[] {"stophttp",  false,  0 });
         }};
         return commandList;
     }
@@ -85,6 +91,15 @@ public class FileMapProvider implements CommandAbstract, TableProvider, AutoClos
             e.addSuppressed(new ErrorFileMap("Error loading base"));
             throw e;
         }
+        this.pool = new TransactionPool();
+    }
+
+    public TransactionPool getPool() {
+        return pool;
+    }
+
+    public FileMap getFileMap(String name) {
+        return mapFileMap.get(name);
     }
 
     private void checkBdDir(Path pathTables) throws Exception {
@@ -125,7 +140,14 @@ public class FileMapProvider implements CommandAbstract, TableProvider, AutoClos
             outPrint("no table");
         } else {
             String key = args[0];
-            Storeable res = dbData.get(key);
+
+            Storeable res = null;
+            try {
+               res = dbData.get(key);
+            } catch (Exception e) {
+               e.printStackTrace();
+            }
+
             if (res == null) {
                 outPrint("not found");
             } else {
@@ -160,11 +182,19 @@ public class FileMapProvider implements CommandAbstract, TableProvider, AutoClos
     }
 
     public void multiCommit(String[] args) {
-        outPrint(String.valueOf(dbData.commit()));
+        if (useNameTable.equals("")) {
+            outPrint("no table");
+        } else {
+            outPrint(String.valueOf(dbData.commit()));
+        }
     }
 
     public void multiRollback(String[] args) {
-        outPrint(String.valueOf(dbData.rollback()));
+        if (useNameTable.equals("")) {
+            outPrint("no table");
+        } else {
+            outPrint(String.valueOf(dbData.rollback()));
+        }
     }
 
     public void multiUse(String[] args) throws Exception {
@@ -173,7 +203,6 @@ public class FileMapProvider implements CommandAbstract, TableProvider, AutoClos
             outPrint(nameTable + " not exists");
             return;
         }
-
         int changeKey = 0;
         if (dbData != null) {
             changeKey = dbData.changeKey();
@@ -183,9 +212,6 @@ public class FileMapProvider implements CommandAbstract, TableProvider, AutoClos
             outPrint(String.format("%d unsaved changes", changeKey));
         } else {
             if (!nameTable.equals(useNameTable)) {
-//                if (dbData != null) {
-//                    //dbData.unloadTable();
-//                }
                 dbData = (FileMap) getTable(nameTable);
                 useNameTable = nameTable;
             }
@@ -509,6 +535,64 @@ public class FileMapProvider implements CommandAbstract, TableProvider, AutoClos
     private void outPrint(String message) {
         if (out) {
             System.out.println(message);
+        }
+    }
+
+    public void starthttp(String[] args) throws ErrorShell {
+        StringTokenizer token = new StringTokenizer(args[0]);
+        if (token.countTokens() > 2) {
+            throw new ErrorShell("wrong format arguments");
+        }
+        int port = PORT;
+        if (token.countTokens() == 2) {
+            try {
+                token.nextToken();
+                port = Integer.parseInt(token.nextToken());
+            } catch (Exception e) {
+                throw new ErrorShell("not started: wrong port number");
+            }
+        }
+
+        if (server != null && server.isStarted()) {
+            throw new ErrorShell("not started: already started");
+        }
+        try {
+            server = new Server(port);
+            ServletContextHandler context = new ServletContextHandler(ServletContextHandler.NO_SESSIONS);
+
+            context.setContextPath("/");
+            context.addServlet(new ServletHolder(new ServletBegin(this)), "/begin");
+            context.addServlet(new ServletHolder(new ServletGet(this)), "/get");
+            context.addServlet(new ServletHolder(new ServletPut(this)), "/put");
+            context.addServlet(new ServletHolder(new ServletCommit(this)), "/commit");
+            context.addServlet(new ServletHolder(new ServletRollback(this)), "/rollback");
+            context.addServlet(new ServletHolder(new ServletSize(this)), "/size");
+
+            server.setHandler(context);
+            server.start();
+            currentPort = port;
+            outPrint(String.format("started at %d", currentPort));
+        } catch (Exception e) {
+            server = null;
+            currentPort = -1;
+            throw new ErrorShell("not started");
+        }
+    }
+
+    public void stophttp(String[] args) throws ErrorShell {
+        if (server == null || !server.isStarted()) {
+            server = null;
+            currentPort = -1;
+            throw new ErrorShell("not started");
+        } else {
+            try {
+                server.stop();
+            } catch (Exception e) {
+                //
+            }
+            server = null;
+            outPrint(String.format("stopped at %d", currentPort));
+            currentPort = -1;
         }
     }
 

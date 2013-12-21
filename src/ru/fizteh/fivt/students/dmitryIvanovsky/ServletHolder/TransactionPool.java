@@ -1,0 +1,59 @@
+package ru.fizteh.fivt.students.dmitryIvanovsky.ServletHolder;
+
+import ru.fizteh.fivt.students.dmitryIvanovsky.fileMap.MyHashMap;
+
+import java.util.HashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+public class TransactionPool {
+    HashMap<Integer, MyHashMap> allMap = new HashMap<>();
+    int randomNumber = 0;
+    private static final int MAX = 100*1000;
+    private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+    private final Lock write = readWriteLock.writeLock();
+    private final Lock read = readWriteLock.readLock();
+    HashMap<Integer, String> transactionTable = new HashMap<>();
+
+    public MyHashMap getMap(int numberTransaction) {
+        read.lock();
+        try {
+            return allMap.get(numberTransaction);
+        } finally {
+            read.unlock();
+        }
+    }
+
+    public void deleteTransaction(int numberTransaction) {
+        transactionTable.remove(numberTransaction);
+        allMap.remove(numberTransaction);
+    }
+
+    public int createNewTransaction(String nameTable) {
+        write.lock();
+        try {
+            while(allMap.containsKey(randomNumber)) {
+                randomNumber = (randomNumber + 1) % MAX;
+            }
+            allMap.put(randomNumber, new MyHashMap());
+            transactionTable.put(randomNumber, nameTable);
+            return randomNumber;
+        } finally {
+            write.unlock();
+        }
+    }
+
+    public String getNameTable(int numberTransaction) {
+        return transactionTable.get(numberTransaction);
+    }
+
+    public boolean isExistTransaction(int numberTransaction) {
+        read.lock();
+        try {
+            return allMap.containsKey(numberTransaction);
+        } finally {
+            read.unlock();
+        }
+    }
+}

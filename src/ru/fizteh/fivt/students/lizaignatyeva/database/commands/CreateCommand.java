@@ -53,7 +53,7 @@ public class CreateCommand extends Command {
             return;
         }
         if (table == null) {
-            System.out.println("tablename exists");
+            System.out.println(tableName + " exists");
         } else {
             System.out.println("created");
         }

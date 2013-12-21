@@ -1,11 +1,12 @@
 package ru.fizteh.fivt.students.lizaignatyeva.database;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class StoreableSignature {
-    public final ArrayList<Class<?>> columnClasses;
+    public final List<Class<?>> columnClasses;
 
-    public StoreableSignature(ArrayList<Class<?>> columnClasses) {
+    public StoreableSignature(List<Class<?>> columnClasses) {
         this.columnClasses = columnClasses;
     }
 

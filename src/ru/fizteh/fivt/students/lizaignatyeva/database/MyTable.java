@@ -26,7 +26,7 @@ public class MyTable implements Table {
     private HashMap<String, Storeable> data;
     private HashMap<String, Storeable> uncommitedData;
     private int currentSize;
-    private StoreableSignature columnTypes;
+    public final StoreableSignature columnTypes;
     private MyTableProvider tableProvider;
     private static final String CONFIG_FILE = "signature.tsv";
 
@@ -182,8 +182,7 @@ public class MyTable implements Table {
         currentSize = keys.size();
     }
 
-    public boolean exists() {
-        checkValidness();
+    public static boolean exists(Path globalDirectory, String name) {
         try {
             File path = globalDirectory.resolve(name).toFile();
             return path.isDirectory();
@@ -399,4 +398,7 @@ public class MyTable implements Table {
         return String.format("%d.dat", getFileNumber(key));
     }
 
+    public void markAsDeleted() {
+        isValid = false;
+    }
 }

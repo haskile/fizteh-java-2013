@@ -57,7 +57,7 @@ public class MyTableProvider implements TableProvider {
     @Override
     public Storeable deserialize(Table table, String value) throws ParseException {
         if (table == null || value == null) {
-            throw new IllegalArgumentException("TableProvider.deserialize: null arguments are not supported")
+            throw new IllegalArgumentException("TableProvider.deserialize: null arguments are not supported");
         }
 
         MyTable myTable = (MyTable) table;
@@ -69,7 +69,7 @@ public class MyTableProvider implements TableProvider {
     @Override
     public String serialize(Table table, Storeable value) throws ColumnFormatException {
         if (table == null || value == null) {
-            throw new IllegalArgumentException("TableProvider.serialize: null arguments are not supported")
+            throw new IllegalArgumentException("TableProvider.serialize: null arguments are not supported");
         }
         return ((MyStoreable) value).serialize();
     }
@@ -77,7 +77,7 @@ public class MyTableProvider implements TableProvider {
     @Override
     public Storeable createFor(Table table) {
         if (table == null) {
-            throw new IllegalArgumentException("TableProvider.createFor: null arguments are not supported")
+            throw new IllegalArgumentException("TableProvider.createFor: null arguments are not supported");
         }
         MyTable myTable = (MyTable) table;
         return new MyStoreable(myTable.columnTypes);
@@ -86,7 +86,7 @@ public class MyTableProvider implements TableProvider {
     @Override
     public Storeable createFor(Table table, List<?> values) throws ColumnFormatException, IndexOutOfBoundsException {
         if (table == null || values == null) {
-            throw new IllegalArgumentException("TableProvider.createFor: null arguments are not supported")
+            throw new IllegalArgumentException("TableProvider.createFor: null arguments are not supported");
         }
         MyTable myTable;
         myTable = (MyTable) table;

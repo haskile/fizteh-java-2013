@@ -52,6 +52,9 @@ public class CreateCommand extends Command {
         } catch (ColumnFormatException e) {
             System.out.println(String.format("wrong type (%s)", e.getMessage()));
             return;
+        } catch (IllegalArgumentException e) {
+            System.out.println(String.format("wrong type (%s)", e.getMessage()));
+            return;
         }
         if (table == null) {
             System.out.println("tablename exists");

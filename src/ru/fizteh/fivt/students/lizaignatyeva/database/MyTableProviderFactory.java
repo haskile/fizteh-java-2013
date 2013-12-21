@@ -26,7 +26,7 @@ public class MyTableProviderFactory implements TableProviderFactory {
         try {
             return new MyTableProvider(Paths.get(dir));
         } catch (Exception e) {
-            throw new IllegalArgumentException("TableProviderFactory.create: incorrect directory")
+            throw new IllegalArgumentException("TableProviderFactory.create: incorrect directory");
         }
     }
 }

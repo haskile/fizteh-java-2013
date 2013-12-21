@@ -105,8 +105,8 @@ public class MyTableProvider implements TableProvider {
     public MyTable getTable(String name) {
         checkTableName(name);
 
-        lock.readLock().lock();
-        boolean locked = true;
+        lock.writeLock().lock();
+        //boolean locked = true;
 
         try {
             if (loadedTables.containsKey(name)) {
@@ -125,19 +125,20 @@ public class MyTableProvider implements TableProvider {
             } catch (Exception e) {
                 return null;
             }
-            lock.readLock().unlock();
-            locked = false;
-            lock.writeLock().lock();
-            try {
+            //lock.readLock().unlock();
+            //locked = false;
+            //lock.writeLock().lock();
+            //try {
                 loadedTables.put(name, table);
                 return table;
-            } finally {
-                lock.writeLock().unlock();
-            }
+            //} finally {
+                //lock.writeLock().unlock();
+            //}
         } finally {
-            if (locked) {
-                lock.readLock().unlock();
-            }
+            lock.writeLock().unlock();
+            //if (locked) {
+            //    lock.readLock().unlock();
+            //}
         }
     }
 

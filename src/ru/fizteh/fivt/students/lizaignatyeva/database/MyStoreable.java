@@ -182,6 +182,9 @@ public class MyStoreable implements Storeable {
         } catch (Exception e) {
             return false;
         }
+        if (o == null) {
+            return false;
+        }
         if (storeableSignature.getColumnsCount() != storeable.storeableSignature.getColumnsCount()) {
             return false;
         }

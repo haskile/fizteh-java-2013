@@ -169,6 +169,7 @@ public class MyTable implements Table {
 
     @Override
     public int commit() {
+        lock.writeLock().lock();
         try {
             checkValidness();
             int result = keysToCommit();

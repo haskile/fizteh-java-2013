@@ -13,7 +13,8 @@ public class MyStoreable implements Storeable {
     private final StoreableSignature storeableSignature;
     private ArrayList<Object> data;
 
-    private final static HashSet<Class<?>> supportedClasses = new HashSet<>();
+    private static final HashSet<Class<?>> supportedClasses = new HashSet<>();
+
     static {
         supportedClasses.add(Integer.class);
         supportedClasses.add(Long.class);
@@ -32,12 +33,12 @@ public class MyStoreable implements Storeable {
             }
         }
         this.data = new ArrayList<>(this.storeableSignature.getColumnsCount());
-        for (int i = 0; i < storeableSignature.getColumnsCount(); i ++) {
+        for (int i = 0; i < storeableSignature.getColumnsCount(); i++) {
             this.data.add(null);
         }
     }
 
-    private void checkClass(Object object, int columnIndex)  {
+    private void checkClass(Object object, int columnIndex) {
         if (object == null) {
             return;
         }
@@ -162,7 +163,7 @@ public class MyStoreable implements Storeable {
                         jsonArray.length()
                 ), 0);
             }
-            for (int index = 0; index < storeableSignature.getColumnsCount(); index ++) {
+            for (int index = 0; index < storeableSignature.getColumnsCount(); index++) {
                 Object value = deserializeObject(jsonArray, index, storeableSignature.getColumnClass(index));
                 checkClass(value, index);
                 data.set(index, value);
@@ -184,7 +185,7 @@ public class MyStoreable implements Storeable {
         if (storeableSignature.getColumnsCount() != storeable.storeableSignature.getColumnsCount()) {
             return false;
         }
-        for (int index = 0; index < storeableSignature.getColumnsCount(); index ++) {
+        for (int index = 0; index < storeableSignature.getColumnsCount(); index++) {
             if (data.get(index) == null) {
                 return storeable.data.get(index) == null;
             }

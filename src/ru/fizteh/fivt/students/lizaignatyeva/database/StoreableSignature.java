@@ -1,6 +1,5 @@
 package ru.fizteh.fivt.students.lizaignatyeva.database;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class StoreableSignature {

@@ -5,7 +5,6 @@ import ru.fizteh.fivt.students.lizaignatyeva.database.MyTable;
 import ru.fizteh.fivt.students.lizaignatyeva.shell.Command;
 
 import java.util.Arrays;
-import java.util.HashMap;
 
 public class CreateCommand extends Command {
     private Database database;

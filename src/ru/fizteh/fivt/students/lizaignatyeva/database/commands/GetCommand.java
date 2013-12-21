@@ -2,7 +2,6 @@ package ru.fizteh.fivt.students.lizaignatyeva.database.commands;
 
 import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.students.lizaignatyeva.database.Database;
-import ru.fizteh.fivt.students.lizaignatyeva.database.MyStoreable;
 import ru.fizteh.fivt.students.lizaignatyeva.shell.Command;
 
 public class GetCommand extends Command {

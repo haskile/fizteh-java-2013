@@ -424,4 +424,46 @@ public class DatabaseTests {
     }  
      
     //end of Storeable tests 
+    
+    //close() tests
+    @Test(expected = IllegalStateException.class)
+    public void testTableCloseOpen() throws Exception {
+        table.put("new", correctValues);
+        table.commit();
+        MyTable oldTable = (MyTable) table;
+        oldTable.close();
+        table = provider.getTable("default");
+        assertNotNull(table.get("new"));
+        assertNotEquals(oldTable, table);
+        oldTable.get("a");
+    } 
+    
+    @Test(expected = IllegalStateException.class)
+    public void testProviderCloseGet() throws Exception {
+        ((MyTableProvider) provider).close();
+        provider.getTable("default");
+    } 
+    
+    @Test
+    public void testTableDoubleClose() throws Exception {
+        table.put("new", correctValues);
+        table.commit();
+        ((MyTable) table).close();
+        ((MyTable) table).close();
+        table = provider.getTable("default");
+        assertNotNull(table.get("new"));
+    } 
+    
+    @Test
+    public void testProviderDoubleClose() throws Exception {
+        ((MyTableProvider) provider).close();
+        ((MyTableProvider) provider).close();
+    } 
+    
+    @Test(expected = IllegalStateException.class)
+    public void testFactoryClose() throws Exception {
+        ((MyTableProviderFactory) factory).close();
+        factory.create(root.getAbsolutePath());
+    } 
+    //end of close() tests
 }

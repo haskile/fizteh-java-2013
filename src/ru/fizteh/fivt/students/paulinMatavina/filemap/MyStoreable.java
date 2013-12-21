@@ -10,12 +10,10 @@ import ru.fizteh.fivt.storage.structured.*;
 public class MyStoreable implements Storeable {
     private ArrayList<Class<?>> columnTypes;
     private Object[] objectList;
-    private Table table;
     
-    public MyStoreable(Table hostTable, List<Class<?>> types) {
+    public MyStoreable(List<Class<?>> types) {
         columnTypes = new ArrayList<Class<?>>(types);
         objectList = new Object[types.size()];
-        table = hostTable;
     }
     
     @Override
@@ -129,23 +127,30 @@ public class MyStoreable implements Storeable {
         } else if (expectedClass == Long.class) {
             if (object.getClass() == Long.class) {
                return object;
-            } else if (object.getClass() == Integer.class) {
+            } 
+            if (object.getClass() == Integer.class) {
                 return Long.valueOf(((Integer) object).longValue());
             }
         } else if (expectedClass == Byte.class) {
+            if (object.getClass() == Byte.class) {
+                return object;
+            }
             if (object.getClass() == Integer.class) {
                 Integer number = (Integer) object;
                 if (number <= Byte.MAX_VALUE && number >= Byte.MIN_VALUE) {
                     return Byte.valueOf(number.byteValue());
                 }
             }
-        } else if (expectedClass == Float.class) {
-            if (object.getClass() == Double.class) {
-                return Float.valueOf(((Double) object).floatValue());
-            }
         } else if (expectedClass == Double.class) {
             if (object.getClass() == Double.class) {
                 return object;
+            }
+        } else if (expectedClass == Float.class) {
+            if (object.getClass() == Float.class) {
+                return object;
+            }
+            if (object.getClass() == Double.class) {
+                return ((Double) object).floatValue();
             }
         } else if (expectedClass == String.class) {
             if (object.getClass() == String.class) {
@@ -162,7 +167,17 @@ public class MyStoreable implements Storeable {
     
     @Override
     public String toString() {
-        return ((MultiDbState) table).provider.serialize(table, this);
+        StringBuilder result = new StringBuilder(getClass().getSimpleName() + "[");
+        for (int i = 0; i < size(); i++) {
+            if (objectList[i] != null) {
+                result.append(objectList[i].toString());
+            }
+            if (i != size() - 1) {
+                result.append(",");
+            }
+        }
+        result.append("]");
+        return result.toString();
     }
     
     @Override 

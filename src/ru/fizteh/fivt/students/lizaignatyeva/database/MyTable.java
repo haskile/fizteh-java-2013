@@ -1,9 +1,11 @@
 package ru.fizteh.fivt.students.lizaignatyeva.database;
 
-import ru.fizteh.fivt.storage.strings.*;
 import ru.fizteh.fivt.storage.strings.Table;
 
-import java.io.*;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -154,8 +156,8 @@ public class MyTable implements Table {
             File path = globalDirectory.resolve(name).toFile();
             return path.isDirectory();
         } catch (Exception e) {
+            return false;
         }
-        return false;
     }
 
     public void read() throws DataFormatException {

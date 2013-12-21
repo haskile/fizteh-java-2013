@@ -413,7 +413,7 @@ public class MyTable implements Table {
     }
 
     private void checkKey(String key) {
-        if (key == null || key.isEmpty() || key.contains("\0")) {
+        if (key == null || key.isEmpty() || key.contains("\0") || key.matches(".*\\s.*")) {
             throw new IllegalArgumentException("key is invalid");
         }
     }

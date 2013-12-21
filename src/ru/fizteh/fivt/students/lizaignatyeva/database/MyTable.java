@@ -397,7 +397,7 @@ public class MyTable implements Table {
                 }
             }
         } finally {
-            lock.writeLock().lock();
+            lock.writeLock().unlock();
         }
     }
 

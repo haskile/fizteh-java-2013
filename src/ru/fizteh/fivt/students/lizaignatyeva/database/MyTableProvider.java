@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import java.text.ParseException;
 import java.util.HashMap;
 import java.util.List;
+import java.util.zip.DataFormatException;
 
 public class MyTableProvider implements TableProvider {
     private Path directory;
@@ -92,6 +93,10 @@ public class MyTableProvider implements TableProvider {
         MyTable table;
         try {
             table = MyTable.read(directory, name, this);
+        } catch (DataFormatException e) {
+            throw new IllegalArgumentException("Broken table found");
+        } catch (IOException e) {
+            throw new RuntimeException("IOFailure happened during table reading");
         } catch (Exception e) {
             return null;
         }

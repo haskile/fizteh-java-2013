@@ -13,7 +13,7 @@ public class MyTableProvider implements TableProvider {
     private HashMap<String, MyTable> loadedTables;
 
     private boolean isValidTableName(String name) {
-        return name != null;
+        return name != null && !name.equals("");
     }
 
     public MyTableProvider(Path directory) {

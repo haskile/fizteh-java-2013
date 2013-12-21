@@ -4,7 +4,10 @@ import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.storage.structured.Table;
 import ru.fizteh.fivt.storage.structured.TableProvider;
 
-import java.io.*;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -80,7 +83,7 @@ public class MyTable implements Table {
     @Override
     public Storeable put(String key, Storeable value) {
         checkValidness();
-        if (key == null) {
+        if (key == null || key.equals("")) {
             throw new IllegalArgumentException("Table.put: null key provided");
         }
         if (value == null) {
@@ -108,7 +111,11 @@ public class MyTable implements Table {
         Storeable result = null;
         if (uncommitedData.containsKey(key)) {
             result = uncommitedData.get(key);
-            uncommitedData.put(key, null);
+            if (data.containsKey(key)) {
+                uncommitedData.put(key, null);
+            } else {
+                uncommitedData.remove(key);
+            }
         } else {
             if (data.containsKey(key)) {
                 result = data.get(key);
@@ -181,8 +188,8 @@ public class MyTable implements Table {
             File path = globalDirectory.resolve(name).toFile();
             return path.isDirectory();
         } catch (Exception e) {
+            return false;
         }
-        return false;
     }
 
     private final static HashMap<String, Class> supportedClasses = new HashMap<>();
@@ -357,7 +364,19 @@ public class MyTable implements Table {
     }
 
     public int keysToCommit() {
-        return uncommitedData.size();
+        int result = 0;
+        for (String key: uncommitedData.keySet()) {
+            if (!data.containsKey(key)) {
+                result ++;
+            } else {
+                Storeable oldValue = data.get(key);
+                Storeable newValue = uncommitedData.get(key);
+                if (!oldValue.equals(newValue)) {
+                    result++;
+                }
+            }
+        }
+        return result;
     }
 
     private static int getDirNumber(String key) {

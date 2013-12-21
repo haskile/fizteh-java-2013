@@ -13,7 +13,7 @@ public class MyTableProviderFactory implements TableProviderFactory {
     }
 
     @Override
-    public TableProvider create(String dir) {
+    public MyTableProvider create(String dir) {
         if (!isValidName(dir)) {
             throw new IllegalArgumentException("TableProviderFactory.create: name '" + dir + "' is invalid");
         }

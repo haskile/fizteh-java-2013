@@ -83,15 +83,6 @@ public class MyTable implements Table {
         checkValidness();
         checkKey(key);
         checkValue(value);
-        MyStoreable myStoreable;
-        try {
-            myStoreable = (MyStoreable) value;
-        } catch (Exception e) {
-            throw new ColumnFormatException("Table.put: inconsistent Storeable provided");
-        }
-        if (!myStoreable.storeableSignature.equals(columnTypes)) {
-            throw new ColumnFormatException("Table.put: inconsistent Storeable provided");
-        }
         Storeable result = null;
         if (uncommitedData.containsKey(key)) {
             result = uncommitedData.get(key);

@@ -63,8 +63,7 @@ public class StorableTableImp2 implements StorableTable {
             } else {
                 return mainMap.get(key);
             }
-        }
-        finally {
+        } finally {
             tableKeeper.readLock().unlock();
         }
     }
@@ -77,7 +76,7 @@ public class StorableTableImp2 implements StorableTable {
         TableProviderChecker.storableForThisTableCheck(this, value);
 
         Storeable oldValue = get(key);
-        localMap.get().put (key,value);
+        localMap.get().put(key, value);
         return oldValue;
     }
 
@@ -93,8 +92,7 @@ public class StorableTableImp2 implements StorableTable {
             } else if (mainMap.containsKey(key)) {
                 oldValue = mainMap.get(key);
             }
-        }
-        finally {
+        } finally {
             tableKeeper.readLock().unlock();
         }
         localMap.get().put(key, null);
@@ -119,8 +117,7 @@ public class StorableTableImp2 implements StorableTable {
                 }
             }
             return size;
-        }
-        finally {
+        } finally {
             tableKeeper.readLock().unlock();
         }
     }
@@ -151,8 +148,7 @@ public class StorableTableImp2 implements StorableTable {
 
             TableProviderUtils.writeTable(databaseChanges);
             return commitChanges;
-        }
-        finally {
+        } finally {
             tableKeeper.writeLock().unlock();
         }
     }
@@ -186,8 +182,7 @@ public class StorableTableImp2 implements StorableTable {
         tableKeeper.readLock().lock();
         try {
             rollbackSize = difference();
-        }
-        finally {
+        } finally {
             tableKeeper.readLock().unlock();
         }
         localMap.get().clear();
@@ -216,8 +211,7 @@ public class StorableTableImp2 implements StorableTable {
         tableKeeper.readLock().lock();
         try {
             return difference();
-        }
-        finally {
+        } finally {
             tableKeeper.readLock().unlock();
         }
     }
@@ -228,8 +222,7 @@ public class StorableTableImp2 implements StorableTable {
         try {
             tableKeeper.writeLock().lock();
             this.mainMap = diskValues;
-        }
-        finally {
+        } finally {
             tableKeeper.writeLock().unlock();
         }
     }

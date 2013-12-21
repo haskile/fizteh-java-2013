@@ -36,8 +36,7 @@ public class MultiTableMain {
         MultiTableProvider tableProvider = null;
         try {
             tableProvider = MultiTableProvider.class.cast(multiTableProviderFactory.create(location));
-        }
-        catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) {
             System.err.print(e.getMessage());
             System.exit(-1);
         }

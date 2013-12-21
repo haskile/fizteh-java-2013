@@ -39,8 +39,7 @@ public class StorableMain {
         StorableTableProviderImp tableProvider = null;
         try {
             tableProvider = StorableTableProviderImp.class.cast(factory.create(location));
-        }
-        catch (IllegalArgumentException | IOException | WrappedIOException e) {
+        } catch (IllegalArgumentException | IOException | WrappedIOException e) {
             System.err.print(e);
             System.exit(-1);
         }
@@ -59,20 +58,16 @@ public class StorableMain {
 
         try {
             shell.startWork(args);
-        }
-        catch (TimeToFinishException e) {
+        } catch (TimeToFinishException e) {
             if (e.getMessage() == null) {
                 System.exit(0);
             } else {
                 System.exit(-1);
             }
-        }
-
-        finally {
+        } finally {
             try {
                 factory.close();
-            }
-            catch (IOException e) {
+            } catch (IOException e) {
                 System.err.print(e);
                 System.exit(-1);
             }

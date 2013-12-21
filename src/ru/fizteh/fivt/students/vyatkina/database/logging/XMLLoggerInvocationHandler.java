@@ -39,8 +39,7 @@ public class XMLLoggerInvocationHandler implements InvocationHandler {
         if (method.getDeclaringClass() == Object.class) {
             try {
                 return method.invoke(implementation, args);
-            }
-            catch (InvocationTargetException e) {
+            } catch (InvocationTargetException e) {
                 throw e.getTargetException();
             }
         }
@@ -61,19 +60,15 @@ public class XMLLoggerInvocationHandler implements InvocationHandler {
                 writer.writeEndElement();
                 return returnValue;
             }
-        }
-        catch (InvocationTargetException e) {
+        } catch (InvocationTargetException e) {
             Throwable targetException = e.getTargetException();
             writer.writeStartElement(THROWN);
             writer.writeCharacters(targetException.toString());
             writer.writeEndElement();
             throw targetException;
-        }
-        catch (Throwable e) {
+        } catch (Throwable e) {
             throw new IllegalStateException(e);
-        }
-
-        finally {
+        } finally {
             writer.writeEndElement();
             writer.writeCharacters(System.lineSeparator());
             writer.flush();
@@ -94,13 +89,13 @@ public class XMLLoggerInvocationHandler implements InvocationHandler {
         writer.writeEndElement();
     }
 
-    private void writeArg (Object arg) throws XMLStreamException {
+    private void writeArg(Object arg) throws XMLStreamException {
         if (arg == null) {
             writer.writeEmptyElement(NULL);
         } else if (Iterable.class.isAssignableFrom(arg.getClass())) {
-                identitySet.clear();
-                identitySet.add(arg);
-                writeIterable((Iterable) arg, identitySet);
+            identitySet.clear();
+            identitySet.add(arg);
+            writeIterable((Iterable) arg, identitySet);
         } else {
             writer.writeCharacters(arg.toString());
         }
@@ -141,7 +136,7 @@ public class XMLLoggerInvocationHandler implements InvocationHandler {
     }
 
 
-    public static void main(String[] args)  {
+    public static void main(String[] args) {
 
     }
 }

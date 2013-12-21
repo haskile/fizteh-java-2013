@@ -12,6 +12,7 @@ public class SuperTable<ValueType> {
     protected volatile Map<String, Diff<ValueType>> values = new HashMap<>();
     protected final String name;
     protected final ReadWriteLock tableKeeper = new ReentrantReadWriteLock(true);
+
     public SuperTable(String name) {
         this.name = name;
     }
@@ -32,8 +33,7 @@ public class SuperTable<ValueType> {
                 value = diff.getValue();
             }
             return value;
-        }
-        finally {
+        } finally {
             tableKeeper.readLock().unlock();
         }
     }
@@ -58,8 +58,7 @@ public class SuperTable<ValueType> {
                 oldStringValue = oldValue.getValue();
                 oldValue.setValue(value);
             }
-        }
-        finally {
+        } finally {
             tableKeeper.writeLock().unlock();
         }
 
@@ -77,8 +76,7 @@ public class SuperTable<ValueType> {
             } else {
                 return null;
             }
-        }
-        finally {
+        } finally {
             tableKeeper.readLock().unlock();
         }
     }
@@ -103,8 +101,7 @@ public class SuperTable<ValueType> {
                     ++realSize;
                 }
             }
-        }
-        finally {
+        } finally {
             tableKeeper.readLock().unlock();
         }
         return realSize;
@@ -119,8 +116,7 @@ public class SuperTable<ValueType> {
                     ++changes;
                 }
             }
-        }
-        finally {
+        } finally {
             tableKeeper.readLock().unlock();
         }
         return changes;
@@ -147,8 +143,7 @@ public class SuperTable<ValueType> {
             tableKeeper.writeLock().lock();
             Diff<ValueType> valueFromDisk = new Diff(value, value);
             values.put(key, valueFromDisk);
-        }
-        finally {
+        } finally {
             tableKeeper.writeLock().unlock();
         }
     }
@@ -160,8 +155,7 @@ public class SuperTable<ValueType> {
                 Diff<ValueType> valueFromDisk = new Diff(entry.getValue(), entry.getValue());
                 values.put(entry.getKey(), valueFromDisk);
             }
-        }
-        finally {
+        } finally {
             tableKeeper.writeLock().unlock();
         }
     }
@@ -175,8 +169,7 @@ public class SuperTable<ValueType> {
                     ++unsavedChanges;
                 }
             }
-        }
-        finally {
+        } finally {
             tableKeeper.readLock().unlock();
         }
         return unsavedChanges;

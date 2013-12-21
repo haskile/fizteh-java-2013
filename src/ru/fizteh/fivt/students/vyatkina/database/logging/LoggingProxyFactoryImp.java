@@ -21,19 +21,19 @@ public class LoggingProxyFactoryImp implements LoggingProxyFactory {
             throw new IllegalArgumentException(interfaceClass + " is not an interface");
         }
         if (!interfaceClass.isAssignableFrom(implementation.getClass())) {
-           throw new IllegalArgumentException("Implementation doesn't implement interface");
+            throw new IllegalArgumentException("Implementation doesn't implement interface");
         }
 
         XMLStreamWriter xmlStreamWriter = null;
         try {
             xmlStreamWriter = XMLOutputFactory.newInstance().createXMLStreamWriter(writer);
-        }
-        catch (XMLStreamException e) {
-           throw new WrappedIOException(e);
+        } catch (XMLStreamException e) {
+            throw new WrappedIOException(e);
         }
 
-        InvocationHandler invocationHandler = new XMLLoggerInvocationHandler(xmlStreamWriter,implementation);
-        return Proxy.newProxyInstance(implementation.getClass().getClassLoader(), new Class[] {interfaceClass}, invocationHandler);
+        InvocationHandler invocationHandler = new XMLLoggerInvocationHandler(xmlStreamWriter, implementation);
+        return Proxy.newProxyInstance(implementation.getClass().getClassLoader(), new Class[] {interfaceClass},
+                invocationHandler);
 
     }
 }

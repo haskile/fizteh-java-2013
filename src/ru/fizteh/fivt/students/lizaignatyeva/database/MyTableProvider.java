@@ -4,7 +4,6 @@ import ru.fizteh.fivt.storage.structured.ColumnFormatException;
 import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.storage.structured.Table;
 import ru.fizteh.fivt.storage.structured.TableProvider;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.io.File;
 import java.io.IOException;
@@ -51,12 +50,7 @@ public class MyTableProvider implements TableProvider {
 
     @Override
     public Storeable deserialize(Table table, String value) throws ParseException {
-        MyTable myTable;
-        try {
-            myTable = (MyTable) table;
-        } catch (Exception e) {
-            throw new NotImplementedException();
-        }
+        MyTable myTable = (MyTable) table;
         MyStoreable storeable = new MyStoreable(myTable.columnTypes);
         storeable.deserialize(value);
         return storeable;
@@ -64,34 +58,19 @@ public class MyTableProvider implements TableProvider {
 
     @Override
     public String serialize(Table table, Storeable value) throws ColumnFormatException {
-        MyStoreable myStoreable;
-        try {
-            myStoreable = (MyStoreable) value;
-        } catch (Exception e) {
-            throw new NotImplementedException();
-        }
         return ((MyStoreable) value).serialize();
     }
 
     @Override
     public Storeable createFor(Table table) {
-        MyTable myTable;
-        try {
-            myTable = (MyTable) table;
-        } catch (Exception e) {
-            throw new NotImplementedException();
-        }
+        MyTable myTable = (MyTable) table;
         return new MyStoreable(myTable.columnTypes);
     }
 
     @Override
     public Storeable createFor(Table table, List<?> values) throws ColumnFormatException, IndexOutOfBoundsException {
         MyTable myTable;
-        try {
-            myTable = (MyTable) table;
-        } catch (Exception e) {
-            throw new NotImplementedException();
-        }
+        myTable = (MyTable) table;
         MyStoreable storeable = new MyStoreable(myTable.columnTypes);
         for (int index = 0; index < values.size(); index ++) {
             storeable.setColumnAt(index, values.get(index));

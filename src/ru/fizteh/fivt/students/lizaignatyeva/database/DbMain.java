@@ -5,6 +5,7 @@ import ru.fizteh.fivt.students.lizaignatyeva.database.commands.*;
 import ru.fizteh.fivt.students.lizaignatyeva.shell.Command;
 import ru.fizteh.fivt.students.lizaignatyeva.shell.CommandRunner;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Hashtable;
@@ -32,7 +33,7 @@ public class DbMain {
 
         try {
             provider = providerFactory.create(dir);
-        } catch (IllegalArgumentException e) {
+        } catch (Exception e) {
             System.out.println(e.getMessage());
             System.exit(1);
             return;

@@ -1,5 +1,7 @@
 package ru.fizteh.fivt.students.lizaignatyeva.shell;
 
+import ru.fizteh.fivt.storage.structured.ColumnFormatException;
+
 import java.io.File;
 import java.util.Arrays;
 import java.util.Hashtable;
@@ -64,6 +66,8 @@ public class CommandRunner {
                 if (commands.length() != 0) {
                    try {
                        runCommands(commands);
+                   } catch (ColumnFormatException e) {
+                       System.err.println(String.format("wrong type (%s)", e.getMessage()));
                    } catch (Exception e) {
                        System.err.println(e.getMessage());
                    }

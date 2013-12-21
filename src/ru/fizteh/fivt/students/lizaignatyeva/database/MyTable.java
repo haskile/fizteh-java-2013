@@ -367,6 +367,10 @@ public class MyTable implements Table {
         }
     }
 
+    private String getClassName(Class clazz) {
+        for ()
+    }
+
     private void writeConfig() throws IOException {
         Path path = globalDirectory.resolve(name).resolve(CONFIG_FILE);
         boolean first = true;
@@ -375,7 +379,6 @@ public class MyTable implements Table {
                 if (!first) {
                     printWriter.print(" ");
                 }
-                printWriter.print(clazz.getName());
                 first = false;
             }
         }

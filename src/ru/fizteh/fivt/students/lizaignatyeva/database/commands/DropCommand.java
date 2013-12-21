@@ -17,9 +17,12 @@ public class DropCommand extends Command {
         String tableName = args[0];
         try {
             database.tableProvider.removeTable(tableName);
+            if (database.currentTable != null && database.currentTable.getName().equals(tableName)) {
+                database.currentTable = null;
+            }
             System.out.println("dropped");
         } catch (IllegalStateException e) {
-            System.out.println("tablename not exists");
+            System.out.println(tableName + " not exists");
         }
     }
 }

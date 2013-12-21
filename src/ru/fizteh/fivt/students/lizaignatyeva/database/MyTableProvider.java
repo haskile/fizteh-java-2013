@@ -112,6 +112,7 @@ public class MyTableProvider implements TableProvider {
         } catch (Exception e) {
             return null;
         }
+        loadedTables.put(name, table);
         return table;
     }
 

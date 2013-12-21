@@ -23,6 +23,10 @@ public class MyTableProviderFactory implements TableProviderFactory {
         if (!path.toFile().isDirectory()) {
             throw new IllegalArgumentException("TableProviderFactory.create: there is no directory " + dir);
         }
-        return new MyTableProvider(Paths.get(dir));
+        try {
+            return new MyTableProvider(Paths.get(dir));
+        } catch (Exception e) {
+            throw new IllegalArgumentException("TableProviderFactory.create: incorrect directory")
+        }
     }
 }

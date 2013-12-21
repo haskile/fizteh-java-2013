@@ -1,5 +1,6 @@
 package ru.fizteh.fivt.students.lizaignatyeva.database.commands;
 
+import ru.fizteh.fivt.students.lizaignatyeva.database.BadTypeException;
 import ru.fizteh.fivt.students.lizaignatyeva.database.Database;
 import ru.fizteh.fivt.students.lizaignatyeva.database.MyTable;
 import ru.fizteh.fivt.students.lizaignatyeva.shell.Command;
@@ -23,7 +24,13 @@ public class CreateCommand extends Command {
     @Override
     public void run(String[] args) throws Exception {
         String tableName = args[0];
-        MyTable table = database.tableProvider.createTable(tableName, MyTable.convert(Arrays.copyOfRange(args, 1, args.length)));
+        MyTable table;
+        try {
+            table = database.tableProvider.createTable(tableName, MyTable.convert(Arrays.copyOfRange(args, 1, args.length)));
+        } catch (BadTypeException e) {
+            System.out.println(String.format("wrong type (%s)", e.getMessage()));
+            return;
+        }
         if (table == null) {
             System.out.println("tablename exists");
         } else {

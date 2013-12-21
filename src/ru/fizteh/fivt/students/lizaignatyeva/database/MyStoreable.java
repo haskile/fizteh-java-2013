@@ -29,7 +29,7 @@ public class MyStoreable implements Storeable {
         this.storeableSignature = storeableSignature;
         for (Class clazz : storeableSignature.columnClasses) {
             if (!supportedClasses.contains(clazz)) {
-                throw new IllegalArgumentException("Unsupported class " + clazz.getCanonicalName());
+                throw new BadTypeException("Unsupported class " + clazz.getCanonicalName());
             }
         }
         this.data = new ArrayList<>(this.storeableSignature.getColumnsCount());

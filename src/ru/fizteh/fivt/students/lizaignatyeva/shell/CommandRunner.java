@@ -66,8 +66,6 @@ public class CommandRunner {
                 if (commands.length() != 0) {
                    try {
                        runCommands(commands);
-                   } catch (ColumnFormatException e) {
-                       System.err.println(String.format("wrong type (%s)", e.getMessage()));
                    } catch (Exception e) {
                        System.err.println(e.getMessage());
                    }

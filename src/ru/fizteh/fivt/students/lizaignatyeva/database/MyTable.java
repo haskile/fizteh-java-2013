@@ -93,7 +93,7 @@ public class MyTable implements Table {
         try {
             myStoreable = (MyStoreable) value;
         } catch (Exception e) {
-            throw new IllegalArgumentException("Table.put: inconsistent Storeable provided");
+            throw new ColumnFormatException("Table.put: inconsistent Storeable provided");
         }
         if (!myStoreable.storeableSignature.equals(columnTypes)) {
             throw new ColumnFormatException("Table.put: inconsistent Storeable provided");

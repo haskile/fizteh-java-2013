@@ -368,7 +368,7 @@ public class MyTable implements Table {
     }
 
     private String getClassName(Class clazz) {
-        for (String className : supportedClasses) {
+        for (String className : supportedClasses.keySet()) {
             if (supportedClasses.get(className).equals(clazz)) {
                 return className;
             }

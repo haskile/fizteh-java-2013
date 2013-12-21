@@ -289,7 +289,19 @@ public class MyTable implements Table {
     }
 
     public int keysToCommit() {
-        return uncommitedData.size();
+        int result = 0;
+        for (String key: uncommitedData.keySet()) {
+            if (!data.containsKey(key)) {
+                result ++;
+            } else {
+                String oldValue = data.get(key);
+                String newValue = uncommitedData.get(key);
+                if (!oldValue.equals(newValue)) {
+                    result++;
+                }
+            }
+        }
+        return result;
     }
 
     private int getDirNumber(String key) {

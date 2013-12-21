@@ -20,8 +20,11 @@ public class MyTableProviderFactory implements TableProviderFactory {
             throw new IOException("TableProviderFactory.create: path is empty");
         }
         Path path = Paths.get(dir);
-        if (!path.toFile().isDirectory()) {
+        if (!path.toFile().exists()) {
             throw new IOException("TableProviderFactory.create: there is no directory " + dir);
+        }
+        if (!path.toFile().isDirectory()) {
+            throw new IllegalArgumentException("TableProviderFactory.create: " + dir + " is not a directory");
         }
         return new MyTableProvider(path);
     }

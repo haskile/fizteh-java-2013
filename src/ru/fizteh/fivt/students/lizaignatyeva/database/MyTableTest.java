@@ -9,7 +9,6 @@ import ru.fizteh.fivt.storage.structured.Storeable;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static junit.framework.Assert.assertEquals;
@@ -29,32 +28,32 @@ public class MyTableTest {
         columnTypes.add(String.class);
     }
 
-    private static final MyStoreable emptyIncorrectColumns;
-    private static final MyStoreable nonEmptyIncorrectColumns;
+    private static final MyStoreable EMPTY_INCORRECT_COLUMNS;
+    private static final MyStoreable NON_EMPTY_INCORRECT_COLUMNS;
     static {
         List<Class<?>> incorrectColumnTypes = new ArrayList<>();
         incorrectColumnTypes.add(String.class);
         incorrectColumnTypes.add(Integer.class);
-        emptyIncorrectColumns = new MyStoreable(new StoreableSignature(incorrectColumnTypes));
-        nonEmptyIncorrectColumns = new MyStoreable(new StoreableSignature(incorrectColumnTypes));
-        nonEmptyIncorrectColumns.setColumnAt(0, "testValue");
-        nonEmptyIncorrectColumns.setColumnAt(1, 123456789);
+        EMPTY_INCORRECT_COLUMNS = new MyStoreable(new StoreableSignature(incorrectColumnTypes));
+        NON_EMPTY_INCORRECT_COLUMNS = new MyStoreable(new StoreableSignature(incorrectColumnTypes));
+        NON_EMPTY_INCORRECT_COLUMNS.setColumnAt(0, "testValue");
+        NON_EMPTY_INCORRECT_COLUMNS.setColumnAt(1, 123456789);
     }
 
-    private static final MyStoreable smallColumnsCount;
+    private static final MyStoreable SMALL_COLUMNS_COUNT;
     static {
         List<Class<?>> smallColumnTypes = new ArrayList<>();
         smallColumnTypes.add(Integer.class);
-        smallColumnsCount = new MyStoreable(new StoreableSignature(smallColumnTypes));
+        SMALL_COLUMNS_COUNT = new MyStoreable(new StoreableSignature(smallColumnTypes));
     }
 
-    private static final MyStoreable largeColumnsCount;
+    private static final MyStoreable LARGE_COLUMNS_COUNT;
     static {
         List<Class<?>> largeColumnTypes = new ArrayList<>();
         largeColumnTypes.add(Integer.class);
         largeColumnTypes.add(String.class);
         largeColumnTypes.add(Boolean.class);
-        largeColumnsCount = new MyStoreable(new StoreableSignature(largeColumnTypes));
+        LARGE_COLUMNS_COUNT = new MyStoreable(new StoreableSignature(largeColumnTypes));
     }
 
     private Storeable value1;
@@ -172,23 +171,23 @@ public class MyTableTest {
         assertEquals(table.get("key2"), value2);
     }
 
-    @Test ( expected = ColumnFormatException.class)
+    @Test (expected = ColumnFormatException.class)
     public void testSmallColumns() {
-        table.put("key", smallColumnsCount);
+        table.put("key", SMALL_COLUMNS_COUNT);
     }
 
-    @Test ( expected = ColumnFormatException.class)
+    @Test (expected = ColumnFormatException.class)
     public void testLargeColumns() {
-        table.put("key", largeColumnsCount);
+        table.put("key", LARGE_COLUMNS_COUNT);
     }
 
     @Test
     public void testEmptyIncorrectTypeStoreable() {
-        table.put("key", emptyIncorrectColumns);
+        table.put("key", EMPTY_INCORRECT_COLUMNS);
     }
 
-    @Test ( expected = ColumnFormatException.class)
+    @Test (expected = ColumnFormatException.class)
     public void testNonEmptyIncorrectTypeStoreable() {
-        table.put("key", nonEmptyIncorrectColumns);
+        table.put("key", NON_EMPTY_INCORRECT_COLUMNS);
     }
 }

@@ -27,7 +27,7 @@ public class MyTable implements Table {
     private MyTableProvider tableProvider;
     private static final String CONFIG_FILE = "signature.tsv";
 
-    private static final int base = 16;
+    private static final int BASE = 16;
 
 
     public MyTable(Path globalDirectory, String name, StoreableSignature columnTypes, MyTableProvider tableProvider) {
@@ -184,7 +184,7 @@ public class MyTable implements Table {
         }
     }
 
-    private final static HashMap<String, Class> supportedClasses = new HashMap<>();
+    private static final HashMap<String, Class> supportedClasses = new HashMap<>();
 
     static {
         supportedClasses.put("int", Integer.class);
@@ -212,8 +212,7 @@ public class MyTable implements Table {
     }
 
     public static MyTable read(Path globalDirectory, String name, MyTableProvider tableProvider)
-                throws IOException, DataFormatException
-    {
+            throws IOException, DataFormatException {
         StoreableSignature columnTypes = readStoreableSignature(globalDirectory.resolve(name));
         MyTable table = new MyTable(globalDirectory, name, columnTypes, tableProvider);
         File path = globalDirectory.resolve(name).toFile();
@@ -293,8 +292,7 @@ public class MyTable implements Table {
 
     private void readEntry(ByteBuffer buffer, String dirName, String fileName)
             throws BufferUnderflowException,
-                   DataFormatException
-    {
+                   DataFormatException {
         int keyLength = buffer.getInt();
         if (keyLength > buffer.remaining() || keyLength < 0) {
             throw new DataFormatException("too long key buffer");
@@ -331,7 +329,7 @@ public class MyTable implements Table {
     }
 
     private static boolean isValidDirectoryName(String name) {
-        for (int i = 0; i < base; ++i) {
+        for (int i = 0; i < BASE; ++i) {
             if (name.equals(Integer.toString(i) + ".dir")) {
                 return true;
             }
@@ -340,7 +338,7 @@ public class MyTable implements Table {
     }
 
     private static boolean isValidFileName(String name) {
-        for (int i = 0; i < base; ++i) {
+        for (int i = 0; i < BASE; ++i) {
             if (name.equals(Integer.toString(i) + ".dat")) {
                 return true;
             }
@@ -426,13 +424,13 @@ public class MyTable implements Table {
     private static int getDirNumber(String key) {
         int number = key.getBytes()[0];
         number = Math.abs(number);
-        return number % base;
+        return number % BASE;
     }
 
     private static int getFileNumber(String key) {
         int number = key.getBytes()[0];
         number = Math.abs(number);
-        return number / base % base;
+        return number / BASE % BASE;
     }
 
     private static String getDirName(String key) {

@@ -5,7 +5,6 @@ import ru.fizteh.fivt.students.lizaignatyeva.database.commands.*;
 import ru.fizteh.fivt.students.lizaignatyeva.shell.Command;
 import ru.fizteh.fivt.students.lizaignatyeva.shell.CommandRunner;
 
-import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Hashtable;

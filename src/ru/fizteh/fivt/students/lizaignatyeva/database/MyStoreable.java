@@ -13,22 +13,22 @@ public class MyStoreable implements Storeable {
     public final StoreableSignature storeableSignature;
     private ArrayList<Object> data;
 
-    private static final HashSet<Class<?>> supportedClasses = new HashSet<>();
+    private static final HashSet<Class<?>> SUPPORTED_CLASSES = new HashSet<>();
 
     static {
-        supportedClasses.add(Integer.class);
-        supportedClasses.add(Long.class);
-        supportedClasses.add(Byte.class);
-        supportedClasses.add(Float.class);
-        supportedClasses.add(Double.class);
-        supportedClasses.add(Boolean.class);
-        supportedClasses.add(String.class);
+        SUPPORTED_CLASSES.add(Integer.class);
+        SUPPORTED_CLASSES.add(Long.class);
+        SUPPORTED_CLASSES.add(Byte.class);
+        SUPPORTED_CLASSES.add(Float.class);
+        SUPPORTED_CLASSES.add(Double.class);
+        SUPPORTED_CLASSES.add(Boolean.class);
+        SUPPORTED_CLASSES.add(String.class);
     }
 
     public MyStoreable(StoreableSignature storeableSignature) {
         this.storeableSignature = storeableSignature;
         for (Class clazz : storeableSignature.columnClasses) {
-            if (!supportedClasses.contains(clazz)) {
+            if (!SUPPORTED_CLASSES.contains(clazz)) {
                 throw new BadTypeException("Unsupported class " + clazz.getCanonicalName());
             }
         }
@@ -45,16 +45,16 @@ public class MyStoreable implements Storeable {
         Class<?> expectedClass = storeableSignature.getColumnClass(columnIndex);
         Class<?> providedClass = object.getClass();
         if (expectedClass != providedClass) {
-            throw new ColumnFormatException("Expected " + expectedClass.getCanonicalName() + " class, " +
-                    "but " + providedClass.getCanonicalName() + " got");
+            throw new ColumnFormatException("Expected " + expectedClass.getCanonicalName() + " class, "
+                    + "but " + providedClass.getCanonicalName() + " got");
         }
     }
 
     private void checkClass(Class<?> clazz, int columnIndex) {
         Class<?> realClass = storeableSignature.getColumnClass(columnIndex);
         if (clazz != realClass) {
-            throw new ColumnFormatException("Failed to convert " + realClass.getCanonicalName() +
-                    " class to " + clazz.getClass() + " class ");
+            throw new ColumnFormatException("Failed to convert " + realClass.getCanonicalName()
+                    + " class to " + clazz.getClass() + " class ");
         }
     }
 
@@ -175,28 +175,21 @@ public class MyStoreable implements Storeable {
         }
     }
 
+    @Override
+    public int hashCode() {
+        return data.hashCode();
+    }
+
+    @Override
     public boolean equals(Object o) {
-        MyStoreable storeable;
-        try {
-            storeable = (MyStoreable) o;
-        } catch (Exception e) {
-            return false;
-        }
         if (o == null) {
             return false;
         }
-        if (storeableSignature.getColumnsCount() != storeable.storeableSignature.getColumnsCount()) {
+        if (!(o instanceof MyStoreable)) {
             return false;
         }
-        for (int index = 0; index < storeableSignature.getColumnsCount(); index++) {
-            if (data.get(index) == null) {
-                return storeable.data.get(index) == null;
-            }
-            if (!data.get(index).equals(storeable.data.get(index))) {
-                return false;
-            }
-        }
-        return true;
+        MyStoreable storeable = (MyStoreable) o;
+        return data.equals(storeable.data);
     }
 
     public int size() {

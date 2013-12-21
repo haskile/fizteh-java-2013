@@ -1,7 +1,5 @@
 package ru.fizteh.fivt.students.lizaignatyeva.shell;
 
-import ru.fizteh.fivt.storage.structured.ColumnFormatException;
-
 import java.io.File;
 import java.util.Arrays;
 import java.util.Hashtable;

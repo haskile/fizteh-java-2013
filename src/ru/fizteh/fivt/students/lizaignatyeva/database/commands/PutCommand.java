@@ -26,7 +26,7 @@ public class PutCommand extends Command {
                     System.out.println("new");
                 } else {
                     System.out.println("overwrite");
-                    System.out.println(oldValue);
+                    System.out.println(database.serialize(oldValue));
                 }
             } catch (BadTypeException e) {
                 System.out.println(String.format("wrong type (%s)", e.getMessage()));

@@ -33,7 +33,12 @@ public class MyTableProvider implements TableProvider {
             throw new IllegalArgumentException("TableProvider.createTable: name '" + name + "' is illegal");
         }
         if (columnTypes == null) {
-            throw new IllegalAccessError("TableProvder.createTable: null columnTypes is illegal");
+            throw new IllegalArgumentException("TableProvider.createTable: null columnTypes is illegal");
+        }
+        for (Class clazz : columnTypes) {
+            if (clazz == null) {
+                throw new IllegalArgumentException("TableProvider.createTable: null column type");
+            }
         }
         StoreableSignature storeableSignature = new StoreableSignature(columnTypes);
         MyTable table = new MyTable(directory, name, storeableSignature, this);
@@ -51,6 +56,10 @@ public class MyTableProvider implements TableProvider {
 
     @Override
     public Storeable deserialize(Table table, String value) throws ParseException {
+        if (table == null || value == null) {
+            throw new IllegalArgumentException("TableProvider.deserialize: null arguments are not supported")
+        }
+
         MyTable myTable = (MyTable) table;
         MyStoreable storeable = new MyStoreable(myTable.columnTypes);
         storeable.deserialize(value);
@@ -59,17 +68,26 @@ public class MyTableProvider implements TableProvider {
 
     @Override
     public String serialize(Table table, Storeable value) throws ColumnFormatException {
+        if (table == null || value == null) {
+            throw new IllegalArgumentException("TableProvider.serialize: null arguments are not supported")
+        }
         return ((MyStoreable) value).serialize();
     }
 
     @Override
     public Storeable createFor(Table table) {
+        if (table == null) {
+            throw new IllegalArgumentException("TableProvider.createFor: null arguments are not supported")
+        }
         MyTable myTable = (MyTable) table;
         return new MyStoreable(myTable.columnTypes);
     }
 
     @Override
     public Storeable createFor(Table table, List<?> values) throws ColumnFormatException, IndexOutOfBoundsException {
+        if (table == null || values == null) {
+            throw new IllegalArgumentException("TableProvider.createFor: null arguments are not supported")
+        }
         MyTable myTable;
         myTable = (MyTable) table;
         MyStoreable storeable = new MyStoreable(myTable.columnTypes);

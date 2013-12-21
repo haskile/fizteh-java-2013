@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.text.ParseException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.zip.DataFormatException;
 
@@ -18,10 +19,6 @@ public class MyTableProvider implements TableProvider {
 
     private HashMap<String, MyTable> loadedTables;
 
-    private boolean isValidTableName(String name) {
-        return name != null && !name.equals("");
-    }
-
     public MyTableProvider(Path directory) {
         this.directory = directory;
         this.loadedTables = new HashMap<>();
@@ -29,9 +26,7 @@ public class MyTableProvider implements TableProvider {
 
     @Override
     public MyTable createTable(String name, List<Class<?>> columnTypes) throws IOException {
-        if (!isValidTableName(name)) {
-            throw new IllegalArgumentException("TableProvider.createTable: name '" + name + "' is illegal");
-        }
+        checkTableName(name);
         if (columnTypes == null || columnTypes.size() == 0) {
             throw new IllegalArgumentException("TableProvider.createTable: null columnTypes is illegal");
         }
@@ -99,9 +94,7 @@ public class MyTableProvider implements TableProvider {
 
     @Override
     public MyTable getTable(String name) {
-        if (!isValidTableName(name)) {
-            throw new IllegalArgumentException("TableProvider.getTable: name '" + name + "' is illegal");
-        }
+        checkTableName(name);
         if (loadedTables.containsKey(name)) {
             return loadedTables.get(name);
         }
@@ -123,9 +116,7 @@ public class MyTableProvider implements TableProvider {
 
     @Override
     public void removeTable(String name) {
-        if (!isValidTableName(name)) {
-            throw new IllegalArgumentException("TableProvider.removeTable: name '" + name + "' is illegal");
-        }
+        checkTableName(name);
         if (!MyTable.exists(directory, name)) {
             throw new IllegalStateException("TableProvider.removeTable: table '" + name + "' does not exist");
         }
@@ -136,4 +127,33 @@ public class MyTableProvider implements TableProvider {
         File path = directory.resolve(name).toFile();
         FileUtils.remove(path);
     }
+
+    private static final HashSet<String> FORBIDDEN_SUBSTRINGS = new HashSet<>();
+
+    static {
+        FORBIDDEN_SUBSTRINGS.add("\0");
+        FORBIDDEN_SUBSTRINGS.add("*");
+        FORBIDDEN_SUBSTRINGS.add("?");
+        FORBIDDEN_SUBSTRINGS.add(":");
+        FORBIDDEN_SUBSTRINGS.add("\"");
+        FORBIDDEN_SUBSTRINGS.add("'");
+        FORBIDDEN_SUBSTRINGS.add(".");
+        FORBIDDEN_SUBSTRINGS.add("\\");
+        FORBIDDEN_SUBSTRINGS.add("/");
+    }
+
+    public void checkTableName(String name) {
+        boolean fail = name == null || name.isEmpty();
+        if (!fail) {
+            for (String badSubstring : FORBIDDEN_SUBSTRINGS) {
+                if (name.contains(badSubstring)) {
+                    fail = true;
+                }
+            }
+        }
+        if (fail) {
+            throw new IllegalArgumentException("Invalid table name");
+        }
+    }
 }
+

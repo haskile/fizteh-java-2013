@@ -32,7 +32,7 @@ public class MyTableProvider implements TableProvider {
         if (!isValidTableName(name)) {
             throw new IllegalArgumentException("TableProvider.createTable: name '" + name + "' is illegal");
         }
-        if (columnTypes == null) {
+        if (columnTypes == null || columnTypes.size() == 0) {
             throw new IllegalArgumentException("TableProvider.createTable: null columnTypes is illegal");
         }
         for (Class clazz : columnTypes) {

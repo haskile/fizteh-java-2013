@@ -105,13 +105,17 @@ public class MyTableProvider implements TableProvider {
     public MyTable getTable(String name) {
         checkTableName(name);
 
-        lock.writeLock().lock();
-        //boolean locked = true;
-
+        lock.readLock().lock();
         try {
             if (loadedTables.containsKey(name)) {
                 return loadedTables.get(name);
             }
+        } finally {
+            lock.readLock().unlock();
+        }
+
+        lock.writeLock().lock();
+        try {
             if (!MyTable.exists(directory, name)) {
                 return null;
             }
@@ -125,20 +129,10 @@ public class MyTableProvider implements TableProvider {
             } catch (Exception e) {
                 return null;
             }
-            //lock.readLock().unlock();
-            //locked = false;
-            //lock.writeLock().lock();
-            //try {
-                loadedTables.put(name, table);
-                return table;
-            //} finally {
-                //lock.writeLock().unlock();
-            //}
+            loadedTables.put(name, table);
+            return table;
         } finally {
             lock.writeLock().unlock();
-            //if (locked) {
-            //    lock.readLock().unlock();
-            //}
         }
     }
 

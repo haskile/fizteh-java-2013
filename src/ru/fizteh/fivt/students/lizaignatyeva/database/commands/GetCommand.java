@@ -1,6 +1,5 @@
 package ru.fizteh.fivt.students.lizaignatyeva.database.commands;
 
-import ru.fizteh.fivt.format.StringFormatter;
 import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.students.lizaignatyeva.database.BadTypeException;
 import ru.fizteh.fivt.students.lizaignatyeva.database.Database;

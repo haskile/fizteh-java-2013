@@ -255,7 +255,7 @@ public class MyTable implements Table {
     private void readDirectory(File dir) throws DataFormatException, IOException {
         File[] filesInDirectory = dir.listFiles();
         if (filesInDirectory == null) {
-            return;
+            throw new DataFormatException("Empty directory found");
         }
         for (File file : filesInDirectory) {
             if (!file.isFile() || !isValidFileName(file.getName())) {

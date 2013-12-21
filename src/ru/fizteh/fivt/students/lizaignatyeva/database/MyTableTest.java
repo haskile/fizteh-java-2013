@@ -22,10 +22,10 @@ public class MyTableTest {
     private MyTableProvider tableProvider;
     private MyTable table;
     private final String tableName = "testTable";
-    private static final List<Class<?>> columnTypes = new ArrayList<>();
+    private static final List<Class<?>> COLUMN_TYPES = new ArrayList<>();
     static {
-        columnTypes.add(Integer.class);
-        columnTypes.add(String.class);
+        COLUMN_TYPES.add(Integer.class);
+        COLUMN_TYPES.add(String.class);
     }
 
     private static final MyStoreable EMPTY_INCORRECT_COLUMNS;
@@ -64,7 +64,7 @@ public class MyTableTest {
     @Before
     public void createTable() throws IOException {
         tableProvider = new MyTableProvider(folder.getRoot().toPath());
-        table = tableProvider.createTable(tableName, columnTypes);
+        table = tableProvider.createTable(tableName, COLUMN_TYPES);
         assertNotNull(table);
         value1 = tableProvider.createFor(table);
         value1.setColumnAt(0, 1);
@@ -84,13 +84,13 @@ public class MyTableTest {
 
     @Test
     public void testGetColumnsCount() {
-        assertEquals(columnTypes.size(), table.getColumnsCount());
+        assertEquals(COLUMN_TYPES.size(), table.getColumnsCount());
     }
 
     @Test
     public void testGetColumnClass() {
-        for (int index = 0; index < columnTypes.size(); index ++) {
-            assertEquals(table.getColumnType(index), columnTypes.get(index));
+        for (int index = 0; index < COLUMN_TYPES.size(); index ++) {
+            assertEquals(table.getColumnType(index), COLUMN_TYPES.get(index));
         }
     }
 

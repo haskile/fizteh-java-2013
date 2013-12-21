@@ -184,25 +184,25 @@ public class MyTable implements Table {
         }
     }
 
-    private static final HashMap<String, Class> supportedClasses = new HashMap<>();
+    private static final HashMap<String, Class> SUPPORTED_CLASSES = new HashMap<>();
 
     static {
-        supportedClasses.put("int", Integer.class);
-        supportedClasses.put("long", Long.class);
-        supportedClasses.put("byte", Byte.class);
-        supportedClasses.put("float", Float.class);
-        supportedClasses.put("double", Double.class);
-        supportedClasses.put("boolean", Boolean.class);
-        supportedClasses.put("String", String.class);
+        SUPPORTED_CLASSES.put("int", Integer.class);
+        SUPPORTED_CLASSES.put("long", Long.class);
+        SUPPORTED_CLASSES.put("byte", Byte.class);
+        SUPPORTED_CLASSES.put("float", Float.class);
+        SUPPORTED_CLASSES.put("double", Double.class);
+        SUPPORTED_CLASSES.put("boolean", Boolean.class);
+        SUPPORTED_CLASSES.put("String", String.class);
     }
 
     public static List<Class<?>> convert(List<String> classNames) {
         ArrayList<Class<?>> result = new ArrayList<>();
         for (String className : classNames) {
-            if (!supportedClasses.containsKey(className)) {
+            if (!SUPPORTED_CLASSES.containsKey(className)) {
                 throw new IllegalArgumentException("Class " + className + " is not supported");
             }
-            result.add(supportedClasses.get(className));
+            result.add(SUPPORTED_CLASSES.get(className));
         }
         return result;
     }
@@ -242,10 +242,10 @@ public class MyTable implements Table {
         try (Scanner scanner = new Scanner(file)) {
             while (scanner.hasNext()) {
                 String className = scanner.next();
-                if (!supportedClasses.containsKey(className)) {
+                if (!SUPPORTED_CLASSES.containsKey(className)) {
                     throw new DataFormatException("Class " + className + " is not supported");
                 } else {
-                    classes.add(supportedClasses.get(className));
+                    classes.add(SUPPORTED_CLASSES.get(className));
                 }
             }
         }
@@ -370,8 +370,8 @@ public class MyTable implements Table {
     }
 
     private String getClassName(Class clazz) {
-        for (String className : supportedClasses.keySet()) {
-            if (supportedClasses.get(className).equals(clazz)) {
+        for (String className : SUPPORTED_CLASSES.keySet()) {
+            if (SUPPORTED_CLASSES.get(className).equals(clazz)) {
                 return className;
             }
         }

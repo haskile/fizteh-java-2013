@@ -36,6 +36,7 @@ public class MyTableProvider implements TableProvider {
             }
         }
         StoreableSignature storeableSignature = new StoreableSignature(columnTypes);
+        MyStoreable storeable = new MyStoreable(storeableSignature); // test for class correctness
         MyTable table = new MyTable(directory, name, storeableSignature, this);
         if (MyTable.exists(directory, name)) {
             return null;

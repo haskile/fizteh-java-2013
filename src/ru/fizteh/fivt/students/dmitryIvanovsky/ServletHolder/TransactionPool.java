@@ -10,7 +10,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 public class TransactionPool {
     HashMap<Integer, MyHashMap> allMap = new HashMap<>();
     int randomNumber = 0;
-    private static final int MAX = 100*1000;
+    private static final int MAX = 100000;
     private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
     private final Lock write = readWriteLock.writeLock();
     private final Lock read = readWriteLock.readLock();
@@ -33,7 +33,7 @@ public class TransactionPool {
     public int createNewTransaction(String nameTable) {
         write.lock();
         try {
-            while(allMap.containsKey(randomNumber)) {
+            while (allMap.containsKey(randomNumber)) {
                 randomNumber = (randomNumber + 1) % MAX;
             }
             allMap.put(randomNumber, new MyHashMap());

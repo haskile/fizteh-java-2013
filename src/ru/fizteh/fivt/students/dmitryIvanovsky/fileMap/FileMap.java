@@ -3,7 +3,6 @@ package ru.fizteh.fivt.students.dmitryIvanovsky.fileMap;
 import ru.fizteh.fivt.storage.structured.ColumnFormatException;
 import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.storage.structured.Table;
-import ru.fizteh.fivt.students.dmitryIvanovsky.ServletHolder.TransactionPool;
 import ru.fizteh.fivt.students.dmitryIvanovsky.shell.CommandShell;
 
 import java.nio.charset.StandardCharsets;
@@ -83,7 +82,7 @@ public class FileMap implements Table, AutoCloseable {
         };
     }
 
-    public FileMap(Path path, final String table, final FileMapProvider parent, List<Class<?>> columnType) throws Exception {
+    public FileMap(Path path, String table, FileMapProvider parent, List<Class<?>> columnType) throws Exception {
         this.nameTable = table;
         this.pathDb = path;
         this.parent = parent;

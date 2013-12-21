@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 
 public class MyStoreable implements Storeable {
-    private final StoreableSignature storeableSignature;
+    public final StoreableSignature storeableSignature;
     private ArrayList<Object> data;
 
     private static final HashSet<Class<?>> supportedClasses = new HashSet<>();

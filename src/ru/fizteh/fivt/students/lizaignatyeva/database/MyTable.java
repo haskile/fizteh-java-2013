@@ -88,6 +88,15 @@ public class MyTable implements Table {
         if (value == null) {
             throw new IllegalArgumentException("Table.put: null value provided");
         }
+        MyStoreable myStoreable
+        try {
+            myStoreable = (MyStoreable) value;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Table.put: inconsistent Storeable provided");
+        }
+        if (!myStoreable.storeableSignature.equals(columnTypes)) {
+            throw new IllegalArgumentException("Table.put: inconsistent Storeable provided");
+        }
         Storeable result = null;
         if (uncommitedData.containsKey(key)) {
             result = uncommitedData.get(key);

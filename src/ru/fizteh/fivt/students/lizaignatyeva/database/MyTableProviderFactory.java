@@ -1,6 +1,7 @@
 package ru.fizteh.fivt.students.lizaignatyeva.database;
 
 
+import ru.fizteh.fivt.storage.structured.TableProvider;
 import ru.fizteh.fivt.storage.structured.TableProviderFactory;
 
 import java.nio.file.Path;
@@ -12,7 +13,7 @@ public class MyTableProviderFactory implements TableProviderFactory {
     }
 
     @Override
-    public MyTableProvider create(String dir) {
+    public TableProvider create(String dir) {
         if (!isValidName(dir)) {
             throw new IllegalArgumentException("TableProviderFactory.create: name '" + dir + "' is invalid");
         }

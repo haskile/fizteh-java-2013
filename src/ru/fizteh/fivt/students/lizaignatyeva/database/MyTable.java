@@ -255,25 +255,35 @@ public class MyTable implements Table {
     private void readDirectory(File dir) throws DataFormatException, IOException {
         File[] filesInDirectory = dir.listFiles();
         if (filesInDirectory == null) {
-            throw new DataFormatException("Empty directory found");
+            throw new DataFormatException("Empty directory");
         }
+        boolean found = false;
         for (File file : filesInDirectory) {
             if (!file.isFile() || !isValidFileName(file.getName())) {
                 throw new DataFormatException("Table '" + name + "' contains strange file: '" + file.getName() + "'");
             }
+            found = true;
             readFile(file.getCanonicalPath(), dir.getName(), file.getName());
+        }
+        if (!found) {
+            throw new DataFormatException("Empty directory");
         }
     }
 
     public void readFile(String filePath, String dirName, String fileName) throws DataFormatException, IOException {
         byte[] data = Files.readAllBytes(Paths.get(filePath));
         ByteBuffer buffer = ByteBuffer.wrap(data);
+        boolean found = false;
         while (buffer.hasRemaining()) {
             try {
                 readEntry(buffer, dirName, fileName);
+                found = true;
             } catch (BufferUnderflowException e) {
                 throw new DataFormatException("Table '" + name + "' contains corrupted file " + filePath);
             }
+        }
+        if (!found) {
+            throw new DataFormatException("Empty file");
         }
     }
 

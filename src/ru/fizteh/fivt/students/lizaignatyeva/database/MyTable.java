@@ -68,9 +68,7 @@ public class MyTable implements Table {
     @Override
     public Storeable get(String key) {
         checkValidness();
-        if (key == null) {
-            throw new IllegalArgumentException("Table.get: null key provided");
-        }
+        checkKey(key);
         if (uncommitedData.containsKey(key)) {
             return uncommitedData.get(key);
         }
@@ -83,12 +81,8 @@ public class MyTable implements Table {
     @Override
     public Storeable put(String key, Storeable value) {
         checkValidness();
-        if (key == null || key.equals("")) {
-            throw new IllegalArgumentException("Table.put: null key provided");
-        }
-        if (value == null) {
-            throw new IllegalArgumentException("Table.put: null value provided");
-        }
+        checkKey(key);
+        checkValue(value);
         MyStoreable myStoreable;
         try {
             myStoreable = (MyStoreable) value;
@@ -114,9 +108,7 @@ public class MyTable implements Table {
     @Override
     public Storeable remove(String key) {
         checkValidness();
-        if (key == null) {
-            throw new IllegalArgumentException("Table.remove: null key provided");
-        }
+        checkKey(key);
         Storeable result = null;
         if (uncommitedData.containsKey(key)) {
             result = uncommitedData.get(key);
@@ -427,5 +419,33 @@ public class MyTable implements Table {
 
     public void markAsDeleted() {
         isValid = false;
+    }
+
+    private void checkKey(String key) {
+        if (key == null || key.isEmpty() || key.contains("\0")) {
+            throw new IllegalArgumentException("key is invalid");
+        }
+    }
+
+    private void checkValue(Storeable value) {
+        if (value == null) {
+            throw new IllegalArgumentException("value is null");
+        }
+        try {
+            for (int index = 0; index < getColumnsCount(); index ++) {
+                if (!(value.getColumnAt(index) == null
+                        || value.getColumnAt(index).getClass().equals(columnTypes.getColumnClass(index)))) {
+                    throw new ColumnFormatException("incorrect type of value for column number " + index);
+                }
+            }
+        } catch (IndexOutOfBoundsException e) {
+            throw new ColumnFormatException("value contains less columns");
+        }
+        try {
+            value.getColumnAt(getColumnsCount());
+        } catch (IndexOutOfBoundsException e) {
+            return;
+        }
+        throw new ColumnFormatException("value contains more columns");
     }
 }

@@ -256,6 +256,9 @@ public class MyTable implements Table {
                 }
             }
         }
+        if (classes.size() == 0) {
+            throw new DataFormatException("Empty " + CONFIG_FILE + " found");
+        }
         return new StoreableSignature(classes);
     }
 

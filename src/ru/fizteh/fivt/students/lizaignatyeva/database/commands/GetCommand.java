@@ -1,6 +1,8 @@
 package ru.fizteh.fivt.students.lizaignatyeva.database.commands;
 
+import ru.fizteh.fivt.format.StringFormatter;
 import ru.fizteh.fivt.storage.structured.Storeable;
+import ru.fizteh.fivt.students.lizaignatyeva.database.BadTypeException;
 import ru.fizteh.fivt.students.lizaignatyeva.database.Database;
 import ru.fizteh.fivt.students.lizaignatyeva.shell.Command;
 
@@ -27,6 +29,8 @@ public class GetCommand extends Command {
                 System.out.println("found");
                 System.out.println(database.serialize(value));
             }
+        } catch (BadTypeException e) {
+            System.out.println(String.format("wrong type (%s)", e.getMessage()));
         } catch (Exception e) {
             System.err.println("get: " + e.getMessage());
         }

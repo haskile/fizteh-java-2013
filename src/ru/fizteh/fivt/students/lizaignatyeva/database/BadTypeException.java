@@ -1,6 +1,6 @@
 package ru.fizteh.fivt.students.lizaignatyeva.database;
 
-public class BadTypeException extends RuntimeException {
+public class BadTypeException extends IllegalArgumentException {
     public BadTypeException() {
     }
 
@@ -14,9 +14,5 @@ public class BadTypeException extends RuntimeException {
 
     public BadTypeException(Throwable cause) {
         super(cause);
-    }
-
-    public BadTypeException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace) {
-        super(message, cause, enableSuppression, writableStackTrace);
     }
 }

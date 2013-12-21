@@ -23,6 +23,7 @@ public class DbMain {
         commandsMap.put("drop", new DropCommand(database));
         commandsMap.put("commit", new CommitCommand(database));
         commandsMap.put("rollback", new RollbackCommand(database));
+        commandsMap.put("size", new SizeCommand(database));
         return commandsMap;
     }
 

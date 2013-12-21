@@ -48,7 +48,7 @@ public class CommandRunner {
             while (true) {
                 try {
                     // System.out.print(String.format("%s$ ", path.getCanonicalPath()));
-                    System.out.print("$");
+                    System.out.print(" $ ");
                 } catch (Exception e) {
                     System.err.println("Something went wrong!");
                     return;

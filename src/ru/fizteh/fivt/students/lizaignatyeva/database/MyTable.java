@@ -368,7 +368,12 @@ public class MyTable implements Table {
     }
 
     private String getClassName(Class clazz) {
-        for ()
+        for (String className : supportedClasses) {
+            if (supportedClasses.get(className).equals(clazz)) {
+                return className;
+            }
+        }
+        throw new IllegalArgumentException("Unsupported class");
     }
 
     private void writeConfig() throws IOException {
@@ -379,6 +384,7 @@ public class MyTable implements Table {
                 if (!first) {
                     printWriter.print(" ");
                 }
+                printWriter.print(getClassName(clazz));
                 first = false;
             }
         }

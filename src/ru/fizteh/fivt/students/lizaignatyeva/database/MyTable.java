@@ -4,10 +4,7 @@ import ru.fizteh.fivt.storage.structured.ColumnFormatException;
 import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.storage.structured.Table;
 
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.BufferUnderflowException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -192,7 +189,7 @@ public class MyTable implements Table {
         supportedClasses.put("float", Float.class);
         supportedClasses.put("double", Double.class);
         supportedClasses.put("boolean", Boolean.class);
-        supportedClasses.put("string", String.class);
+        supportedClasses.put("String", String.class);
     }
 
     public static List<Class<?>> convert(List<String> classNames) {
@@ -347,6 +344,7 @@ public class MyTable implements Table {
             //System.exit(1);
         }
         FileUtils.mkDir(path.getAbsolutePath());
+        writeConfig();
         for (String key: data.keySet()) {
             String value = tableProvider.serialize(this, data.get(key));
             File directory = FileUtils.mkDir(path.getAbsolutePath()
@@ -355,6 +353,20 @@ public class MyTable implements Table {
             try (BufferedOutputStream outputStream = new BufferedOutputStream(
                     new FileOutputStream(file.getCanonicalPath(), true))) {
                 writeEntry(key, value, outputStream);
+            }
+        }
+    }
+
+    private void writeConfig() throws IOException {
+        Path path = globalDirectory.resolve(name).resolve(CONFIG_FILE);
+        boolean first = true;
+        try (PrintWriter printWriter = new PrintWriter(path.toFile())) {
+            for (Class clazz : columnTypes.columnClasses) {
+                if (!first) {
+                    printWriter.print(" ");
+                }
+                printWriter.print(clazz.getName());
+                first = false;
             }
         }
     }

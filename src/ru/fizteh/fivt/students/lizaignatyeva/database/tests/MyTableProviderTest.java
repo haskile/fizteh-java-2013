@@ -15,9 +15,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.assertNotNull;
-import static junit.framework.Assert.assertNull;
+import static junit.framework.Assert.*;
 
 public class MyTableProviderTest {
     @Rule
@@ -55,7 +53,7 @@ public class MyTableProviderTest {
         MyTable table1 = myTableProvider.getTable("default");
         MyTable table2 = myTableProvider.getTable("default");
         assertNotNull(table1);
-        assert(table1 == table2);
+        assertTrue(table1 == table2);
     }
 
     @Test

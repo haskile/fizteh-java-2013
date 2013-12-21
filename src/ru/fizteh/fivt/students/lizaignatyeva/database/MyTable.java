@@ -161,7 +161,7 @@ public class MyTable implements Table {
             if (value != null) {
                 keys.add(key);
             } else {
-                keys.add(key);
+                keys.remove(key);
             }
         }
         return keys.size();

@@ -88,7 +88,7 @@ public class MyTable implements Table {
         if (value == null) {
             throw new IllegalArgumentException("Table.put: null value provided");
         }
-        MyStoreable myStoreable
+        MyStoreable myStoreable;
         try {
             myStoreable = (MyStoreable) value;
         } catch (Exception e) {

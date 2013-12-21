@@ -1,10 +1,12 @@
-package ru.fizteh.fivt.students.lizaignatyeva.database;
+package ru.fizteh.fivt.students.lizaignatyeva.database.tests;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.experimental.theories.Theories;
 import org.junit.runner.RunWith;
 import ru.fizteh.fivt.storage.structured.ColumnFormatException;
+import ru.fizteh.fivt.students.lizaignatyeva.database.MyStoreable;
+import ru.fizteh.fivt.students.lizaignatyeva.database.StoreableSignature;
 
 import java.text.ParseException;
 import java.util.ArrayList;

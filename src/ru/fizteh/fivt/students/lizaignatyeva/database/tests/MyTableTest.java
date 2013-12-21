@@ -1,4 +1,4 @@
-package ru.fizteh.fivt.students.lizaignatyeva.database;
+package ru.fizteh.fivt.students.lizaignatyeva.database.tests;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -6,6 +6,10 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import ru.fizteh.fivt.storage.structured.ColumnFormatException;
 import ru.fizteh.fivt.storage.structured.Storeable;
+import ru.fizteh.fivt.students.lizaignatyeva.database.MyStoreable;
+import ru.fizteh.fivt.students.lizaignatyeva.database.MyTable;
+import ru.fizteh.fivt.students.lizaignatyeva.database.MyTableProvider;
+import ru.fizteh.fivt.students.lizaignatyeva.database.StoreableSignature;
 
 import java.io.IOException;
 import java.util.ArrayList;

@@ -1,6 +1,8 @@
 package ru.fizteh.fivt.students.lizaignatyeva.database.commands;
 
+import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.students.lizaignatyeva.database.Database;
+import ru.fizteh.fivt.students.lizaignatyeva.database.MyStoreable;
 import ru.fizteh.fivt.students.lizaignatyeva.shell.Command;
 
 public class GetCommand extends Command {
@@ -19,12 +21,12 @@ public class GetCommand extends Command {
             return;
         }
         try {
-            String value = database.currentTable.get(key);
+            Storeable value = database.currentTable.get(key);
             if (value == null) {
                 System.out.println("not found");
             } else {
                 System.out.println("found");
-                System.out.println(value);
+                System.out.println(database.serialize(value));
             }
         } catch (Exception e) {
             System.err.println("get: " + e.getMessage());

@@ -1,5 +1,6 @@
 package ru.fizteh.fivt.students.lizaignatyeva.database.commands;
 
+import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.students.lizaignatyeva.database.Database;
 import ru.fizteh.fivt.students.lizaignatyeva.shell.Command;
 
@@ -16,9 +17,9 @@ public class PutCommand extends Command {
     public void run(String[] args) throws Exception {
         if (database.checkActive()) {
             String key = args[0];
-            String value = args[1];
+            Storeable value = database.deserialize(args[1]);
             try {
-                String oldValue = database.currentTable.put(key, value);
+                Storeable oldValue = database.currentTable.put(key, value);
                 if (oldValue == null) {
                     System.out.println("new");
                 } else {

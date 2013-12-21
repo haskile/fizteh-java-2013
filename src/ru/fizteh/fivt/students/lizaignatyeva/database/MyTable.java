@@ -203,6 +203,21 @@ public class MyTable implements Table {
         supportedClasses.put("string", String.class);
     }
 
+    public static List<Class<?>> convert(List<String> classNames) {
+        ArrayList<Class<?>> result = new ArrayList<>();
+        for (String className : classNames) {
+            if (!supportedClasses.containsKey(className)) {
+                throw new IllegalArgumentException("Class " + className + " is not supported");
+            }
+            result.add(supportedClasses.get(className));
+        }
+        return result;
+    }
+
+    public static List<Class<?>> convert(String[] classNames) {
+        return convert(Arrays.asList(classNames));
+    }
+
     public static MyTable read(Path globalDirectory, String name, MyTableProvider tableProvider)
                 throws IOException, DataFormatException
     {

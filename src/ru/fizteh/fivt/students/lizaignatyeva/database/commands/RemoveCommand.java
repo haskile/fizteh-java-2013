@@ -1,5 +1,6 @@
 package ru.fizteh.fivt.students.lizaignatyeva.database.commands;
 
+import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.students.lizaignatyeva.database.Database;
 import ru.fizteh.fivt.students.lizaignatyeva.shell.Command;
 
@@ -18,7 +19,7 @@ public class RemoveCommand extends Command{
             return;
         }
         String key = args[0];
-        String oldValue = database.currentTable.remove(key);
+        Storeable oldValue = database.currentTable.remove(key);
         if (oldValue == null) {
             System.out.println("not found");
         } else {

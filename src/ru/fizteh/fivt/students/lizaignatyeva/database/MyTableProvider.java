@@ -28,7 +28,7 @@ public class MyTableProvider implements TableProvider {
     }
 
     @Override
-    public Table createTable(String name, List<Class<?>> columnTypes) throws IOException {
+    public MyTable createTable(String name, List<Class<?>> columnTypes) throws IOException {
         if (!isValidTableName(name)) {
             throw new IllegalArgumentException("TableProvider.createTable: name '" + name + "' is illegal");
         }

@@ -19,7 +19,7 @@ public class CommitServlet extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String transactionId = req.getParameter("tid");
         if (transactionId == null) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "No tid provided");
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "No tid provided");
             return;
         }
         MyTable table = database.getTransaction(transactionId);

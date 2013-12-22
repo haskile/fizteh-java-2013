@@ -20,17 +20,17 @@ public class PutServlet extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String transactionId = req.getParameter("tid");
         if (transactionId == null) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "No tid provided");
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "No tid provided");
             return;
         }
         String key = req.getParameter("key");
         if (key == null) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "No key provided");
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "No key provided");
             return;
         }
         String value = req.getParameter("value");
         if (value == null) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "No value provided");
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "No value provided");
             return;
         }
         MyTable table = database.getTransaction(transactionId);
@@ -42,7 +42,7 @@ public class PutServlet extends HttpServlet {
         try {
             realValue = database.tableProvider.deserialize(table, value);
         } catch (Exception e) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Incorrect value provided");
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Incorrect value provided");
             return;
         }
         Storeable oldValue;

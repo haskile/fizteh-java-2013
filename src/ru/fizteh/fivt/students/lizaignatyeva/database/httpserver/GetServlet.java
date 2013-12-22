@@ -20,12 +20,12 @@ public class GetServlet extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String transactionId = req.getParameter("tid");
         if (transactionId == null) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "No tid provided");
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "No tid provided");
             return;
         }
         String key = req.getParameter("key");
         if (key == null) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "No key provided");
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "No key provided");
             return;
         }
         MyTable table = database.getTransaction(transactionId);
@@ -42,7 +42,7 @@ public class GetServlet extends HttpServlet {
             }
             result = database.tableProvider.serialize(table, value);
         } catch (IllegalArgumentException e) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Illegal key");
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Illegal key");
             return;
         } catch (Exception e) {
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to get");

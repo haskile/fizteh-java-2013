@@ -17,7 +17,7 @@ public class BeginServlet extends HttpServlet {
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         String tableName = req.getParameter("table");
         if (tableName == null) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "No table name provided");
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "No table name provided");
             return;
         }
         String transactionId;
@@ -28,7 +28,7 @@ public class BeginServlet extends HttpServlet {
                 return;
             }
         } catch (IllegalArgumentException e) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Illegal table name");
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Illegal table name");
             return;
         }
         resp.setStatus(HttpServletResponse.SC_OK);

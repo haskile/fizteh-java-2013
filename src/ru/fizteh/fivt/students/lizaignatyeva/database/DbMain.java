@@ -2,9 +2,8 @@ package ru.fizteh.fivt.students.lizaignatyeva.database;
 
 
 import ru.fizteh.fivt.students.lizaignatyeva.database.commands.*;
-import ru.fizteh.fivt.students.lizaignatyeva.database.httpserver.MyServer;
-import ru.fizteh.fivt.students.lizaignatyeva.database.httpserver.StartHttpCommand;
-import ru.fizteh.fivt.students.lizaignatyeva.database.httpserver.StopHttpCommand;
+import ru.fizteh.fivt.students.lizaignatyeva.database.httpserver.*;
+import ru.fizteh.fivt.students.lizaignatyeva.database.httpserver.ExitCommand;
 import ru.fizteh.fivt.students.lizaignatyeva.shell.Command;
 import ru.fizteh.fivt.students.lizaignatyeva.shell.CommandRunner;
 
@@ -19,13 +18,13 @@ public class DbMain {
         commandsMap.put("put", new PutCommand(database));
         commandsMap.put("get", new GetCommand(database));
         commandsMap.put("remove", new RemoveCommand(database));
-        commandsMap.put("exit", new ExitCommand(database));
         commandsMap.put("use", new UseCommand(database));
         commandsMap.put("create", new CreateCommand(database));
         commandsMap.put("drop", new DropCommand(database));
         commandsMap.put("commit", new CommitCommand(database));
         commandsMap.put("rollback", new RollbackCommand(database));
         commandsMap.put("size", new SizeCommand(database));
+        commandsMap.put("exit", new ExitCommand(server));
         commandsMap.put("starthttp", new StartHttpCommand(server));
         commandsMap.put("stophttp", new StopHttpCommand(server));
         return commandsMap;

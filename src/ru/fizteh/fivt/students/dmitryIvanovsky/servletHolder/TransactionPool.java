@@ -13,7 +13,6 @@ public class TransactionPool {
     private static final int MAX = 100000;
     private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
     private final Lock write = readWriteLock.writeLock();
-    private final Lock read = readWriteLock.readLock();
     HashMap<Integer, String> transactionTable = new HashMap<>();
 
     public MyHashMap getMap(int numberTransaction) {
@@ -51,7 +50,12 @@ public class TransactionPool {
     }
 
     public String getNameTable(int numberTransaction) {
-        return transactionTable.get(numberTransaction);
+        write.lock();
+        try {
+            return transactionTable.get(numberTransaction);
+        } finally {
+            write.unlock();
+        }
     }
 
     public boolean isExistTransaction(int numberTransaction) {

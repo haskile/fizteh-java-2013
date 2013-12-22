@@ -400,8 +400,8 @@ public class FileMap implements Table, AutoCloseable {
 
     private int getLocalTransaction() {
         int transaction = localTransaction.get();
-        write.lock();
-        try {
+        //write.lock();
+        //try {
             if (parent.getPool().isExistTransaction(transaction)) {
                 return transaction;
             } else {
@@ -409,9 +409,9 @@ public class FileMap implements Table, AutoCloseable {
                 localTransaction.set(transaction);
                 return transaction;
             }
-        } finally {
-            write.unlock();
-        }
+        //} finally {
+        //    write.unlock();
+        //}
     }
 
     public int changeKey() {
@@ -688,6 +688,7 @@ public class FileMap implements Table, AutoCloseable {
                     err.addSuppressed(errRefresh);
                 }
             } finally {
+                parent.getPool().deleteTransaction(numberTransaction);
                 write.unlock();
                 currentDiff.clear();
                 if (err != null) {
@@ -695,7 +696,6 @@ public class FileMap implements Table, AutoCloseable {
                 }
             }
         }
-        parent.getPool().deleteTransaction(numberTransaction);
         return count;
     }
 

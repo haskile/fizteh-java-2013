@@ -1,9 +1,6 @@
 package ru.fizteh.fivt.students.zhidkovanton.filemap;
 
 import ru.fizteh.fivt.students.zhidkovanton.shell.BaseShellCommand;
-import ru.fizteh.fivt.students.zhidkovanton.shell.Command;
-import ru.fizteh.fivt.students.zhidkovanton.shell.InvalidCommandException;
-
 
 public final class ShellGet extends BaseShellCommand {
     private State state;

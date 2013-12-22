@@ -58,16 +58,14 @@ public class HTTPDatabaseServer {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Transaction id expected");
                 return;
             }
-            HashMap<String, Storeable> transaction;
-            MultiFileMap table;
+            Transaction transaction;
             try {
                 transaction = transactionPool.getTransaction(id);
-                table = transactionPool.getTable(id);
             } catch (IllegalArgumentException e) {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
                 return;
             }
-            int changes = table.commit(transaction);
+            int changes = transaction.getTable().commit(transaction.getDiff());
             transactionPool.removeTransaction(id);
             resp.setStatus(HttpServletResponse.SC_OK);
             resp.setContentType("text/plain");
@@ -85,16 +83,14 @@ public class HTTPDatabaseServer {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Transaction id expected");
                 return;
             }
-            HashMap<String, Storeable> transaction;
-            MultiFileMap table;
+            Transaction transaction;
             try {
                 transaction = transactionPool.getTransaction(id);
-                table = transactionPool.getTable(id);
             } catch (IllegalArgumentException e) {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
                 return;
             }
-            int changes = table.rollback(transaction);
+            int changes = transaction.getTable().rollback(transaction.getDiff());
             transactionPool.removeTransaction(id);
             resp.setStatus(HttpServletResponse.SC_OK);
             resp.setContentType("text/plain");
@@ -117,23 +113,21 @@ public class HTTPDatabaseServer {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "key expected");
                 return;
             }
-            HashMap<String, Storeable> transaction;
-            MultiFileMap table;
+            Transaction transaction;
             try {
                 transaction = transactionPool.getTransaction(id);
-                table = transactionPool.getTable(id);
             } catch (IllegalArgumentException e) {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
                 return;
             }
-            Storeable value = table.get(transaction, key);
+            Storeable value = transaction.getTable().get(transaction.getDiff(), key);
             if (value == null) {
                 resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "not found");
                 return;
             }
             String answer;
             try {
-                answer = provider.serialize(table, value);
+                answer = provider.serialize(transaction.getTable(), value);
             } catch (ColumnFormatException e) {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
                 return;
@@ -164,23 +158,21 @@ public class HTTPDatabaseServer {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "value expected");
                 return;
             }
-            HashMap<String, Storeable> transaction;
-            MultiFileMap table;
+            Transaction transaction;
             try {
                 transaction = transactionPool.getTransaction(id);
-                table = transactionPool.getTable(id);
             } catch (IllegalArgumentException e) {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
                 return;
             }
             Storeable value;
             try {
-                value = provider.deserialize(table, valueString);
+                value = provider.deserialize(transaction.getTable(), valueString);
             } catch (ParseException e) {
                 resp.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
                 return;
             }
-            Storeable oldValue = table.put(transaction, key, value);
+            Storeable oldValue = transaction.getTable().put(transaction.getDiff(), key, value);
             String answer;
             try {
                 if (oldValue == null) {
@@ -188,7 +180,7 @@ public class HTTPDatabaseServer {
                     resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "new");
                     return;
                 } else {
-                    answer = provider.serialize(table, oldValue);
+                    answer = provider.serialize(transaction.getTable(), oldValue);
                 }
             } catch (ColumnFormatException e) {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
@@ -215,23 +207,21 @@ public class HTTPDatabaseServer {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "key expected");
                 return;
             }
-            HashMap<String, Storeable> transaction;
-            MultiFileMap table;
+            Transaction transaction;
             try {
                 transaction = transactionPool.getTransaction(id);
-                table = transactionPool.getTable(id);
             } catch (IllegalArgumentException e) {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
                 return;
             }
-            Storeable value = table.remove(transaction, key);
+            Storeable value = transaction.getTable().remove(transaction.getDiff(), key);
             if (value == null) {
                 resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "not found");
                 return;
             }
             String answer;
             try {
-                answer = provider.serialize(table, value);
+                answer = provider.serialize(transaction.getTable(), value);
             } catch (ColumnFormatException e) {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
                 return;
@@ -252,16 +242,14 @@ public class HTTPDatabaseServer {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Transaction id expected");
                 return;
             }
-            HashMap<String, Storeable> transaction;
-            MultiFileMap table;
+            Transaction transaction;
             try {
                 transaction = transactionPool.getTransaction(id);
-                table = transactionPool.getTable(id);
             } catch (IllegalArgumentException e) {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
                 return;
             }
-            int changes = table.size(transaction);
+            int changes = transaction.getTable().size(transaction.getDiff());
             resp.setStatus(HttpServletResponse.SC_OK);
             resp.setContentType("text/plain");
             resp.setCharacterEncoding("UTF8");

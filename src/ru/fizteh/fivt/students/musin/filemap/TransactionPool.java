@@ -5,17 +5,19 @@ import ru.fizteh.fivt.storage.structured.Storeable;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TransactionPool {
-    private HashMap<String, HashMap<String, Storeable>> transactions;
-    private HashMap<String, MultiFileMap> tables;
+    private HashMap<String, Transaction> transactions;
     private Queue<Integer> available;
     private int idLength;
+    private ReadWriteLock lock;
 
     public TransactionPool(int idLength) {
         this.idLength = idLength;
         transactions = new HashMap<>();
-        tables = new HashMap<>();
+        lock = new ReentrantReadWriteLock();
         available = new LinkedList<>();
         int maxValue = 1;
         for (int i = 0; i < idLength; i++) {
@@ -42,41 +44,45 @@ public class TransactionPool {
     }
 
     String createTransaction(MultiFileMap table) {
-        if (available.isEmpty()) {
-            throw new IllegalStateException("No space for a new transaction");
+        lock.writeLock().lock();
+        try {
+            if (available.isEmpty()) {
+                throw new IllegalStateException("No space for a new transaction");
+            }
+            int next = available.remove();
+            String id = String.format("%05d", next);
+            transactions.put(id, new Transaction(table));
+            return id;
+        } finally {
+            lock.writeLock().unlock();
         }
-        int next = available.remove();
-        String id = String.format("%05d", next);
-        transactions.put(id, new HashMap<String, Storeable>());
-        tables.put(id, table);
-        return id;
     }
 
     void removeTransaction(String id) {
-        checkTransactionId(id);
-        if (transactions.remove(id) == null) {
-            throw new IllegalArgumentException("Transaction doesn't exist");
+        lock.writeLock().lock();
+        try {
+            checkTransactionId(id);
+            if (transactions.remove(id) == null) {
+                throw new IllegalArgumentException("Transaction doesn't exist");
+            }
+            available.add(Integer.parseInt(id));
+        } finally {
+            lock.writeLock().unlock();
         }
-        tables.remove(id);
-        available.add(Integer.parseInt(id));
     }
 
-    HashMap<String, Storeable> getTransaction(String id) {
-        checkTransactionId(id);
-        HashMap<String, Storeable> result = transactions.get(id);
-        if (result == null) {
-            throw new IllegalArgumentException("Transaction doesn't exist");
+    Transaction getTransaction(String id) {
+        lock.readLock().lock();
+        try {
+            checkTransactionId(id);
+            Transaction result = transactions.get(id);
+            if (result == null) {
+                throw new IllegalArgumentException("Transaction doesn't exist");
+            }
+            return result;
+        } finally {
+            lock.readLock().unlock();
         }
-        return result;
-    }
-
-    MultiFileMap getTable(String id) {
-        checkTransactionId(id);
-        MultiFileMap result = tables.get(id);
-        if (result == null) {
-            throw new IllegalArgumentException("Transaction doesn't exist");
-        }
-        return result;
     }
 
     TransactionHandler createHandler(MultiFileMap table) {

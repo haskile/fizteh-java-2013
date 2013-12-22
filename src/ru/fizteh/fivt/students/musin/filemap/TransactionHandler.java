@@ -5,7 +5,7 @@ import ru.fizteh.fivt.storage.structured.Storeable;
 import java.util.HashMap;
 
 public class TransactionHandler {
-    private HashMap<String, Storeable> transaction;
+    private Transaction transaction;
     private TransactionPool transactionPool;
     private MultiFileMap table;
     private String id;
@@ -16,12 +16,12 @@ public class TransactionHandler {
         this.table = table;
     }
 
-    public HashMap<String, Storeable> get() {
+    public HashMap<String, Storeable> getDiff() {
         if (transaction == null) {
             id = transactionPool.createTransaction(table);
             transaction = transactionPool.getTransaction(id);
         }
-        return transaction;
+        return transaction.getDiff();
     }
 
     public void clear() {

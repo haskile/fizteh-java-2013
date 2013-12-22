@@ -34,7 +34,7 @@ public class HTTPDatabaseServer {
                 throws ServletException, IOException {
             String name = req.getParameter("table");
             if (name == null) {
-                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Table name expected");
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Table name expected");
                 return;
             }
             MultiFileMap table = provider.getTable(name);
@@ -55,7 +55,7 @@ public class HTTPDatabaseServer {
                 throws ServletException, IOException {
             String id = req.getParameter("tid");
             if (id == null) {
-                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Transaction id expected");
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Transaction id expected");
                 return;
             }
             HashMap<String, Storeable> transaction;
@@ -82,7 +82,7 @@ public class HTTPDatabaseServer {
                 throws ServletException, IOException {
             String id = req.getParameter("tid");
             if (id == null) {
-                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Transaction id expected");
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Transaction id expected");
                 return;
             }
             HashMap<String, Storeable> transaction;
@@ -109,12 +109,12 @@ public class HTTPDatabaseServer {
                 throws ServletException, IOException {
             String id = req.getParameter("tid");
             if (id == null) {
-                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Transaction id expected");
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Transaction id expected");
                 return;
             }
             String key = req.getParameter("key");
             if (key == null) {
-                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "key expected");
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "key expected");
                 return;
             }
             HashMap<String, Storeable> transaction;
@@ -151,17 +151,17 @@ public class HTTPDatabaseServer {
                 throws ServletException, IOException {
             String id = req.getParameter("tid");
             if (id == null) {
-                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Transaction id expected");
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Transaction id expected");
                 return;
             }
             String key = req.getParameter("key");
             if (key == null) {
-                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "key expected");
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "key expected");
                 return;
             }
             String valueString = req.getParameter("value");
             if (valueString == null) {
-                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "value expected");
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "value expected");
                 return;
             }
             HashMap<String, Storeable> transaction;
@@ -205,12 +205,12 @@ public class HTTPDatabaseServer {
                 throws ServletException, IOException {
             String id = req.getParameter("tid");
             if (id == null) {
-                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Transaction id expected");
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Transaction id expected");
                 return;
             }
             String key = req.getParameter("key");
             if (key == null) {
-                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "key expected");
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "key expected");
                 return;
             }
             HashMap<String, Storeable> transaction;
@@ -247,7 +247,7 @@ public class HTTPDatabaseServer {
                 throws ServletException, IOException {
             String id = req.getParameter("tid");
             if (id == null) {
-                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Transaction id expected");
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Transaction id expected");
                 return;
             }
             HashMap<String, Storeable> transaction;

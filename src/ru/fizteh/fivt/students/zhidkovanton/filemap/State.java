@@ -21,7 +21,9 @@ public class State {
 
     public String remove(String key) {
         String oldValue = state.get(key);
-        if (oldValue != null) state.remove(key);
+        if (oldValue != null) {
+            state.remove(key);
+        }
         return oldValue;
     }
 

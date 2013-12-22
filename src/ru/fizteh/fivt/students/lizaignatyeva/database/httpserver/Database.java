@@ -44,7 +44,7 @@ public class Database {
                 String transactionName = String.format("%05d", transactionId);
                 if (!transactions.containsKey(transactionName)) {
                     MyTable table = tableProvider.getTable(tableName);
-                    transactions.put(tableName, table);
+                    transactions.put(transactionName, table);
                     return transactionName;
                 }
             }

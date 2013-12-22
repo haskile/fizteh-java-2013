@@ -184,7 +184,9 @@ public class HTTPDatabaseServer {
             String answer;
             try {
                 if (oldValue == null) {
-                    answer = "new";
+                    //answer = "new";
+                    resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "new");
+                    return;
                 } else {
                     answer = provider.serialize(table, oldValue);
                 }

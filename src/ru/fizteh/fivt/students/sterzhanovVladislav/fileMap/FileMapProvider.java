@@ -1,12 +1,15 @@
 package ru.fizteh.fivt.students.sterzhanovVladislav.fileMap;
 
 import java.io.IOException;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import ru.fizteh.fivt.storage.structured.ColumnFormatException;
 import ru.fizteh.fivt.storage.structured.Storeable;
@@ -22,7 +25,9 @@ public class FileMapProvider implements TableProvider {
 
     private Path rootDir;
     private HashMap<String, FileMap> tables;
-
+    
+    private Lock lock = new ReentrantLock();
+    
     @Override
     public FileMap getTable(String name) {
         if (name == null || name.isEmpty()) {
@@ -32,8 +37,10 @@ public class FileMapProvider implements TableProvider {
         if (dbPath == null || !isValidFileName(name)) {
             throw new IllegalArgumentException("Invalid path");
         }
+        FileMap table;
+        lock.lock();
         try {
-            FileMap table = tables.get(name);
+            table = tables.get(name);
             if (table == null) {
                 table = IOUtility.parseDatabase(dbPath);
                 table.setProvider(this);
@@ -42,6 +49,8 @@ public class FileMapProvider implements TableProvider {
             return table; 
         } catch (IOException e) {
             return null;
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -54,14 +63,19 @@ public class FileMapProvider implements TableProvider {
         if (dbPath == null || !isValidFileName(name)) {
             throw new IllegalArgumentException("Invalid path");
         }
-        if (dbPath.toFile().exists()) {
-            return null;
+        lock.lock();
+        try {
+            if (dbPath.toFile().exists()) {
+                return null;
+            }
+            FileMap newFileMap = new FileMap(name, columnTypes);
+            newFileMap.setProvider(this);
+            createFileStructure(dbPath, columnTypes);
+            tables.put(name, newFileMap);
+            return newFileMap;
+        } finally {
+            lock.unlock();
         }
-        createFileStructure(dbPath, columnTypes);
-        FileMap newFileMap = new FileMap(name, columnTypes);
-        newFileMap.setProvider(this);
-        tables.put(name, newFileMap);
-        return newFileMap;
     }
 
     @Override
@@ -69,21 +83,21 @@ public class FileMapProvider implements TableProvider {
         if (name == null || name.isEmpty()) {
             throw new IllegalArgumentException();
         }
-        Path dbPath = Paths.get(rootDir.normalize() + "/" + name);
-        if (dbPath == null || !isValidFileName(name)) {
-            throw new IllegalArgumentException("Invalid path");
-        }
+        lock.lock();
         try {
+            FileMap removedTable = tables.remove(name);
+            Path dbPath = Paths.get(getRootDir() + "/" + name);
+            if (dbPath == null) {
+                throw new IllegalArgumentException("Invalid database path");
+            }
             ShellUtility.removeDir(dbPath);
-            tables.remove(name);
+            if (removedTable != null) {
+                removedTable.destroy();
+            }
         } catch (IOException e) {
             throw new IllegalStateException(e.getMessage());
-        }
-    }
-    
-    public void removeAllTables() {
-        for (String tableName : tables.keySet()) {
-            removeTable(tableName);
+        } finally {
+            lock.unlock();
         }
     }
     

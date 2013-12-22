@@ -19,12 +19,12 @@ public class MultiFileTable extends AbstractTable<String, String> implements Cha
     @Override
     public int commit() {
         int counter = countChanges();
-        for (String key : deletedKeys) {
+        for (String key : deletedKeys.get()) {
             dataBase.remove(key);
         }
-        dataBase.putAll(addedKeys);
-        deletedKeys.clear();
-        addedKeys.clear();
+        dataBase.putAll(addedKeys.get());
+        deletedKeys.get().clear();
+        addedKeys.get().clear();
         try {
             MultiFileUtils.write(dataDirectory, dataBase);
         } catch (IOException e) {

@@ -36,6 +36,14 @@ public class StorableTableProviderTest {
         badList.add(IllegalArgumentException.class);
     }
 
+    @AfterClass
+    public static void tearDownClass() throws Exception {
+        File file = new File("javatest");
+        if (file.exists()) {
+            FileUtils.deleteDirectory(file);
+        }
+    }
+
     @Before
     public void setUp() throws Exception {
         table = tableProvider.createTable("table", goodList);
@@ -44,14 +52,6 @@ public class StorableTableProviderTest {
     @After
     public void tearDown() throws Exception {
         tableProvider.removeTable("table");
-    }
-
-    @AfterClass
-    public static void tearDownClass() throws Exception {
-        File file = new File("javatest");
-        if (file.exists()) {
-            FileUtils.deleteDirectory(file);
-        }
     }
 
     @Test(expected = IllegalArgumentException.class)

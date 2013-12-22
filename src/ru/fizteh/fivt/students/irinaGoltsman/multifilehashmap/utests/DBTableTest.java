@@ -30,6 +30,16 @@ public class DBTableTest {
     }
 
     @Test
+    public void sizeIsZeroForNew() {
+        Assert.assertEquals(0, table.size());
+    }
+
+    @Test
+    public void commitIsZeroForNew() throws IOException {
+        Assert.assertEquals(0, table.commit());
+    }
+
+    @Test
     public void getName() {
         Assert.assertEquals("testTable", table.getName());
     }
@@ -89,6 +99,29 @@ public class DBTableTest {
     }
 
     @Test
+    public void sizeHardWork() throws IOException {
+        List<Class<?>> types = new ArrayList<>();
+        types.add(Integer.class);
+        Storeable row = new DBStoreable(types);
+        Assert.assertEquals(0, table.size());
+        table.put("1", row);
+        table.commit();
+        Assert.assertEquals(1, table.size());
+        table.put("2", row);
+        table.put("3", row);
+        Assert.assertEquals(3, table.size());
+        row.setColumnAt(0, 1);
+        table.put("1", row);
+        Assert.assertEquals(3, table.size());
+        table.remove("1");
+        Assert.assertEquals(2, table.size());
+        table.remove("2");
+        table.remove("3");
+        Assert.assertEquals(0, table.size());
+        table.commit();
+    }
+
+    @Test
     public void commitWork() throws IOException {
         List<Class<?>> types = new ArrayList<>();
         types.add(Integer.class);
@@ -115,6 +148,10 @@ public class DBTableTest {
         Assert.assertEquals(0, table.rollback());
         Storeable oldValue = table.put("new1", row);
         Assert.assertNull(oldValue);
+        table.remove("new1");
+        table.remove("new2");
+        table.remove("new3");
+        Assert.assertEquals(0, table.size());
     }
 
     @Test
@@ -139,5 +176,91 @@ public class DBTableTest {
         }
     }
 
+    @Test
+    public void commitRollback() throws IOException {
+        Storeable newRow = new DBStoreable(columnTypes);
+        newRow.setColumnAt(0, 123);
+        table.put("old", newRow);
+        table.put("oldWhichWillRemoved", newRow);
+        table.commit();
+        Assert.assertEquals(2, table.size());
+        Storeable row = new DBStoreable(columnTypes);
+        row.setColumnAt(0, 1);
+        //overwrite
+        table.put("old", row);
+        Assert.assertEquals(2, table.size());
+        table.put("12345", row);
+        Assert.assertEquals(3, table.size());
+        table.remove("oldWhichWillRemoved");
+        Assert.assertEquals(2, table.size());
+        table.rollback();
+        Assert.assertEquals(2, table.size());
+        table.remove("old");
+        table.remove("oldWhichWillRemoved");
+        table.commit();
+    }
 
+    @Test(expected = IllegalStateException.class)
+    public void getNameAfterCloseTableShouldFail() throws IOException {
+        Table newTable = tableProvider.createTable("tableWhichWillClosed", columnTypes);
+        ((DBTable) newTable).close();
+        newTable.getName();
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void getAfterCloseTableShouldFail() throws IOException {
+        Table newTable = tableProvider.createTable("tableWhichWillClosed", columnTypes);
+        ((DBTable) newTable).close();
+        newTable.get("1");
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void putAfterCloseTableShouldFail() throws IOException {
+        Table newTable = tableProvider.createTable("tableWhichWillClosed", columnTypes);
+        Storeable value = tableProvider.createFor(newTable);
+        ((DBTable) newTable).close();
+        newTable.put("1", value);
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void removeAfterCloseTableShouldFail() throws IOException {
+        Table newTable = tableProvider.createTable("tableWhichWillClosed", columnTypes);
+        ((DBTable) newTable).close();
+        newTable.remove("1");
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void sizeAfterCloseTableShouldFail() throws IOException {
+        Table newTable = tableProvider.createTable("tableWhichWillClosed", columnTypes);
+        ((DBTable) newTable).close();
+        newTable.size();
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void commitAfterCloseTableShouldFail() throws IOException {
+        Table newTable = tableProvider.createTable("tableWhichWillClosed", columnTypes);
+        ((DBTable) newTable).close();
+        newTable.commit();
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void rollbackAfterCloseTableShouldFail() throws IOException {
+        Table newTable = tableProvider.createTable("tableWhichWillClosed", columnTypes);
+        ((DBTable) newTable).close();
+        newTable.rollback();
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void getColumnsCountAfterCloseTableShouldFail() throws IOException {
+        Table newTable = tableProvider.createTable("tableWhichWillClosed", columnTypes);
+        ((DBTable) newTable).close();
+        newTable.getColumnsCount();
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void getColumnsTypeAfterCloseTableShouldFail() throws IOException {
+        Table newTable = tableProvider.createTable("tableWhichWillClosed", columnTypes);
+        ((DBTable) newTable).close();
+        newTable.getColumnType(0);
+    }
 }

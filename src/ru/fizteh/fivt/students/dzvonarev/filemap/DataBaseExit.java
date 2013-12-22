@@ -15,7 +15,10 @@ public class DataBaseExit implements CommandInterface {
     private MyTableProvider tableProvider;
 
     public void execute(ArrayList<String> args) throws IOException, IllegalArgumentException {
-        tableProvider.writeAll();
+        if (tableProvider != null) {
+            tableProvider.writeAll();
+        }
         System.exit(0);
     }
+
 }

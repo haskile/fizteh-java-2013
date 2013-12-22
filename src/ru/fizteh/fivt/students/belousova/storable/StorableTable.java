@@ -2,14 +2,12 @@ package ru.fizteh.fivt.students.belousova.storable;
 
 import ru.fizteh.fivt.storage.structured.ColumnFormatException;
 import ru.fizteh.fivt.storage.structured.Storeable;
-import ru.fizteh.fivt.storage.structured.TableProvider;
 import ru.fizteh.fivt.students.belousova.multifilehashmap.AbstractTable;
 import ru.fizteh.fivt.students.belousova.utils.StorableUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class StorableTable extends AbstractTable<String, Storeable> implements ChangesCountingTable {
     private List<Class<?>> columnTypes = new ArrayList<>();
@@ -21,6 +19,18 @@ public class StorableTable extends AbstractTable<String, Storeable> implements C
         File signatureFile = new File(directory, "signature.tsv");
         StorableUtils.readSignature(signatureFile, columnTypes);
         StorableUtils.readTable(directory, this, dataBase, tableProvider);
+        addedKeys = new ThreadLocal<Map<String, Storeable>>() {
+            @Override
+            public Map<String, Storeable> initialValue() {
+                return new HashMap<>();
+            }
+        };
+        deletedKeys = new ThreadLocal<Set<String>>() {
+            @Override
+            public Set<String> initialValue() {
+                return new HashSet<>();
+            }
+        };
     }
 
     @Override
@@ -41,14 +51,6 @@ public class StorableTable extends AbstractTable<String, Storeable> implements C
         if (!StorableUtils.isStorableValid(value, columnTypes)) {
             throw new ColumnFormatException("wrong storeable format");
         }
-
-//        try {
-//            if (!StorableUtils.isStorableValid((StorableTableLine)value, columnTypes)) {
-//                throw new IllegalArgumentException("alien storeable");
-//            }
-//        } catch (ClassCastException e) {
-//            throw new IllegalArgumentException("alien storeable");
-//        }
 
         if (key.matches(".*\\s+.*")) {
             throw new IllegalArgumentException("key with whitespaces");
@@ -87,15 +89,20 @@ public class StorableTable extends AbstractTable<String, Storeable> implements C
 
     @Override
     public int commit() throws IOException {
-        int counter = countChanges();
-        for (String key : deletedKeys) {
-            dataBase.remove(key);
+        tableTransactionsLock.lock();
+        try {
+            int counter = countChanges();
+            for (String key : deletedKeys.get()) {
+                dataBase.remove(key);
+            }
+            dataBase.putAll(addedKeys.get());
+            deletedKeys.get().clear();
+            addedKeys.get().clear();
+            StorableUtils.writeTable(dataDirectory, this, dataBase, tableProvider);
+            return counter;
+        } finally {
+            tableTransactionsLock.unlock();
         }
-        dataBase.putAll(addedKeys);
-        deletedKeys.clear();
-        addedKeys.clear();
-        StorableUtils.writeTable(dataDirectory, this, dataBase, tableProvider);
-        return counter;
     }
 
     @Override

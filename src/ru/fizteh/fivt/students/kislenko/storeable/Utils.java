@@ -3,6 +3,7 @@ package ru.fizteh.fivt.students.kislenko.storeable;
 import ru.fizteh.fivt.students.kislenko.multifilemap.TwoLayeredString;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
@@ -10,9 +11,15 @@ import java.text.ParseException;
 import java.util.*;
 
 public class Utils {
-    static public List<Class<?>> readColumnTypes(String pathToTable) throws IOException, ClassNotFoundException {
+    public static List<Class<?>> readColumnTypes(String pathToTable) throws IOException, ClassNotFoundException {
         File columnTypesFile = new File(pathToTable, "signature.tsv");
-        Scanner scanner = new Scanner(columnTypesFile);
+        Scanner scanner;
+        try {
+            scanner = new Scanner(columnTypesFile);
+        } catch (FileNotFoundException e) {
+            System.out.println("Can't find signature file.");
+            throw new FileNotFoundException("Signature file doesn't exist.");
+        }
         List<Class<?>> types = new ArrayList<Class<?>>();
         while (scanner.hasNext()) {
             String type = scanner.next();
@@ -42,7 +49,7 @@ public class Utils {
         return types;
     }
 
-    static public void writeColumnTypes(String pathToTable, String[] types) throws IOException {
+    public static void writeColumnTypes(String pathToTable, String[] types) throws IOException {
         File signature = new File(pathToTable, "signature.tsv");
         signature.createNewFile();
         RandomAccessFile output = new RandomAccessFile(signature, "rw");
@@ -58,7 +65,7 @@ public class Utils {
         output.close();
     }
 
-    static public void readTable(MyTable table) throws IOException, ParseException {
+    public static void readTable(MyTable table) throws IOException, ParseException {
         File tableDir = new File(table.getName());
         if (tableDir.listFiles() != null) {
             for (File dir : tableDir.listFiles()) {
@@ -79,7 +86,6 @@ public class Utils {
         int valueLength;
         String key;
         String value;
-        table.setByteSize(table.getByteSize() + datafile.length());
         while (datafile.getFilePointer() != datafile.length()) {
             keyLength = datafile.readInt();
             valueLength = datafile.readInt();
@@ -97,7 +103,6 @@ public class Utils {
         if (table == null) {
             return;
         }
-        table.setByteSize(0);
         File[] dirs = new File[16];
         Map<Integer, File> files = new TreeMap<Integer, File>();
         Map<Integer, RandomAccessFile> datafiles = new TreeMap<Integer, RandomAccessFile>();
@@ -122,6 +127,9 @@ public class Utils {
         Set<String> keySet = table.getMap().keySet();
         for (String s : keySet) {
             TwoLayeredString key = new TwoLayeredString(s);
+            if (table.get(key.getKey()) == null) {
+                continue;
+            }
             String value = table.getProvider().serialize(table, table.get(key.getKey()));
             datafiles.get(getHash(key)).writeInt(key.getKey().getBytes(StandardCharsets.UTF_8).length);
             datafiles.get(getHash(key)).writeInt(value.getBytes(StandardCharsets.UTF_8).length);

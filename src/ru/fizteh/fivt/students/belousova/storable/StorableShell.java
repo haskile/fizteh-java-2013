@@ -24,7 +24,7 @@ public class StorableShell {
     }
 
     private void makeCommandList(StorableState state) {
-        addCommand(new CommandCreate(state));
+        addCommand(new CommandCreateStorable(state));
         addCommand(new CommandDrop(state));
         addCommand(new CommandUse(state));
         addCommand(new CommandPut(state));

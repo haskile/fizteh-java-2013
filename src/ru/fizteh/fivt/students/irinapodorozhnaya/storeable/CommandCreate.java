@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import ru.fizteh.fivt.students.irinapodorozhnaya.shell.AbstractCommand;
-import ru.fizteh.fivt.students.irinapodorozhnaya.utils.Utils;
+import ru.fizteh.fivt.students.irinapodorozhnaya.utils.Types;
 
 public class CommandCreate extends AbstractCommand {
     
@@ -26,7 +26,7 @@ public class CommandCreate extends AbstractCommand {
         try {
             state.create(args[1], parser(args));
         } catch (IllegalArgumentException e) {
-            throw new IOException("create: " + e.getMessage());
+            throw new IOException("wrong type (" + e.getMessage() + ")");
         }
         state.getOutputStream().println("created");
     }
@@ -36,23 +36,27 @@ public class CommandCreate extends AbstractCommand {
             throw new IOException("create: too few arguments");
         }
 
+        List<Class<?>> columnType = new ArrayList<>();
+
         String first = args[2];
         String last = args[args.length - 1];
 
         if (!first.startsWith("(") || !last.endsWith(")")) {
             throw new IOException("create: Input not matchs \"create tablename (type1 ... typeN)\"");
         }
-        
-        List<Class<?>> columnType = new ArrayList<>();
-        
-        first = (first.length() > 1) ? first.substring(1) : null;
-        last = (last.length() > 1) ? last.substring(0, last.length() - 1) : null;
-
-        columnType.add(Utils.detectClass(first));
-        for (int i = 3; i < args.length - 1; ++i) {
-            columnType.add(Utils.detectClass(args[i]));
+        if (args.length == 3) {
+            columnType.add(Types.getTypeByName(first.substring(1, first.length() - 1)));
+            return columnType;
         }
-        columnType.add(Utils.detectClass(last));
+
+        first = first.substring(1);
+        last = last.substring(0, last.length() - 1);
+
+        columnType.add(Types.getTypeByName(first));
+        for (int i = 3; i < args.length - 1; ++i) {
+            columnType.add(Types.getTypeByName(args[i]));
+        }
+        columnType.add(Types.getTypeByName(last));
         return columnType;
     }
 }

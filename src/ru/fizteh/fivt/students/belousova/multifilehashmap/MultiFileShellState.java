@@ -5,7 +5,8 @@ import ru.fizteh.fivt.students.belousova.filemap.TableState;
 public class MultiFileShellState extends TableState {
     private ChangesCountingTableProvider tableProvider = null;
 
-    public MultiFileShellState(){}
+    public MultiFileShellState() {
+    }
 
     public MultiFileShellState(ChangesCountingTableProvider provider, ChangesCountingTable table) {
         tableProvider = provider;

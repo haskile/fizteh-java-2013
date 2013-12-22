@@ -1,27 +1,28 @@
 package ru.fizteh.fivt.students.chernigovsky.filemap;
 
-import ru.fizteh.fivt.students.chernigovsky.junit.ExtendedTable;
-import ru.fizteh.fivt.students.chernigovsky.junit.ExtendedTableProvider;
+import java.text.ParseException;
 
-public class State {
-    private ExtendedTable currentTable;
-    private ExtendedTableProvider currentTableProvider;
+import java.io.IOException;
 
-    public State(ExtendedTable newTable, ExtendedTableProvider newTableProvider) {
-        currentTable = newTable;
-        currentTableProvider = newTableProvider;
-    }
+public interface State {
+    boolean currentTableIsNull();
 
-    public ExtendedTable getCurrentTable() {
-        return currentTable;
-    }
+    String getFromCurrentTable(String key);
+    String putToCurrentTable(String key, String value) throws ParseException;
+    String removeFromCurrentTable(String key);
 
-    public void changeCurrentTable(ExtendedTable newCurrentTable) {
-        currentTable = newCurrentTable;
-    }
+    boolean createTable(String name);
+    boolean createStoreableTable(String name, String types) throws IOException;
+    boolean removeTable(String name) throws IOException;
+    void checkDropTableUsing(String name);
+    boolean isTableExists(String name);
+    void changeCurrentTable(String name);
+    int getDiffCount();
 
-    public ExtendedTableProvider getCurrentTableProvider() {
-        return currentTableProvider;
-    }
+    void writeTable() throws IOException;
+    void readTable() throws IOException;
 
+    int commit() throws IOException;
+    int rollback();
+    int size();
 }

@@ -91,11 +91,12 @@ public class SignatureController {
         outputStream.close();
     }
 
-    public void checkValueForTable(int columnIndex, Table table, Storeable value) throws IndexOutOfBoundsException, ColumnFormatException {
+    public void checkValueForTable(int columnIndex, Table table, Storeable value) throws IndexOutOfBoundsException,
+            ColumnFormatException {
         StoreableColumnType.getStoreableField(columnIndex, value, table.getColumnType(columnIndex));
     }
 
-    public static List<Class<?>> getSignatureFromArgs(String args[]) throws IOException {
+    public static List<Class<?>> getSignatureFromArgs(String[] args) throws IOException {
         SignatureController signatureController = new SignatureController();
         int argsCount = args.length;
         StringBuilder signature = new StringBuilder();

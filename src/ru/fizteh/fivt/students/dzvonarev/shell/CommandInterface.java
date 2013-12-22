@@ -5,6 +5,7 @@ import java.util.ArrayList;
 
 public interface CommandInterface {
 
-    public abstract void execute(ArrayList<String> args) throws IOException, IllegalArgumentException, IllegalStateException;
+    void execute(ArrayList<String> args)
+            throws IOException, IllegalArgumentException, IllegalStateException;
 
 }

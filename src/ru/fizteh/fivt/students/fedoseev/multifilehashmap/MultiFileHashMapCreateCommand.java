@@ -13,7 +13,7 @@ public class MultiFileHashMapCreateCommand extends AbstractCommand<MultiFileHash
     @Override
     public void execute(String[] input, MultiFileHashMapState state) throws IOException {
         String tableName = input[0];
-        File curTableDir = state.getCurDir().toPath().resolve(tableName).toFile();
+        File curTableDir = new File(state.getCurDir(), tableName);
 
         if (!curTableDir.exists()) {
             state.createTable(tableName);

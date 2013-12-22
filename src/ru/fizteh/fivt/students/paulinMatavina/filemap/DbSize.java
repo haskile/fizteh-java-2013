@@ -5,8 +5,8 @@ import ru.fizteh.fivt.students.paulinMatavina.utils.*;
 public class DbSize implements Command {
     @Override
     public int execute(String[] args, State state) {
-        MultiDbState multiState = (MultiDbState) state;
-        System.out.println(multiState.size());
+        MyTableProvider multiState = (MyTableProvider) state;
+        System.out.println(multiState.getCurrTable().size());
         return 0;
     }
     

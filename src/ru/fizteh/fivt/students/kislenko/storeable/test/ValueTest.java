@@ -19,7 +19,7 @@ public class ValueTest {
 
     @BeforeClass
     public static void setUpBeforeClass() throws Exception {
-        provider = new MyTableProvider();
+        provider = new MyTableProvider("provider");
         List<Class<?>> typelist = new ArrayList<Class<?>>();
         typelist.add(Integer.class);
         typelist.add(Long.class);
@@ -63,12 +63,12 @@ public class ValueTest {
         Assert.assertEquals(100, testingValue.getColumnAt(0));
         testingValue.setColumnAt(1, (long) 1024 * 1024 * 1024 * 1024);
         Assert.assertEquals((long) 1024 * 1024 * 1024 * 1024, testingValue.getColumnAt(1));
-        testingValue.setColumnAt(1, 1024);
-        Assert.assertEquals(1024, testingValue.getColumnAt(1));
-        testingValue.setColumnAt(2, 16);
-        Assert.assertEquals(16, testingValue.getColumnAt(2));
-        testingValue.setColumnAt(3, 1.05);
-        Assert.assertEquals(1.05, testingValue.getColumnAt(3));
+        testingValue.setColumnAt(1, (long) 1024);
+        Assert.assertEquals((long) 1024, testingValue.getColumnAt(1));
+        testingValue.setColumnAt(2, (byte) 16);
+        Assert.assertEquals((byte) 16, testingValue.getColumnAt(2));
+        testingValue.setColumnAt(3, (float) 1.05);
+        Assert.assertEquals((float) 1.05, testingValue.getColumnAt(3));
         testingValue.setColumnAt(4, 1.0005);
         Assert.assertEquals(1.0005, testingValue.getColumnAt(4));
         testingValue.setColumnAt(5, true);
@@ -89,17 +89,17 @@ public class ValueTest {
     }
 
     @Test
-    public void testGetIntAt() throws Exception {
+    public void testGetAllAt() throws Exception {
         testingValue.setColumnAt(0, 100);
         Assert.assertEquals((Object) 100, testingValue.getIntAt(0));
         testingValue.setColumnAt(1, (long) 1024 * 1024 * 1024 * 1024);
         Assert.assertEquals((Object) ((long) 1024 * 1024 * 1024 * 1024), testingValue.getLongAt(1));
-        testingValue.setColumnAt(1, 1024);
-        Assert.assertEquals((Object) 1024, testingValue.getLongAt(1));
-        testingValue.setColumnAt(2, 16);
-        Assert.assertEquals((Object) 16, testingValue.getByteAt(2));
-        testingValue.setColumnAt(3, 1.05);
-        Assert.assertEquals(testingValue.getFloatAt(3), 1.05);
+        testingValue.setColumnAt(1, (long) 1024);
+        Assert.assertEquals((Object) ((long) 1024), testingValue.getLongAt(1));
+        testingValue.setColumnAt(2, (byte) 16);
+        Assert.assertEquals((Object) ((byte) 16), testingValue.getByteAt(2));
+        testingValue.setColumnAt(3, (float) 1.05);
+        Assert.assertEquals((float) 1.05, testingValue.getFloatAt(3));
         testingValue.setColumnAt(4, 1.0005);
         Assert.assertEquals(1.0005, testingValue.getDoubleAt(4));
         testingValue.setColumnAt(5, true);

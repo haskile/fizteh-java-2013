@@ -10,18 +10,30 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public abstract class UniversalDataTable<ValueType> {
+public abstract class UniversalDataTable<ValueType> implements AutoCloseable {
     public static final int DIR_COUNT = 16;
     public static final int FILE_COUNT = 16;
-
+    protected final ReadWriteLock tableChangesLock = new ReentrantReadWriteLock();
+    public ValueConverter<ValueType> valueConverter;
     protected File dataBaseDirectory;
     protected String tableName;
+    protected boolean closed = false;
     private Map<String, ValueType> dataStorage = new HashMap<String, ValueType>();
-
-    private Map<String, ValueType> putKeys = new HashMap<String, ValueType>();
-    private Set<String> removeKeys = new HashSet<String>();
-    public ValueConverter<ValueType> valueConverter;
+    private ThreadLocal<Map<String, ValueType>> putKeys = new ThreadLocal<Map<String, ValueType>>() {
+        @Override
+        protected Map<String, ValueType> initialValue() {
+            return new HashMap<String, ValueType>();
+        }
+    };
+    private ThreadLocal<Set<String>> removeKeys = new ThreadLocal<Set<String>>() {
+        @Override
+        protected Set<String> initialValue() {
+            return new HashSet<String>();
+        }
+    };
 
     public UniversalDataTable() {
 
@@ -38,40 +50,62 @@ public abstract class UniversalDataTable<ValueType> {
     }
 
     public String getName() {
+        checkNotClosed();
         return tableName;
     }
 
     protected ValueType putSimple(String key, ValueType value) {
+        checkNotClosed();
         ValueType oldValue = null;
-        if (!removeKeys.contains(key)) {
-            if ((oldValue = putKeys.get(key)) == null) {
-                oldValue = dataStorage.get(key);
-                if (oldValue == null) {
-                    putKeys.put(key, value);
-                } else {
-                    if (!oldValue.equals(value)) {
-                        putKeys.put(key, value);
-                    }
+        if (!removeKeys.get().contains(key)) {
+            if ((oldValue = putKeys.get().get(key)) == null) {
+                tableChangesLock.readLock().lock();
+                try {
+                    checkNotClosed();
+                    oldValue = dataStorage.get(key);
+                } finally {
+                    tableChangesLock.readLock().unlock();
                 }
+                putKeys.get().put(key, value);
             } else {
-                ValueType dataValue = dataStorage.get(key);
+                tableChangesLock.readLock().lock();
+                ValueType dataValue;
+                try {
+                    checkNotClosed();
+                    dataValue = dataStorage.get(key);
+                } finally {
+                    tableChangesLock.readLock().unlock();
+                }
                 if (dataValue == null) {
-                    putKeys.put(key, value);
+                    putKeys.get().put(key, value);
                 } else {
-                    if (!dataStorage.get(key).equals(value)) {
-                        putKeys.put(key, value);
-                    } else {
-                        putKeys.remove(key);
+                    tableChangesLock.readLock().lock();
+                    try {
+                        checkNotClosed();
+                        if (!dataStorage.get(key).equals(value)) {
+                            putKeys.get().put(key, value);
+                        } else {
+                            putKeys.get().remove(key);
+                        }
+                    } finally {
+                        tableChangesLock.readLock().unlock();
                     }
                 }
 
             }
         } else {
-            ValueType dataValue = dataStorage.get(key);
-            if (!dataValue.equals(value)) {
-                putKeys.put(key, value);
+            tableChangesLock.readLock().lock();
+            ValueType dataValue;
+            try {
+                checkNotClosed();
+                dataValue = dataStorage.get(key);
+            } finally {
+                tableChangesLock.readLock().unlock();
             }
-            removeKeys.remove(key);
+            if (!dataValue.equals(value)) {
+                putKeys.get().put(key, value);
+            }
+            removeKeys.get().remove(key);
         }
         return oldValue;
     }
@@ -81,103 +115,176 @@ public abstract class UniversalDataTable<ValueType> {
     }
 
     public ValueType get(String key) throws IllegalArgumentException {
+        checkNotClosed();
         if (key == null) {
             throw new IllegalArgumentException("Not correct key");
         }
         ValueType value = null;
-        if (!putKeys.isEmpty()) {
-            if (putKeys.containsKey(key)) {
-                return putKeys.get(key);
+        if (!putKeys.get().isEmpty()) {
+            if (putKeys.get().containsKey(key)) {
+                return putKeys.get().get(key);
             }
         }
-        if (!removeKeys.contains(key)) {
-            value = dataStorage.get(key);
+        if (!removeKeys.get().contains(key)) {
+            tableChangesLock.readLock().lock();
+            try {
+                checkNotClosed();
+                value = dataStorage.get(key);
+            } finally {
+                tableChangesLock.readLock().unlock();
+            }
             if (value == null) {
-                value = putKeys.get(key);
+                value = putKeys.get().get(key);
             }
         }
         return value;
     }
 
     public ValueType remove(String key) throws IllegalArgumentException {
+        checkNotClosed();
         if (key == null) {
             throw new IllegalArgumentException("Not correct key");
         }
-        if (!putKeys.isEmpty()) {
-            if (putKeys.get(key) != null) {
-                if (dataStorage.get(key) != null) {
-                    removeKeys.add(key);
+        if (!putKeys.get().isEmpty()) {
+            if (putKeys.get().get(key) != null) {
+                tableChangesLock.readLock().lock();
+                try {
+                    checkNotClosed();
+                    if (dataStorage.get(key) != null) {
+                        removeKeys.get().add(key);
+                    }
+                } finally {
+                    tableChangesLock.readLock().unlock();
                 }
-                return putKeys.remove(key);
+                return putKeys.get().remove(key);
             }
         }
-        if (!removeKeys.isEmpty()) {
-            if (removeKeys.contains(key)) {
+        if (!removeKeys.get().isEmpty()) {
+            if (removeKeys.get().contains(key)) {
                 return null;
             }
         }
         ValueType value;
-        if ((value = dataStorage.get(key)) != null) {
-            removeKeys.add(key);
+        tableChangesLock.readLock().lock();
+        try {
+            checkNotClosed();
+            if ((value = dataStorage.get(key)) != null) {
+                removeKeys.get().add(key);
+            }
+        } finally {
+            tableChangesLock.readLock().unlock();
         }
         return value;
     }
 
     public boolean isEmpty() {
-        return dataStorage.isEmpty();
+        tableChangesLock.readLock().lock();
+        try {
+            return dataStorage.isEmpty();
+        } finally {
+            tableChangesLock.readLock().unlock();
+        }
     }
 
     public int size() {
-        int size = dataStorage.size();
-        Set<String> keysToCommit = putKeys.keySet();
-        for (String key : keysToCommit) {
-            if (!dataStorage.containsKey(key)) {
-                ++size;
-            }
+        checkNotClosed();
+        int size;
+        tableChangesLock.readLock().lock();
+        try {
+            checkNotClosed();
+            size = dataStorage.size();
+        } finally {
+            tableChangesLock.readLock().unlock();
         }
-        size -= removeKeys.size();
+        Set<String> keysToCommit = putKeys.get().keySet();
+        tableChangesLock.readLock().lock();
+        try {
+            checkNotClosed();
+            for (String key : keysToCommit) {
+                if (!dataStorage.containsKey(key)) {
+                    ++size;
+                }
+            }
+        } finally {
+            tableChangesLock.readLock().unlock();
+        }
+        size -= removeKeys.get().size();
         return size;
     }
 
-    public int commit() {
+    protected int commitWithoutWriteToDataBase() {
+        checkNotClosed();
         int commitSize = 0;
-        if (!putKeys.isEmpty()) {
-            Set<String> putKeysToCommit = putKeys.keySet();
-            for (String key : putKeysToCommit) {
-                dataStorage.put(key, putKeys.get(key));
-                ++commitSize;
+        if (!putKeys.get().isEmpty()) {
+            Set<String> putKeysToCommit = putKeys.get().keySet();
+            tableChangesLock.readLock().lock();
+            try {
+                checkNotClosed();
+                for (String key : putKeysToCommit) {
+                    if (dataStorage.get(key) == null) {
+                        dataStorage.put(key, putKeys.get().get(key));
+                        ++commitSize;
+                    } else {
+                        if (!valueConverter.convertValueTypeToString(dataStorage.get(key)).
+                                equals(valueConverter.convertValueTypeToString(putKeys.get().get(key)))) {
+                            dataStorage.put(key, putKeys.get().get(key));
+                            ++commitSize;
+                        }
+                    }
+                }
+            } finally {
+                tableChangesLock.readLock().unlock();
             }
-            putKeys.clear();
+            putKeys.get().clear();
         }
-        if (!removeKeys.isEmpty()) {
-            for (String key : removeKeys) {
-                dataStorage.remove(key);
-                ++commitSize;
+        if (!removeKeys.get().isEmpty()) {
+            tableChangesLock.readLock().lock();
+            try {
+                checkNotClosed();
+                for (String key : removeKeys.get()) {
+                    dataStorage.remove(key);
+                    ++commitSize;
+                }
+            } finally {
+                tableChangesLock.readLock().unlock();
             }
-            removeKeys.clear();
+            removeKeys.get().clear();
         }
         return commitSize;
     }
 
     public int rollback() {
+        checkNotClosed();
         int rollbackSize = 0;
-        if (!putKeys.isEmpty()) {
-            rollbackSize += putKeys.size();
-            Set<String> putKeysToRollback = putKeys.keySet();
-            for (String key : putKeysToRollback) {
-                dataStorage.containsKey(key);
+        if (!putKeys.get().isEmpty()) {
+            Set<String> putKeysToRollback = putKeys.get().keySet();
+            tableChangesLock.readLock().lock();
+            try {
+                checkNotClosed();
+                for (String key : putKeysToRollback) {
+                    if (dataStorage.get(key) == null) {
+                        ++rollbackSize;
+                    } else {
+                        if (!valueConverter.convertValueTypeToString(dataStorage.get(key)).
+                                equals(valueConverter.convertValueTypeToString(putKeys.get().get(key)))) {
+                            ++rollbackSize;
+                        }
+                    }
+                }
+            } finally {
+                tableChangesLock.readLock().unlock();
             }
-            putKeys.clear();
+            putKeys.get().clear();
         }
-        if (!removeKeys.isEmpty()) {
-            rollbackSize += removeKeys.size();
-            removeKeys.clear();
+        if (!removeKeys.get().isEmpty()) {
+            rollbackSize += removeKeys.get().size();
+            removeKeys.get().clear();
         }
         return rollbackSize;
     }
 
     public int commitSize() {
-        return putKeys.size() + removeKeys.size();
+        return putKeys.get().size() + removeKeys.get().size();
     }
 
     public File getWorkingDirectory() {
@@ -269,7 +376,8 @@ public abstract class UniversalDataTable<ValueType> {
     }
 
     protected void writeToDataBaseWithoutSignature() throws IOException {
-        rollback();
+        putKeys.get().clear();
+        removeKeys.get().clear();
         Set<String> keys = getKeys();
         if (!keys.isEmpty()) {
             for (int i = 0; i < DIR_COUNT; ++i) {
@@ -309,7 +417,33 @@ public abstract class UniversalDataTable<ValueType> {
         }
     }
 
+    public String toString() {
+        checkNotClosed();
+        File dataTable = new File(dataBaseDirectory, tableName);
+        return new String(this.getClass().getSimpleName() + "[" + dataTable.toString() + "]");
+    }
+
+    public void close() throws IOException {
+        if (!closed) {
+            putKeys.get().clear();
+            removeKeys.get().clear();
+            closed = true;
+        }
+    }
+
+    protected void checkNotClosed() {
+        if (closed) {
+            throw new IllegalStateException("the table is closed");
+        }
+    }
+
+    public boolean isTableClosed() {
+        return closed;
+    }
+
     public abstract ValueType put(String key, ValueType value);
+
+    public abstract int commit() throws IOException;
 
     public abstract void load() throws IOException, ParseException;
 

@@ -4,7 +4,6 @@ package ru.fizteh.fivt.students.kamilTalipov.database.core;
 import ru.fizteh.fivt.storage.structured.ColumnFormatException;
 import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.storage.structured.Table;
-import ru.fizteh.fivt.students.kamilTalipov.database.utils.JsonUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,7 +11,6 @@ import java.util.List;
 public class TableRow implements Storeable {
     private final List<Class<?>> types;
     private final List<Object> values;
-    private final Table table;
 
     public TableRow(Table table) {
         if (table == null) {
@@ -21,7 +19,6 @@ public class TableRow implements Storeable {
 
         types = new ArrayList<>();
         values = new ArrayList<>();
-        this.table = table;
         for (int i = 0; i < table.getColumnsCount(); ++i) {
             types.add(table.getColumnType(i));
             values.add(null);
@@ -41,7 +38,6 @@ public class TableRow implements Storeable {
 
         types = new ArrayList<>();
         this.values = new ArrayList<>();
-        this.table = table;
         for (int i = 0; i < values.size(); ++i) {
             if (values.get(i) != null && table.getColumnType(i) != values.get(i).getClass()) {
                 throw new ColumnFormatException("Type at " + i + " mismatch");
@@ -54,7 +50,18 @@ public class TableRow implements Storeable {
 
     @Override
     public String toString() {
-        return JsonUtils.serialize(this, table);
+        StringBuilder builder = new StringBuilder(getClass().getSimpleName());
+        builder.append("[");
+        for (int i = 0; i < values.size(); ++i) {
+            if (values.get(i) != null) {
+                builder.append(values.get(i).toString());
+            }
+            if (i != values.size() - 1) {
+                builder.append(",");
+            }
+        }
+        builder.append("]");
+        return builder.toString();
     }
 
     @Override

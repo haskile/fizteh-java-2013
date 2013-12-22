@@ -27,6 +27,9 @@ public class DataBaseDrop implements CommandInterface {
             throw new IOException("drop: wrong parameters");
         }
         String table = str.substring(spaceIndex + 1, str.length());
+        if (tableProvider == null) {
+            throw new IOException("can't drop table " + table);
+        }
         tableProvider.removeTable(table);
         System.out.println("dropped");
     }

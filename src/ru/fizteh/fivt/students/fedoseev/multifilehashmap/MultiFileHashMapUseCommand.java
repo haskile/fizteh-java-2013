@@ -1,17 +1,18 @@
 package ru.fizteh.fivt.students.fedoseev.multifilehashmap;
 
 import ru.fizteh.fivt.students.fedoseev.common.AbstractCommand;
+import ru.fizteh.fivt.students.fedoseev.common.State;
 
-import java.io.File;
 import java.io.IOException;
+import java.text.ParseException;
 
-public class MultiFileHashMapUseCommand extends AbstractCommand<MultiFileHashMapState> {
+public class MultiFileHashMapUseCommand extends AbstractCommand<State> {
     public MultiFileHashMapUseCommand() {
         super("use", 1);
     }
 
     @Override
-    public void execute(String[] input, MultiFileHashMapState state) throws IOException {
+    public void execute(String[] input, State state) throws IOException, ParseException {
         String tableName = input[0];
 
         if (state.getCurDir().getName().equals(tableName)) {
@@ -19,18 +20,26 @@ public class MultiFileHashMapUseCommand extends AbstractCommand<MultiFileHashMap
             return;
         }
 
-        MultiFileHashMapTable curTable = state.getCurTable();
-        File newDir = state.getCurDir().toPath().resolve(tableName).toFile();
+        int changesNumber = 0;
 
-        if (newDir.exists()) {
-            AbstractMultiFileHashMap.saveTable(curTable);
+        if (state.getCurTable() != null) {
+            changesNumber = state.getDiffSize();
+        }
 
-            if (curTable != null) {
-                curTable.clearContentAndDiff();
+        if (changesNumber != 0) {
+            throw new IOException(changesNumber + " unsaved changes");
+        }
+
+        if (state.getCurDir().toPath().resolve(tableName).toFile().exists()) {
+            state.saveTable(state.getCurTable());
+
+            if (state.getCurTable() != null) {
+                state.clearContentAndDiff();
             }
 
-            state.setCurTable(input[0]);
-            AbstractMultiFileHashMap.readTableOff(state.getCurTable());
+            state.setCurTable(tableName);
+
+            state.readTableOff(state.getCurTable());
 
             System.out.println("using " + tableName);
         } else {

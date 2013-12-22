@@ -106,7 +106,7 @@ public class FileReader<ValueType> {
     public void putValueToTable(ValueType value) {
         dataTable.put(keysToMap.get(curValue), value);
         if (curValue == offsets.size()) {
-            dataTable.commit();
+            dataTable.commitWithoutWriteToDataBase();
         }
         ++curValue;
     }

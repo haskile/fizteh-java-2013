@@ -1,7 +1,6 @@
 package ru.fizteh.fivt.students.nadezhdakaratsapova.storeable.junittests;
 
 import junit.framework.Assert;
-import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import ru.fizteh.fivt.storage.structured.ColumnFormatException;

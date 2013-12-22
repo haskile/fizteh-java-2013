@@ -18,15 +18,12 @@ import ru.fizteh.fivt.storage.structured.TableProvider;
 import ru.fizteh.fivt.storage.structured.TableProviderFactory;
 
 public class TableProviderCommandsTest {
-    TableProviderFactory tempFactory;
-    TableProvider tempTableProvider;
-    File correctTable;
-    File createdFolder;
-    String firstKey;
-    String firstValue;
-    List<Class<?>> types;
-    int length;
-    File signFile;
+    private TableProviderFactory tempFactory;
+    private TableProvider tempTableProvider;
+    private File correctTable;
+    private File createdFolder;
+    private List<Class<?>> types;
+    private File signFile;
             
     @Rule
     public TemporaryFolder tempFolder = new TemporaryFolder();;
@@ -140,7 +137,7 @@ public class TableProviderCommandsTest {
     }
     
     @Test (expected = IllegalArgumentException.class)
-    public void deserialiseNullTable() throws ParseException{
+    public void deserialiseNullTable() throws ParseException {
         String value = "[\"value\"]";
         tempTableProvider.deserialize(null, value);
     }

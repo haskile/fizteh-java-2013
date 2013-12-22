@@ -21,11 +21,6 @@ public class MyStoreable implements Storeable {
     }
 
     @Override
-    public int hashCode() {
-        return this.hashCode();
-    }
-
-    @Override
     public boolean equals(Object obj) {
         if (this != null && obj == null) {
             return false;
@@ -128,6 +123,15 @@ public class MyStoreable implements Storeable {
     }
 
     @Override
+    public int hashCode() {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + ((types == null) ? 0 : types.hashCode());
+        result = prime * result + ((values == null) ? 0 : values.hashCode());
+        return result;
+    }
+
+    @Override
     public void setColumnAt(int columnIndex, Object value) throws ColumnFormatException, IndexOutOfBoundsException {
         checkIndex(columnIndex);
         if (value != null) {
@@ -203,6 +207,25 @@ public class MyStoreable implements Storeable {
         checkIndex(columnIndex);
         checkFormatValue(columnIndex, String.class);
         return String.class.cast(values.get(columnIndex));
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder str = new StringBuilder(this.getClass().getSimpleName());
+        str.append("[");
+        int i = 0;
+        for (Object value : values) {
+            if (i != 0) {
+                str.append(",");
+                ++i;
+            }
+            if (value != null) {
+                str.append(value);
+                ++i;
+            }
+        }
+        str.append("]");
+        return str.toString();
     }
 
 }

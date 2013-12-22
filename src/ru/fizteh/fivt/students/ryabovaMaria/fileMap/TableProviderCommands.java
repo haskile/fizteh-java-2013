@@ -9,6 +9,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import ru.fizteh.fivt.storage.structured.ColumnFormatException;
 import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.storage.structured.Table;
@@ -16,13 +18,15 @@ import ru.fizteh.fivt.storage.structured.TableProvider;
 import ru.fizteh.fivt.students.ryabovaMaria.shell.DeleteDir;
 
 public class TableProviderCommands implements TableProvider {
-    private File curDir;
-    private File tableDir;
-    public Table myTable;
+    private final File curDir;
+    private ThreadLocal<File> tableDir = new ThreadLocal<File>();
+    private ThreadLocal<Table> myTable = new ThreadLocal<Table>();
     private HashMap<String, Table> names;
-    private List<Class<?>> types;
+    private ThreadLocal<List<Class<?>>> types = new ThreadLocal();
+    private Lock lock;
     
     TableProviderCommands(File tablesDir) {
+        lock = new ReentrantLock(true);
         curDir = tablesDir;
         names = new HashMap<String, Table>();
     }
@@ -38,7 +42,7 @@ public class TableProviderCommands implements TableProvider {
             || name.matches(".*\\s.*")) {
             throw new IllegalArgumentException("argument contains illegal symbols");
         }
-        tableDir = curDir.toPath().resolve(name).normalize().toFile();
+        tableDir.set(curDir.toPath().resolve(name).normalize().toFile());
     }
     
     @Override
@@ -47,27 +51,30 @@ public class TableProviderCommands implements TableProvider {
             throw new IllegalArgumentException("bad tablename");
         }
         isCorrectArgument(name);
+        lock.lock();
         try {
-            if (!tableDir.exists()) {
+            if (!tableDir.get().exists()) {
                 return null;
             }
-            if (!tableDir.isDirectory()) {
+            if (!tableDir.get().isDirectory()) {
                 throw new IllegalArgumentException(name + " is not a directory");
             }
-            myTable = names.get(name);
-            if (myTable == null) {
+            myTable.set(names.get(name));
+            if (myTable.get() == null) {
                 readSignature();
-                myTable = new TableCommands(tableDir, types, this);
-                names.put(name, myTable);
+                myTable.set(new TableCommands(tableDir.get(), types.get(), this));
+                names.put(name, myTable.get());
             }
-            return myTable;
+            return myTable.get();
         } catch (Exception e) {
             throw new IllegalArgumentException(e);
+        } finally {
+            lock.unlock();
         }
     }
     
     private void readSignature() {
-        File signature = new File(tableDir, "signature.tsv");
+        File signature = new File(tableDir.get(), "signature.tsv");
         if (!signature.exists()) {
             throw new IllegalArgumentException("signature.tsv not exists");
         }
@@ -77,46 +84,45 @@ public class TableProviderCommands implements TableProvider {
         try (Scanner sign = new Scanner(signature)) {
             String stringTypes = sign.nextLine().trim();
             String[] temp = stringTypes.split("[ ]+");
-            types = new ArrayList(temp.length);
+            types.set(new ArrayList(temp.length));
             for (int i = 0; i < temp.length; ++i) {
                 String curType = temp[i];
                 switch (curType) {
                     case "int" :
-                        types.add(Integer.class);
+                        types.get().add(Integer.class);
                         break;
                     case "long" :
-                        types.add(Long.class);
+                        types.get().add(Long.class);
                         break;
                     case "byte" :
-                        types.add(Byte.class);
+                        types.get().add(Byte.class);
                         break;
                     case "float" :
-                        types.add(Float.class);
+                        types.get().add(Float.class);
                         break;
                     case "double" :
-                        types.add(Double.class);
+                        types.get().add(Double.class);
                         break;
                     case "boolean" :
-                        types.add(Boolean.class);
+                        types.get().add(Boolean.class);
                         break;
                     case "String" :
-                        types.add(String.class);
+                        types.get().add(String.class);
                         break;
                     default :
                         throw new IllegalArgumentException("Incorrect signature.tsv");
                 }
             }
-            sign.close();
         } catch (Exception e) {
-            throw new IllegalArgumentException("Illegal signature.tsv");
+            throw new IllegalArgumentException("Illegal signature.tsv", e);
         }
     }
     
     private void writeSignature() throws IOException {
-        File signature = new File(tableDir, "signature.tsv");
+        File signature = new File(tableDir.get(), "signature.tsv");
         try (FileWriter sign = new FileWriter(signature.toString())) {
-            for (int i = 0; i < types.size(); ++i) {
-                String typeName = types.get(i).getSimpleName();
+            for (int i = 0; i < types.get().size(); ++i) {
+                String typeName = types.get().get(i).getSimpleName();
                 switch (typeName) {
                     case ("int") :
                     case ("Integer") :
@@ -147,13 +153,12 @@ public class TableProviderCommands implements TableProvider {
                     default :
                         throw new IllegalArgumentException("Incorrect type name");
                 }
-                if (i == types.size() - 1) {
+                if (i == types.get().size() - 1) {
                     sign.write(typeName);
                 } else {
                     sign.write(typeName + " ");
                 }
             }
-            sign.close();
         }
     }
 
@@ -163,16 +168,19 @@ public class TableProviderCommands implements TableProvider {
             throw new IllegalArgumentException("bad tablename");
         }
         isCorrectArgument(name);
-        if (!tableDir.isDirectory()) {
-            throw new IllegalStateException(name + " cannot be deleted");
-        }
         DeleteDir deleteTable = new DeleteDir();
         File table = new File(curDir, name);
+        lock.lock();
         try {
+            if (!tableDir.get().isDirectory()) {
+                throw new IllegalStateException(name + " cannot be deleted");
+            }
             deleteTable.delete(table.toPath());
             names.remove(name);
         } catch (Exception e) {
-            throw new IllegalStateException(name + " cannot be deleted");
+            throw new IllegalStateException(name + " cannot be deleted", e);
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -201,7 +209,7 @@ public class TableProviderCommands implements TableProvider {
                     throw new IllegalArgumentException();
                 }
             } catch (Exception e) {
-                throw new IllegalArgumentException("incorrect types");
+                throw new IllegalArgumentException("incorrect types", e);
             }
         }
     }
@@ -214,19 +222,24 @@ public class TableProviderCommands implements TableProvider {
         if (columnTypes == null) {
             throw new IllegalArgumentException("Bad column types");
         }
-        types = columnTypes;
+        types.set(columnTypes);
         isCorrectColumnTypes(new ArrayList(columnTypes));
         isCorrectArgument(name);
-        if (tableDir.exists()) {
-            return null;
-        }
-        if (!tableDir.mkdir()) {
-            throw new IllegalArgumentException(name + " cannot be created");
-        } else {
-            writeSignature();
-            myTable = new TableCommands(tableDir, columnTypes, this);
-            names.put(name, myTable);
-            return myTable;
+        lock.lock();
+        try {
+            if (tableDir.get().exists()) {
+                return null;
+            }
+            if (!tableDir.get().mkdir()) {
+                throw new IllegalArgumentException(name + " cannot be created");
+            } else {
+                writeSignature();
+                myTable.set(new TableCommands(tableDir.get(), columnTypes, this));
+                names.put(name, myTable.get());
+                return myTable.get();
+            }
+        } finally {
+            lock.unlock();
         }
     }
 
@@ -330,14 +343,14 @@ public class TableProviderCommands implements TableProvider {
         try {
             text = new JSONArray();
         } catch (Exception e) {
-            throw new ColumnFormatException(e.getMessage());
+            throw new ColumnFormatException(e.getMessage(), e);
         }
         for (int i = 0; i < table.getColumnsCount(); ++i) {
             Class<?> type = null;
             try {
                 type = table.getColumnType(i);
             } catch (Exception e) {
-                throw new ColumnFormatException(e.getMessage());
+                throw new ColumnFormatException(e.getMessage(), e);
             }
             Object current = null;
             try {
@@ -373,12 +386,12 @@ public class TableProviderCommands implements TableProvider {
                         throw new Exception("illegal value type");
                 }
             } catch (Exception e) {
-                throw new ColumnFormatException("column " + i + " " + type.getSimpleName().toString());
+                throw new ColumnFormatException("column " + i + " " + type.getSimpleName().toString(), e);
             }
             try {
                 text.put(current);
             } catch (Exception e) {
-                throw new ColumnFormatException(e.getMessage());
+                throw new ColumnFormatException(e.getMessage(), e);
             }
         }
         int i = table.getColumnsCount();
@@ -388,7 +401,7 @@ public class TableProviderCommands implements TableProvider {
             try {
                 return text.toString();
             } catch (Exception ex) {
-                throw new ColumnFormatException(ex.getMessage());
+                throw new ColumnFormatException(ex.getMessage(), ex);
             }
         }
         throw new ColumnFormatException("incorrect number of columns");
@@ -413,7 +426,7 @@ public class TableProviderCommands implements TableProvider {
         try {
             curTypes = getTypeList(table);
         } catch (Exception e) {
-            return null;
+            throw new RuntimeException(e);
         } 
         return new StoreableCommands(curTypes);
     }
@@ -427,11 +440,7 @@ public class TableProviderCommands implements TableProvider {
             throw new IllegalArgumentException("bad values");
         }
         List<Class<?>> curTypes;
-        try {
-            curTypes = getTypeList(table);
-        } catch (Exception e) {
-            return null;
-        }
+        curTypes = getTypeList(table);
         return new StoreableCommands((List<Object>) values, curTypes);
     }
 }

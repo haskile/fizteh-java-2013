@@ -6,145 +6,165 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import ru.fizteh.fivt.students.irinapodorozhnaya.utils.FileStorage;
 import ru.fizteh.fivt.students.irinapodorozhnaya.utils.Utils;
 
 public abstract class GenericTable<ValueType> {
-
-    private final String name;
-    private int size;
-    private int oldSize;
-    private Set<String> changedValues;
+    protected final String name;
+    protected ReadWriteLock lock = new ReentrantReadWriteLock(true);
+    protected ReadWriteLock hardDriveLock = new ReentrantReadWriteLock(true);
     protected final File tableDirectory;
-    private final Map<Integer, Map<String, ValueType>> database = new HashMap<>();
-    private final Map<Integer, Map<String, ValueType>> oldDatabase = new HashMap<>();    
-    private final Map<Integer, File> files = new HashMap<>();
-    
+    private final LazyMultiFileHashMap<ValueType> oldDatabase;
+    private final ThreadLocal<Map<String, ValueType>> changedValues = new ThreadLocal<Map<String, ValueType>>() {
+        @Override
+        protected Map<String, ValueType> initialValue() {
+            return new HashMap<>();
+        }
+    };
+
     public GenericTable(String name, File rootDir) {
-        size = 0;
-        oldSize = 0;
-        changedValues = new HashSet<>();
-        this.name = name;
         tableDirectory = new File(rootDir, name);
         if (!tableDirectory.isDirectory()) {
             throw new IllegalArgumentException(name + "not exist");
         }
+        try {
+            oldDatabase = new LazyMultiFileHashMap<>(tableDirectory, this);
+        } catch (IOException e) {
+            throw new IllegalArgumentException(e);
+        }
+        this.name = name;
     }
 
     public ValueType get(String key) {
         checkKey(key);
-        int nfile = Utils.getNumberOfFile(key);
-        if (database.get(nfile) != null) {
-            return database.get(nfile).get(key);
-        } else { 
-            return null;
+        if (changedValues.get().containsKey(key)) {
+            return changedValues.get().get(key);
+        } else {
+            try {
+                lock.readLock().lock();
+                return  oldDatabase.get(key);
+            } catch (IOException e) {
+                throw new IllegalArgumentException(e);
+            } finally {
+                lock.readLock().unlock();
+            }
         }
     }
 
     public ValueType remove(String key) {
         checkKey(key);
-        int nfile = Utils.getNumberOfFile(key);
-        if (database.get(nfile) != null) {
-            ValueType oldValue = database.get(nfile).remove(key);
-            if (oldValue != null) {
-                size --;
-            }
-            if (oldDatabase.get(nfile).get(key) == null) {
-                changedValues.remove(key);
-            } else {
-                changedValues.add(key);
-            }
-            return oldValue;
-        } else { 
-            return null;
-        }
+        ValueType res = get(key);
+        changedValues.get().put(key, null);
+        return res;
     }
 
     public ValueType put(String key, ValueType value) {
-
         checkKey(key);
         if (value == null) {
             throw new IllegalArgumentException("null value");
         }
+        ValueType res = get(key);
+        changedValues.get().put(key, value);
+        return res;
+    }
 
-        int nfile = Utils.getNumberOfFile(key);
-        if (database.get(nfile) == null) {
-            database.put(nfile, new HashMap<String, ValueType>());
-            oldDatabase.put(nfile, new HashMap<String, ValueType>());
+    private int countChanges() {
+        lock.readLock().lock();
+        int res = 0;
+        for (String s: changedValues.get().keySet()) {
+            try {
+                if (!checkEquals(changedValues.get().get(s), oldDatabase.get(s))) {
+                    ++res;
+                }
+            } catch (IOException e) {
+                throw new IllegalArgumentException(e);
+            }
         }
-        ValueType oldValue = database.get(nfile).put(key, value);
-        
-        ValueType commitedValue = oldDatabase.get(nfile).get(key);
-        if (commitedValue != null && value.equals(commitedValue)) {
-            System.out.println(value);
-            System.out.println(oldDatabase.get(nfile).get(key));
-            changedValues.remove(key);
-        } else {
-            changedValues.add(key);
+        lock.readLock().unlock();
+        return res;
+    }
+
+    protected boolean checkEquals(ValueType val1, ValueType val2) {
+        if (val1 == null && val2 == null) {
+            return true;
         }
-            
-        if (oldValue == null) {
-            ++size;
-        }
-        return oldValue;
+        return val1 != null && val2 != null && val1.equals(val2);
     }
 
     public int commit() throws IOException {
-        for (int i = 0 ; i < 256; ++i) {
-            if (database.get(i) != null) {
-                if (files.get(i) == null) {
-                    Integer in = i / 16;
-                    File dir = new File(tableDirectory, in.toString() + ".dir");
-                    if (!dir.isDirectory()) {
-                        if (!dir.mkdir()) {
-                            throw new IOException("can't create directory");
-                        }
-                    }
-                    in = i % 16;
-                    File db = new File(dir, in.toString() + ".dat");
-                    if (!db.exists()) {
-                        if (!db.createNewFile()) {
-                            throw new IOException("can't create file");
-                        }
-                    }
-                    files.put(i, db);
-                }
-                
-                FileStorage.commitDiff(files.get(i), serialize(database.get(i)));
-                oldDatabase.get(i).clear();
-                oldDatabase.get(i).putAll(database.get(i));
+        ThreadLocal<Map<Integer, Map<String, ValueType>>> database =
+                new ThreadLocal<Map<Integer, Map<String, ValueType>>>() {
+            @Override
+            protected Map<Integer, Map<String, ValueType>> initialValue() {
+                return new HashMap<>();
             }
-        }
+        };
+        ThreadLocal<Set<Integer>> filesToUpdate = new ThreadLocal<Set<Integer>>() {
+            @Override
+            protected Set<Integer> initialValue() {
+                return new HashSet<>();
+            }
+        };
 
-        for (int i = 0; i < 16; ++i) {
-            File dir = new File(tableDirectory, i + ".dir");
-            dir.delete();
-        }
-        int changed = changedValues.size();
-        changedValues.clear();
-        oldSize = size;
-        return changed;
-    }
- 
-    protected abstract Map<String, String> serialize(Map<String, ValueType> values);
-    protected abstract Map<String, ValueType> deserialize(Map<String, String> values) throws IOException;
-    
-    public int rollback() {
-        for (int i = 0; i < 256; ++i) {
-            if (database.get(i) != null) {
-                database.get(i).clear();
-                database.get(i).putAll(oldDatabase.get(i));
+        int res = countChanges();
+        oldDatabase.commitSize(size());
+        try {
+            lock.writeLock().lock();
+            for (Map.Entry<String, ValueType> s: changedValues.get().entrySet()) {
+                int nfile = Utils.getNumberOfFile(s.getKey());
+                filesToUpdate.get().add(nfile);
+                if (database.get().get(nfile) == null) {
+                    database.get().put(nfile, new HashMap<String, ValueType>());
+                }
+                database.get().get(nfile).put(s.getKey(), s.getValue());
             }
+
+            for (Integer nfile: filesToUpdate.get()) {
+                Map<String, ValueType> data = oldDatabase.putAllInMap(nfile, database.get().get(nfile));
+                FileStorage.commitDiff(getFile(nfile), serialize(data));
+            }
+
+            for (int i = 0; i < 16; ++i) {
+                File dir = new File(tableDirectory, i + ".dir");
+                dir.delete();
+            }
+        } finally {
+            lock.writeLock().unlock();
         }
-        int res = changedValues.size();
-        changedValues.clear();
-        size = oldSize;
+        changedValues.get().clear();
         return res;
     }
-    
+
+
+    private File getFile(int nfile) throws IOException {
+        File dir = new File(tableDirectory, nfile / 16 + ".dir");
+        if (!dir.isDirectory()) {
+            if (!dir.mkdir()) {
+                throw new IOException("can't create directory");
+            }
+        }
+        File db = new File(dir, nfile % 16 + ".dat");
+        if (!db.exists()) {
+            if (!db.createNewFile()) {
+                throw new IOException("can't create file");
+            }
+        }
+        return db;
+    }
+
+    protected abstract Map<String, String> serialize(Map<String, ValueType> values);
+    protected abstract Map<String, ValueType> deserialize(Map<String, String> values) throws IOException;
+
+    public int rollback() {
+        int res = countChanges();
+        changedValues.get().clear();
+        return res;
+    }
+
     public int getChangedValuesNumber() {
-        return changedValues.size();
+        return changedValues.get().size();
     }
 
     public String getName() {
@@ -152,38 +172,58 @@ public abstract class GenericTable<ValueType> {
     }
 
     public int size() {
-        return size;
+        lock.readLock().lock();
+        int res = oldDatabase.size();
+        for (Map.Entry<String, ValueType> s: changedValues.get().entrySet()) {
+            try {
+                if (s.getValue() == null && oldDatabase.get(s.getKey()) != null) {
+                    --res;
+                } else if (s.getValue() != null && oldDatabase.get(s.getKey()) == null) {
+                    ++res;
+                }
+            } catch (IOException e) {
+                throw new IllegalArgumentException(e);
+            }
+        }
+        lock.readLock().unlock();
+        return res;
     }
 
     public void loadAll() throws IOException {
-        for (int i = 0; i < 256; ++i) {
-            if (database.get(i) == null) {
-                File dir = new File(tableDirectory, i / 16 + ".dir");
+        loadOldDatabase();
+        changedValues.get().clear();
+    }
+
+    protected void loadOldDatabase() throws IOException {
+        try {
+            lock.writeLock().lock();
+            oldDatabase.clear();
+            for (int i = 0; i < 16; ++i) {
+                File dir = new File(tableDirectory, i + ".dir");
                 if (!dir.isDirectory()) {
                     continue;
                 } else if (dir.listFiles().length == 0) {
                     throw new IOException("empty dir");
                 }
-                File db = new File(dir, i % 16 + ".dat");
-                if (db.exists()) {
-                    files.put(i, db);
-                    oldDatabase.put(i, deserialize(FileStorage.openDataFile(db, i)));
-                    if (oldDatabase.get(i).isEmpty()) {
-                        throw new IOException("empty file");
+                for (int j = 0; j < 16; ++j) {
+                    File db = new File(dir, j + ".dat");
+                    if (db.isFile()) {
+                        Map<String, String> fromFile = FileStorage.openDataFile(db, i * 16 + j);
+                        oldDatabase.putAllInMap(i * 16 + j, deserialize(fromFile));
+                        if (fromFile.isEmpty()) {
+                            throw new IOException("empty file");
+                        }
                     }
-                    size += oldDatabase.get(i).size();
-                    database.put(i, new HashMap<String, ValueType>());
-                    database.get(i).putAll(oldDatabase.get(i));
                 }
             }
+        } finally {
+            lock.writeLock().unlock();
         }
-        oldSize = size;
     }
 
-    private void checkKey(String key ) throws IllegalArgumentException {
+    private void checkKey(String key) throws IllegalArgumentException {
         if (key == null || key.matches("(.*\\s+.*)*")) {
             throw new IllegalArgumentException("key or value null or empty or contain spaces");
         }
     }
 }
-

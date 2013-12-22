@@ -8,4 +8,4 @@ public class TableProviderFactoryTest {
 		TableProviderFactoryImplementation factory = new TableProviderFactoryImplementation();
 		factory.create(null);
 	}
-} 
+}

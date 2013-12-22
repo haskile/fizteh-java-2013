@@ -44,12 +44,6 @@ public class DatabaseRunner {
         } catch (Exception e) {
             System.err.println(e.getMessage());
             System.exit(1);
-        } finally {
-            try {
-                database.exit();
-            } catch (DatabaseException e) {
-                System.err.println(e.getMessage());
-            }
         }
     }
 }

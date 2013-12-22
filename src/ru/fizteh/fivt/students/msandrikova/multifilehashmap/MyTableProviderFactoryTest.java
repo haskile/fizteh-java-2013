@@ -4,16 +4,16 @@ import org.junit.Before;
 import org.junit.Test;
 
 public class MyTableProviderFactoryTest {
-	MyTableProviderFactory tableProviderFactory;
+    MyTableProviderFactory tableProviderFactory;
 
-	@Before
-	public void setUp() throws Exception {
-		tableProviderFactory = new MyTableProviderFactory();
-	}
+    @Before
+    public void setUp() throws Exception {
+        tableProviderFactory = new MyTableProviderFactory();
+    }
 
-	@Test(expected = IllegalArgumentException.class)
-	public void testCreate() {
-		tableProviderFactory.create(null);
-	}
+    @Test(expected = IllegalArgumentException.class)
+    public void testCreate() {
+        tableProviderFactory.create(null);
+    }
 
 }

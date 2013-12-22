@@ -136,10 +136,10 @@ public class StoreableDataBaseGlobalState extends MultiFileDataBaseGlobalState {
             try {
                 List<Class<?>> columnTypes = WorkWithStoreableDataBase.createListOfTypes(args);
                 currentTableManager.createTable(useTableName, columnTypes);
+                System.out.println("created");
             } catch (IOException exc) {
                 System.err.println(exc.getMessage());
             }
-            System.out.println("created");
         }
     }
 }

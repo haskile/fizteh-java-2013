@@ -21,7 +21,8 @@ public class Value implements Storeable {
         if (columnIndex < 0 || columnIndex >= types.size()) {
             throw new IndexOutOfBoundsException("Incorrect number of column to set.");
         }
-        if (value != null && !value.getClass().equals(types.get(columnIndex))) {
+        if (value != null && value.getClass() != types.get(columnIndex) && !(types.get(columnIndex) == Long.class
+                && value.getClass() == Integer.class)) {
             throw new ColumnFormatException("Incorrect type of setting value.");
         }
         columns.set(columnIndex, value);
@@ -110,5 +111,20 @@ public class Value implements Storeable {
             throw new ColumnFormatException("Can't get string value, when it's not string.");
         }
         return (String) columns.get(columnIndex);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder(getClass().getSimpleName() + "[");
+        for (int i = 0; i < types.size(); ++i) {
+            if (getColumnAt(i) != null) {
+                sb.append(getColumnAt(i).toString());
+            }
+            if (i < types.size() - 1) {
+                sb.append(",");
+            }
+        }
+        sb.append("]");
+        return sb.toString();
     }
 }

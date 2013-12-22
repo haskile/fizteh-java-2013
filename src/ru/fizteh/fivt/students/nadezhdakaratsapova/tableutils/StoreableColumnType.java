@@ -13,7 +13,8 @@ public enum StoreableColumnType {
             return Integer.parseInt(s);
         }
 
-        public Object tryToGetStoreableField(int columnIndex, Storeable value) throws ColumnFormatException, IndexOutOfBoundsException {
+        public Object tryToGetStoreableField(int columnIndex, Storeable value) throws ColumnFormatException,
+                IndexOutOfBoundsException {
             return value.getIntAt(columnIndex);
         }
     },
@@ -23,7 +24,8 @@ public enum StoreableColumnType {
             return Long.parseLong(s);
         }
 
-        public Object tryToGetStoreableField(int columnIndex, Storeable value) throws ColumnFormatException, IndexOutOfBoundsException {
+        public Object tryToGetStoreableField(int columnIndex, Storeable value) throws ColumnFormatException,
+                IndexOutOfBoundsException {
             return value.getLongAt(columnIndex);
         }
     },
@@ -32,7 +34,8 @@ public enum StoreableColumnType {
             return Byte.parseByte(s);
         }
 
-        public Object tryToGetStoreableField(int columnIndex, Storeable value) throws ColumnFormatException, IndexOutOfBoundsException {
+        public Object tryToGetStoreableField(int columnIndex, Storeable value)
+                throws ColumnFormatException, IndexOutOfBoundsException {
             return value.getByteAt(columnIndex);
         }
     },
@@ -41,7 +44,8 @@ public enum StoreableColumnType {
             return Float.parseFloat(s);
         }
 
-        public Object tryToGetStoreableField(int columnIndex, Storeable value) throws ColumnFormatException, IndexOutOfBoundsException {
+        public Object tryToGetStoreableField(int columnIndex, Storeable value)
+                throws ColumnFormatException, IndexOutOfBoundsException {
             return value.getFloatAt(columnIndex);
         }
     },
@@ -50,7 +54,8 @@ public enum StoreableColumnType {
             return Double.parseDouble(s);
         }
 
-        public Object tryToGetStoreableField(int columnIndex, Storeable value) throws ColumnFormatException, IndexOutOfBoundsException {
+        public Object tryToGetStoreableField(int columnIndex, Storeable value)
+                throws ColumnFormatException, IndexOutOfBoundsException {
             return value.getDoubleAt(columnIndex);
         }
     },
@@ -59,7 +64,8 @@ public enum StoreableColumnType {
             return Boolean.parseBoolean(s);
         }
 
-        public Object tryToGetStoreableField(int columnIndex, Storeable value) throws ColumnFormatException, IndexOutOfBoundsException {
+        public Object tryToGetStoreableField(int columnIndex, Storeable value)
+                throws ColumnFormatException, IndexOutOfBoundsException {
             return value.getBooleanAt(columnIndex);
         }
     },
@@ -68,7 +74,8 @@ public enum StoreableColumnType {
             return s;
         }
 
-        public Object tryToGetStoreableField(int columnIndex, Storeable value) throws ColumnFormatException, IndexOutOfBoundsException {
+        public Object tryToGetStoreableField(int columnIndex, Storeable value)
+                throws ColumnFormatException, IndexOutOfBoundsException {
             return value.getStringAt(columnIndex);
         }
     };
@@ -92,9 +99,11 @@ public enum StoreableColumnType {
 
     public abstract Object parse(String type);
 
-    public abstract Object tryToGetStoreableField(int columnIndex, Storeable value) throws ColumnFormatException, IndexOutOfBoundsException;
+    public abstract Object tryToGetStoreableField(int columnIndex, Storeable value)
+            throws ColumnFormatException, IndexOutOfBoundsException;
 
-    public static Object getStoreableField(int columnIndex, Storeable value, Class<?> columnType) throws ColumnFormatException, IndexOutOfBoundsException {
+    public static Object getStoreableField(int columnIndex, Storeable value, Class<?> columnType)
+            throws ColumnFormatException, IndexOutOfBoundsException {
         StoreableColumnType storeableColumnType = classToColumnType.get(columnType);
         if (storeableColumnType == null) {
             throw new ColumnFormatException("Not allowed type of signature");

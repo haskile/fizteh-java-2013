@@ -12,8 +12,8 @@ import java.util.Map;
 import java.util.TreeMap;
 
 public class ColumnTypes {
-    private static Map<String, Class<?>> typeMatchingStringClass = new TreeMap<>();
-    private static Map<String, String> typeMatchingClassString = new TreeMap<>();
+    private Map<String, Class<?>> typeMatchingStringClass = new TreeMap<>();
+    private Map<String, String> typeMatchingClassString = new TreeMap<>();
 
     public ColumnTypes() {
         typeMatchingStringClass.put("int", Integer.class);

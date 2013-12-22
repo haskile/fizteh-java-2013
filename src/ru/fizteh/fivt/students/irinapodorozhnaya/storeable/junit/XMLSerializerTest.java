@@ -80,7 +80,8 @@ public class XMLSerializerTest {
         s.setColumnAt(0, "Hello");
         s.setColumnAt(1, 5);
         columnTypes.add(Byte.class);
-        XMLSerializer.serialize(table, s);
+        ExtendTable t = provider.createTable("table2", columnTypes);
+        XMLSerializer.serialize(t, s);
     }
 
     @Test
@@ -91,7 +92,7 @@ public class XMLSerializerTest {
 
     @Test
     public void deserializeWithNull() throws Exception {
-        Storeable s = provider.createFor(table);
-        Assert.assertEquals(provider.deserialize(table, "<row><null/><null/></row>"), s);
+        Storeable s = provider.deserialize(table, "<row><null/><null/></row>");
+        Assert.assertEquals(s, provider.createFor(table));
     }
 }

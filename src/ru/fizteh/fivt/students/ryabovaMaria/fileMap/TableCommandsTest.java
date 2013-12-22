@@ -28,7 +28,7 @@ public class TableCommandsTest {
     int length;
     
     @Rule
-    public TemporaryFolder tempFolder = new TemporaryFolder();;
+    public TemporaryFolder tempFolder = new TemporaryFolder();
     
     @Before
     public void initTempTable() throws IOException {
@@ -159,7 +159,7 @@ public class TableCommandsTest {
         Random rand = new Random();
         StringBuilder tempString = new StringBuilder();
         for (int i = 0; i < 10; i++) {
-            char c = (char)(rand.nextInt((int)(Character.MAX_VALUE)));
+            char c = (char) (rand.nextInt((int) (Character.MAX_VALUE)));
             tempString.append(c);
         }
         return tempString.toString();

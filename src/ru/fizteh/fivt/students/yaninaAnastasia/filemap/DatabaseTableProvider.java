@@ -11,13 +11,18 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class DatabaseTableProvider implements TableProvider {
+public class DatabaseTableProvider implements TableProvider, AutoCloseable {
     public DatabaseTable curTable = null;
     HashMap<String, DatabaseTable> tables = new HashMap<String, DatabaseTable>();
     String curDir;
+    private final ReadWriteLock lock = new ReentrantReadWriteLock(true);
+    volatile boolean isClosed;
 
     public DatabaseTableProvider(String directory) {
+        isClosed = false;
         if (directory == null || directory.isEmpty()) {
             throw new IllegalArgumentException("Error with the property");
         }
@@ -28,35 +33,47 @@ public class DatabaseTableProvider implements TableProvider {
         }
     }
 
+    public String getDatabaseDirectory() {
+        return curDir;
+    }
+
     public DatabaseTable getTable(String name) throws IllegalArgumentException, IllegalStateException {
+        isCloseChecker();
+
         if (name == null || (name.isEmpty() || name.trim().isEmpty())) {
             throw new IllegalArgumentException("table's name cannot be null");
         }
         if (name.contains("\\") || name.contains("/") || name.contains(">") || name.contains("<")
                 || name.contains("\"") || name.contains(":") || name.contains("?") || name.contains("|")
                 || name.startsWith(".") || name.endsWith(".")) {
-            throw new RuntimeException("Bad symbols in tablename " + name);
+            throw new RuntimeException("Bad symbols in suggested tablename " + name);
         }
+        lock.writeLock().lock();
+        try {
+            if (!tables.containsKey(name)) {
+                return null;
+            }
+            DatabaseTable table = tables.get(name);
+            if (table.isClosed) {
+                table = new DatabaseTable(table);
+                tables.put(name, table);
+            }
 
-        DatabaseTable table = tables.get(name);
+            if (table == null) {
+                return table;
+            }
 
-        if (table == null) {
+            curTable = table;
+
             return table;
+        } finally {
+            lock.writeLock().unlock();
         }
-
-        table.putName(name);
-
-        if (curTable != null && curTable.uncommittedChanges > 0) {
-            throw new IllegalArgumentException(String.format("%d unsaved changes", curTable.uncommittedChanges));
-        }
-
-        curTable = table;
-
-        return table;
     }
 
     public Table createTable(String name, List<Class<?>> columnTypes)
             throws IllegalArgumentException, IllegalStateException {
+        isCloseChecker();
         if (name == null || (name.isEmpty() || name.trim().isEmpty())) {
             throw new IllegalArgumentException("table's name cannot be null");
         }
@@ -66,54 +83,55 @@ public class DatabaseTableProvider implements TableProvider {
             throw new RuntimeException("Bad symbols in tablename " + name);
         }
         if (columnTypes == null || columnTypes.isEmpty()) {
-            throw new IllegalArgumentException("wrong type (column types cannot be null)");
+            throw new IllegalArgumentException("column types cannot be null");
         }
-
         for (final Class<?> columnType : columnTypes) {
             if (columnType == null || ColumnTypes.fromTypeToName(columnType) == null) {
-                throw new IllegalArgumentException("wrong type (unknown column type)");
+                throw new IllegalArgumentException("unknown column type");
             }
         }
+        lock.writeLock().lock();
         try {
             File tableDirectory = new File(curDir, name);
             if (!tableDirectory.exists()) {
                 tableDirectory.mkdir();
             }
             File signatureFile = new File(tableDirectory, "signature.tsv");
-            signatureFile.createNewFile();
-            BufferedWriter writer = new BufferedWriter(new FileWriter(signatureFile));
-            List<String> formattedColumnTypes = new ArrayList<String>();
-            for (final Class<?> columnType : columnTypes) {
-                formattedColumnTypes.add(ColumnTypes.fromTypeToName(columnType));
-            }
-            StringBuilder sb = new StringBuilder();
-            boolean first = true;
-            for (final Object listEntry : formattedColumnTypes) {
-                if (!first) {
-                    sb.append(" ");
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(signatureFile))) {
+                signatureFile.createNewFile();
+                List<String> formattedColumnTypes = new ArrayList<String>();
+                for (final Class<?> columnType : columnTypes) {
+                    formattedColumnTypes.add(ColumnTypes.fromTypeToName(columnType));
                 }
-                first = false;
-                if (listEntry == null) {
-                    sb.append("null");
-                } else {
-                    sb.append(listEntry.toString());
+                StringBuilder sb = new StringBuilder();
+                boolean first = true;
+                for (final Object listEntry : formattedColumnTypes) {
+                    if (!first) {
+                        sb.append(" ");
+                    }
+                    first = false;
+                    if (listEntry == null) {
+                        sb.append("null");
+                    } else {
+                        sb.append(listEntry.toString());
+                    }
                 }
+                String signature = sb.toString();
+                writer.write(signature);
+            } catch (IOException e) {
+                System.out.println("Can't write signature file to the disk");
+                return null;
             }
-            String signature = sb.toString();
-            writer.write(signature);
-            writer.close();
-        } catch (IOException e) {
-            System.out.println("Can't write signature file to the disk");
-            return null;
-        }
-        if (tables.containsKey(name)) {
-            return null;
-        }
-        DatabaseTable table = new DatabaseTable(name, columnTypes, this);
-        if (columnTypes != null && !columnTypes.isEmpty()) {
+            if (tables.containsKey(name)) {
+                return null;
+            }
+
+            DatabaseTable table = new DatabaseTable(name, columnTypes, this);
             tables.put(name, table);
+            return table;
+        } finally {
+            lock.writeLock().unlock();
         }
-        return table;
     }
 
     public static boolean recRemove(File file) throws IOException {
@@ -130,6 +148,7 @@ public class DatabaseTableProvider implements TableProvider {
     }
 
     public void removeTable(String name) throws IllegalArgumentException, IllegalStateException {
+        isCloseChecker();
         if (name == null || (name.isEmpty() || name.trim().isEmpty())) {
             throw new IllegalArgumentException("table's name cannot be null");
         }
@@ -138,26 +157,32 @@ public class DatabaseTableProvider implements TableProvider {
                 || name.startsWith(".") || name.endsWith(".")) {
             throw new RuntimeException("Bad symbols in tablename " + name);
         }
-        if (!tables.containsKey(name)) {
-            throw new IllegalStateException(String.format("%s not exists", name));
-        }
-        File temp = new File(curDir, name);
-        if (temp.exists()) {
-            File file = temp;
-            try {
-                if (!recRemove(file)) {
-                    System.err.println("File was not deleted");
-                }
-            } catch (IOException e) {
-                System.out.println(e.getMessage());
+        lock.writeLock().lock();
+        try {
+            if (!tables.containsKey(name)) {
+                throw new IllegalStateException(String.format("%s not exists", name));
             }
-        } else {
-            System.out.println(name + " not exists");
+            File temp = new File(curDir, name);
+            if (temp.exists()) {
+                File file = temp;
+                try {
+                    if (!recRemove(file)) {
+                        System.err.println("File was not deleted");
+                    }
+                } catch (IOException e) {
+                    System.out.println(e.getMessage());
+                }
+            } else {
+                System.out.println(name + " not exists");
+            }
+            tables.remove(name);
+        } finally {
+            lock.writeLock().unlock();
         }
-        tables.remove(name);
     }
 
     public Storeable deserialize(Table table, String value) throws ParseException {
+        isCloseChecker();
         if (value == null || value.isEmpty()) {
             throw new IllegalArgumentException("value cannot be null or empty");
         }
@@ -202,6 +227,7 @@ public class DatabaseTableProvider implements TableProvider {
     }
 
     public String serialize(Table table, Storeable value) throws ColumnFormatException {
+        isCloseChecker();
         if (value == null) {
             throw new IllegalArgumentException("value cannot be null");
         }
@@ -221,6 +247,7 @@ public class DatabaseTableProvider implements TableProvider {
     }
 
     public Storeable createFor(Table table) {
+        isCloseChecker();
         if (table == null) {
             return null;
         }
@@ -233,6 +260,7 @@ public class DatabaseTableProvider implements TableProvider {
     }
 
     public Storeable createFor(Table table, List<?> values) throws ColumnFormatException, IndexOutOfBoundsException {
+        isCloseChecker();
         if (values == null) {
             throw new IllegalArgumentException("values cannot be null");
         }
@@ -354,7 +382,6 @@ public class DatabaseTableProvider implements TableProvider {
                     }
                 }
             }
-            loadingTable.uncommittedChanges = 0;
             tables.put(curTableName, loadingTable);
         }
         curTable = null;
@@ -419,5 +446,28 @@ public class DatabaseTableProvider implements TableProvider {
         } else {
             throw new IllegalArgumentException("File has incorrect format");
         }
+    }
+
+    public void isCloseChecker() {
+        if (isClosed) {
+            throw new IllegalStateException("It is closed");
+        }
+    }
+
+    @Override
+    public String toString() {
+        isCloseChecker();
+        return String.format("%s[%s]", getClass().getSimpleName(), curDir);
+    }
+
+    @Override
+    public void close() throws Exception {
+        if (isClosed) {
+            return;
+        }
+        for (final String tableName : tables.keySet()) {
+            tables.get(tableName).close();
+        }
+        isClosed = true;
     }
 }

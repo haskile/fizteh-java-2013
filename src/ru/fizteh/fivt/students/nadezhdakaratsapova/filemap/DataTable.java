@@ -23,6 +23,11 @@ public class DataTable extends UniversalDataTable<String> {
     }
 
     @Override
+    public int commit() {
+        return commitWithoutWriteToDataBase();
+    }
+
+    @Override
     public void load() throws IOException, ParseException {
         FileReader fileReader = new FileReader(getWorkingDirectory(), this);
         while (fileReader.checkingLoadingConditions()) {

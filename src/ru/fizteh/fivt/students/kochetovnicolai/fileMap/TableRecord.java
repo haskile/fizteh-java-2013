@@ -54,7 +54,7 @@ public class TableRecord implements Storeable {
     }
 
     public boolean equals(Object other) {
-       if (other.getClass() != this.getClass()) {
+       if (other == null || other.getClass() != this.getClass()) {
            return false;
        }
        TableRecord record = (TableRecord) other;
@@ -71,8 +71,8 @@ public class TableRecord implements Storeable {
     protected void checkColumnType(int columnIndex, Class<?> columnType) {
         checkIndex(columnIndex);
         if (columnType != null && !columnType.equals(types.get(columnIndex))) {
-            throw new ColumnFormatException("incorrect type: " + types.get(columnIndex) + " expected, but "
-                    + columnType + "was received");
+            throw new ColumnFormatException("incorrect type at position " + columnIndex
+                    + ": expected" + types.get(columnIndex) + ", but " + columnType + "was received");
         }
     }
 
@@ -96,6 +96,39 @@ public class TableRecord implements Storeable {
         } else {
             throw new IllegalArgumentException("unsupported object type");
         }
+    }
+
+    public static void checkTypesList(List<Class<?>> columnTypes) {
+        if (columnTypes == null) {
+            throw new IllegalArgumentException("types list shouldn't be null");
+        }
+        for (int i = 0; i < columnTypes.size(); i++) {
+            if (!SUPPORTED_TYPES.containsValue(columnTypes.get(i))) {
+                throw new IllegalArgumentException(columnTypes.get(i) + ": invalid type at position " + i);
+            }
+        }
+    }
+
+    public static void checkStoreableTypes(Storeable storeable, List<Class<?>> columnTypes)
+            throws IndexOutOfBoundsException, ColumnFormatException {
+        if (storeable == null) {
+            throw new IllegalArgumentException("storeable shouldn't be null");
+        }
+        checkTypesList(columnTypes);
+        for (int i = 0; i < columnTypes.size(); i++) {
+            try {
+                getColumnFromTypeAt(i, columnTypes.get(i), storeable);
+            } catch (IndexOutOfBoundsException e) {
+                throw new IndexOutOfBoundsException("invalid storeable size: expected " + columnTypes.size()
+                        + ", but was " + i);
+            }
+        }
+        try {
+            storeable.getColumnAt(columnTypes.size());
+        } catch (IndexOutOfBoundsException e) {
+            return;
+        }
+        throw new IndexOutOfBoundsException("invalid storeable size: more, than " + columnTypes.size());
     }
 
     public static Object getColumnFromTypeAt(int columnIndex, Class<?> columnType, Storeable storable)
@@ -165,5 +198,26 @@ public class TableRecord implements Storeable {
 
     public String getStringAt(int columnIndex) throws ColumnFormatException, IndexOutOfBoundsException {
         return (String) getObjectAt(columnIndex, String.class);
+    }
+
+    List<Class<?>> getTypes() {
+        return types;
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder builder = new StringBuilder(this.getClass().getSimpleName());
+        builder.append('[');
+        boolean isFirst = true;
+        for (Object value : values) {
+            if (!isFirst) {
+                builder.append(',');
+            }
+            isFirst = false;
+            if (value != null) {
+                builder.append(value);
+            }
+        }
+        return builder.append(']').toString();
     }
 }

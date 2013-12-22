@@ -4,7 +4,6 @@ import ru.fizteh.fivt.storage.structured.ColumnFormatException;
 import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.storage.structured.Table;
 import ru.fizteh.fivt.storage.structured.TableProvider;
-import ru.fizteh.fivt.students.belousova.storable.GetColumnTypeStorable;
 import ru.fizteh.fivt.students.belousova.storable.StorableTableLine;
 import ru.fizteh.fivt.students.belousova.storable.StorableTableProvider;
 import ru.fizteh.fivt.students.belousova.storable.TypesEnum;
@@ -125,11 +124,20 @@ public class StorableUtils {
                 while (reader.hasNext()) {
                     reader.nextTag();
                     if (!reader.getLocalName().equals("col")) {
-                        if (!reader.isEndElement()) {
-                            throw new ParseException("invalid xml format", reader.getLocation().getCharacterOffset());
-                        }
-                        if (reader.isEndElement() && reader.getLocalName().equals("row")) {
-                            break;
+                        if (reader.getLocalName().equals("null")) {
+                            reader.nextTag();
+                            if (!reader.isEndElement()) {
+                                throw new ParseException("invalid xml format", reader.getLocation().getCharacterOffset());
+                            }
+                            columnIndex++;
+
+                        } else {
+                            if (!reader.isEndElement()) {
+                                throw new ParseException("invalid xml format", reader.getLocation().getCharacterOffset());
+                            }
+                            if (reader.isEndElement() && reader.getLocalName().equals("row")) {
+                                break;
+                            }
                         }
                     }
                     if (reader.isEndElement()) {
@@ -142,7 +150,7 @@ public class StorableUtils {
                         reader.nextTag();
                         if (!reader.getLocalName().equals("null")) {
                             throw new ParseException("invalid xml format",
-                                        reader.getLocation().getCharacterOffset());
+                                    reader.getLocation().getCharacterOffset());
                         }
                         reader.nextTag();
                     }

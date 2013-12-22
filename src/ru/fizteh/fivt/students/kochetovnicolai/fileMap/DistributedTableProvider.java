@@ -6,74 +6,59 @@ import ru.fizteh.fivt.storage.structured.Table;
 import ru.fizteh.fivt.storage.structured.TableProvider;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.text.ParseException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import javax.xml.stream.*;
 
-public class DistributedTableProvider implements TableProvider {
+public class DistributedTableProvider implements TableProvider, AutoCloseable {
 
+    private HashMap<String, DistributedTable> tables;
+    private Path currentPath;
+    private ReadWriteLock tablesLock;
+    private volatile boolean isClosed = false;
+    private DistributedTableProviderFactory factory;
 
+    private void checkState() throws IllegalArgumentException {
+        if (isClosed) {
+            throw new IllegalStateException("table provider already closed");
+        }
+    }
 
-    HashMap<String, DistributedTable> tables;
-    HashMap<String, TableMember> tableMembers;
-    HashMap<String, List<Class<?>>> types;
-    File currentPath;
-
-    protected void checkTableDirectory(String name) {
-        File tableDirectory = new File(currentPath.getPath() + File.separator + name);
-        if (!tableDirectory.exists() || !tableDirectory.isDirectory()) {
-            if (tables.containsKey(name)) {
-                tables.remove(name);
+    public void close() throws IOException {
+        if (isClosed) {
+            return;
+        }
+        tablesLock.writeLock().lock();
+        try {
+            if (isClosed) {
+                return;
             }
+            factory.forgetTableProvider(currentPath);
+            for (DistributedTable table : tables.values()) {
+                table.close();
+            }
+            isClosed = true;
+        } finally {
+            tablesLock.writeLock().unlock();
         }
     }
 
     public static boolean isValidName(String name) {
         return name != null && !name.equals("") && !name.contains(".") && !name.contains("/") && !name.contains("\\");
-        //&& !name.matches(".*[.\\\\/].*");
     }
 
-    protected ArrayList<Class<?>> getSignature(File tableDirectory) throws IOException {
-        File signature = new File(tableDirectory.getPath() + File.separator + "signature.tsv");
-        if (!signature.exists() || !signature.isFile()) {
-            throw new IOException(signature.getPath() + ": file doesn't exists");
-        }
-        String string;
-        try (BufferedReader input = new BufferedReader(new FileReader(signature))) {
-            string = input.readLine();
-            if (input.read() != -1 || string == null) {
-                throw new IOException(signature.getPath() + ": invalid file format");
-            }
-        }
-        String[] typesNames = string.trim().split("[\\s]+");
-        ArrayList<Class<?>> typeList = new ArrayList<>(typesNames.length);
-        for (String nextType : typesNames) {
-            if (!TableRecord.SUPPORTED_TYPES.containsKey(nextType)) {
-                throw new IOException(signature.getPath() + ": invalid file format: unsupported type");
-            }
-            typeList.add(TableRecord.SUPPORTED_TYPES.get(nextType));
-        }
-        return typeList;
-    }
-
-    protected void loadTable(String name) throws IOException {
+    private boolean loadTable(String name) {
         if (!isValidName(name)) {
             throw new IllegalArgumentException("invalid table name");
         }
-        checkTableDirectory(name);
-        File tableDirectory = new File(currentPath + File.separator + name);
-        if (!tables.containsKey(name) && tableDirectory.exists()) {
-            types.put(name, getSignature(tableDirectory));
-            tables.put(name, new DistributedTable(currentPath, name));
-        }
-    }
-
-    public boolean existsTable(String name) {
         if (!tables.containsKey(name)) {
             try {
-                loadTable(name);
+                tables.put(name, new DistributedTable(this, currentPath.resolve(name), name));
             } catch (IOException e) {
                 return false;
             }
@@ -81,121 +66,136 @@ public class DistributedTableProvider implements TableProvider {
         return tables.containsKey(name);
     }
 
-    public DistributedTableProvider(File workingDirectory) throws IOException, IllegalArgumentException {
+    public boolean existsTable(String name) {
+        checkState();
+        tablesLock.readLock().lock();
+        try {
+            if (tables.containsKey(name)) {
+                return true;
+            }
+        } finally {
+            tablesLock.readLock().unlock();
+        }
+        tablesLock.writeLock().lock();
+        try {
+            return loadTable(name);
+        } finally {
+            tablesLock.writeLock().unlock();
+        }
+    }
+
+    public DistributedTableProvider(Path workingDirectory, DistributedTableProviderFactory factory) throws IOException {
+        this.factory = factory;
         currentPath = workingDirectory;
         if (currentPath == null) {
             throw new IllegalArgumentException("working directory shouldn't be null");
         }
-        if (currentPath.exists() && !currentPath.isDirectory()) {
+        if (Files.exists(currentPath) && !Files.isDirectory(currentPath)) {
             throw new IllegalArgumentException("couldn't create working directory on file");
         }
-        if (!currentPath.exists() && !currentPath.mkdir()) {
-            throw new IOException("couldn't create working directory");
+        if (!Files.exists(currentPath)) {
+            Files.createDirectories(currentPath);
         }
         tables = new HashMap<>();
-        tableMembers = new HashMap<>();
-        types = new HashMap<>();
+        tablesLock = new ReentrantReadWriteLock(true);
     }
 
     @Override
-    public TableMember getTable(String name) throws IllegalArgumentException {
+    public DistributedTable getTable(String name) throws IllegalArgumentException {
+        checkState();
         if (!isValidName(name)) {
             throw new IllegalArgumentException("invalid table name");
         }
-        if (!tables.containsKey(name)) {
-            try {
-                loadTable(name);
-            } catch (IOException e) {
-                return null;
+        tablesLock.readLock().lock();
+        try {
+            if (tables.containsKey(name)) {
+                return tables.get(name);
             }
-            if (!tables.containsKey(name)) {
-                return null;
-            }
+        } finally {
+            tablesLock.readLock().unlock();
         }
-
-        /**/
-        if (!tableMembers.containsKey(name)) {
-            tableMembers.put(name, new TableMember(tables.get(name), this));
-        }
-        return tableMembers.get(name);
-        //return new TableMember(tables.get(name), this);
-    }
-
-    protected void createSignature(File tableDirectory, List<Class<?>> columnTypes) throws IOException {
-        File signature = new File(tableDirectory.getPath() + File.separator + "signature.tsv");
-        if (signature.exists() || !signature.createNewFile()) {
-            throw new IOException(signature.getPath() + ": couldn't create file");
-        }
-        for (Class<?> nextClass : columnTypes) {
-            if (!TableRecord.SUPPORTED_CLASSES.containsKey(nextClass)) {
-                throw new IllegalArgumentException(nextClass + ": invalid column type");
-            }
-        }
-        try (PrintWriter output = new PrintWriter(new FileOutputStream(signature))) {
-            for (int i = 0; i < columnTypes.size(); i++) {
-                if (i > 0) {
-                    output.write(' ');
-                }
-                output.write(TableRecord.SUPPORTED_CLASSES.get(columnTypes.get(i)));
-            }
-            output.write('\n');
+        tablesLock.writeLock().lock();
+        try {
+            loadTable(name);
+            return tables.get(name);
+        } finally {
+            tablesLock.writeLock().unlock();
         }
     }
 
     @Override
-    public TableMember createTable(String name, List<Class<?>> columnTypes) throws IOException {
+    public DistributedTable createTable(String name, List<Class<?>> columnTypes) throws IOException {
+        checkState();
         if (columnTypes == null || columnTypes.size() == 0) {
             throw new IllegalArgumentException("invalid column type");
         }
         if (!isValidName(name)) {
             throw new IllegalArgumentException("invalid table name");
         }
-        if (existsTable(name)) {
-            return null;
+        tablesLock.writeLock().lock();
+        try {
+            if (loadTable(name)) {
+                return null;
+            }
+            tables.put(name, new DistributedTable(this, currentPath.resolve(name), name, columnTypes));
+            return tables.get(name);
+        } finally {
+            tablesLock.writeLock().unlock();
         }
-        File tableDirectory = new File(currentPath.getPath() + File.separator + name);
-        DistributedTable table = new DistributedTable(currentPath, name);
-        createSignature(tableDirectory, columnTypes);
-        tables.put(name, table);
-        types.put(name, columnTypes);
-        /**/
-        if (!tableMembers.containsKey(name)) {
-            tableMembers.put(name, new TableMember(tables.get(name), this));
+    }
+
+    public void forgetTable(String name) {
+        checkState();
+        if (!isValidName(name)) {
+            throw new IllegalArgumentException("invalid table name");
         }
-        return tableMembers.get(name);
-        //return new TableMember(tables.get(name), this);
+        tablesLock.writeLock().lock();
+        try {
+            tables.remove(name);
+        } finally {
+            tablesLock.writeLock().unlock();
+        }
     }
 
     @Override
     public void removeTable(String name) throws IOException {
-        if (!existsTable(name)) {
-            throw new IllegalStateException("table is not exists");
+        checkState();
+        if (!isValidName(name)) {
+            throw new IllegalArgumentException("invalid table name");
         }
-        tables.get(name).clear();
-        File dir = new File(currentPath.getPath() + File.separator + name);
-        File signature = new File(dir.getPath() + File.separator + "signature.tsv");
-        if (!signature.delete() || !dir.delete()) {
-           throw new IOException(dir.getPath() + ": couldn't delete directory");
+
+        tablesLock.writeLock().lock();
+        try {
+            if (!loadTable(name)) {
+                throw new IllegalStateException("table is not exists");
+            }
+            tables.get(name).clear();
+            tables.remove(name);
+        } finally {
+            tablesLock.writeLock().unlock();
         }
-        tables.remove(name);
-        types.remove(name);
-        /***/
-        if (tableMembers.containsKey(name)) {
-            tableMembers.remove(name);
-        }
-        //
     }
 
     @Override
     public TableRecord createFor(Table table) {
-        if (table == null || !tableMembers.containsKey(table.getName())) {
-            throw new IllegalArgumentException("invalid table");
+        checkState();
+        if (table == null) {
+            throw new IllegalArgumentException("argument shouldn't be null");
         }
-        return new TableRecord(types.get(table.getName()));
+        tablesLock.readLock().lock();
+        try {
+            if (!tables.containsKey(table.getName())) {
+                throw new IllegalArgumentException("invalid table");
+            }
+            return new TableRecord(tables.get(table.getName()).getTypes());
+        } finally {
+            tablesLock.readLock().unlock();
+        }
     }
 
     @Override
     public TableRecord createFor(Table table, List<?> values) throws ColumnFormatException, IndexOutOfBoundsException {
+        checkState();
         if (values == null) {
             throw new IllegalArgumentException("list of values shouldn't be null");
         }
@@ -210,13 +210,11 @@ public class DistributedTableProvider implements TableProvider {
         return record;
     }
 
-    @Override
-    public TableRecord deserialize(Table table, String value) throws ParseException {
+    public static TableRecord deserialiseByTypesList(List<Class<?>> types, String value) throws ParseException {
         if (value == null) {
             return null;
         }
-        TableRecord record = createFor(table);
-
+        TableRecord record = new TableRecord(types);
 
         try {
             XMLStreamReader streamReader = XMLInputFactory.newInstance().createXMLStreamReader(new StringReader(value));
@@ -282,28 +280,29 @@ public class DistributedTableProvider implements TableProvider {
         return record;
     }
 
-    public String serialize(Table table, Storeable value) throws ColumnFormatException {
-        if (table == null || !tableMembers.containsKey(table.getName())) {
-            throw new IllegalArgumentException("invalid arguments");
-        }
+    @Override
+    public TableRecord deserialize(Table table, String value) throws ParseException {
+        checkState();
         if (value == null) {
             return null;
         }
-        List<Class<?>> tableTypes = types.get(table.getName());
-        StringWriter stringWriter;
-        try {
-            value.getStringAt(tableTypes.size());
-            throw new ColumnFormatException("excess of values in storeable");
-        } catch (IndexOutOfBoundsException e) {
-            stringWriter = new StringWriter();
+        TableRecord record = createFor(table);
+        return deserialiseByTypesList(record.getTypes(), value);
+    }
+
+    public static String serializeByTypesList(List<Class<?>> tableTypes, Storeable storeable) {
+        if (storeable == null) {
+            return null;
         }
+        TableRecord.checkStoreableTypes(storeable, tableTypes);
+        StringWriter stringWriter = new StringWriter();
         try {
             XMLStreamWriter streamWriter = XMLOutputFactory.newInstance().createXMLStreamWriter(stringWriter);
             streamWriter.writeStartElement("row");
             for (int i = 0; i < tableTypes.size(); i++) {
                 Object next;
                 try {
-                    next = TableRecord.getColumnFromTypeAt(i, tableTypes.get(i), value);
+                    next = storeable.getColumnAt(i);
                 } catch (IndexOutOfBoundsException e) {
                     throw new ColumnFormatException("lack of values at storeable", e);
                 }
@@ -323,7 +322,30 @@ public class DistributedTableProvider implements TableProvider {
         return stringWriter.toString();
     }
 
-    public List<Class<?>> getTableTypes(String tableName) {
-        return types.get(tableName);
+    public String serialize(Table table, Storeable value) throws ColumnFormatException {
+        checkState();
+        if (table == null) {
+            throw new IllegalArgumentException("table shouldn't be null");
+        }
+        List<Class<?>> tableTypes;
+        tablesLock.readLock().lock();
+        try {
+            if (!tables.containsKey(table.getName())) {
+                throw new IllegalArgumentException("invalid arguments");
+            }
+            if (value == null) {
+                return null;
+            }
+            tableTypes = tables.get(table.getName()).getTypes();
+        } finally {
+            tablesLock.readLock().unlock();
+        }
+        return serializeByTypesList(tableTypes, value);
+    }
+
+    @Override
+    public String toString() {
+        checkState();
+        return this.getClass().getSimpleName() + '[' + currentPath.toAbsolutePath() + ']';
     }
 }

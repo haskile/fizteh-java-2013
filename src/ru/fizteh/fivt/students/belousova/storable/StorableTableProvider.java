@@ -33,7 +33,6 @@ public class StorableTableProvider extends AbstractTableProvider<ChangesCounting
         for (File tableFile : directory.listFiles()) {
             tableMap.put(tableFile.getName(), new StorableTable(tableFile, this));
         }
-
     }
 
     @Override
@@ -48,9 +47,7 @@ public class StorableTableProvider extends AbstractTableProvider<ChangesCounting
             throw new IllegalArgumentException("incorrect name");
         }
 
-        if (tableMap.containsKey(name)) {
-            return null;
-        }
+
         if (columnTypes == null) {
             throw new IllegalArgumentException("ColumnTypes list is not set");
         }
@@ -58,15 +55,25 @@ public class StorableTableProvider extends AbstractTableProvider<ChangesCounting
             throw new IllegalArgumentException("ColumnTypes list is empty");
         }
         File tableFile = new File(dataDitectory, name);
-        tableFile.mkdir();
+        tableProviderTransactionLock.writeLock().lock();
+        tableProviderTransactionLock.readLock().lock();
         try {
-            StorableUtils.writeSignature(tableFile, columnTypes);
-        } catch (IOException e) {
-            throw new IllegalArgumentException("wrong column type table");
+            if (tableMap.containsKey(name)) {
+                return null;
+            }
+            tableFile.mkdir();
+            try {
+                StorableUtils.writeSignature(tableFile, columnTypes);
+            } catch (IOException e) {
+                throw new IllegalArgumentException("wrong column type table");
+            }
+            ChangesCountingTable table = new StorableTable(tableFile, this);
+            tableMap.put(name, table);
+            return table;
+        } finally {
+            tableProviderTransactionLock.writeLock().unlock();
+            tableProviderTransactionLock.readLock().unlock();
         }
-        ChangesCountingTable table = new StorableTable(tableFile, this);
-        tableMap.put(name, table);
-        return table;
     }
 
     @Override
@@ -84,7 +91,7 @@ public class StorableTableProvider extends AbstractTableProvider<ChangesCounting
         for (int i = 0; i < table.getColumnsCount(); i++) {
             columnTypes.add(table.getColumnType(i));
         }
-        return StorableUtils.writeStorableToString((StorableTableLine)value, columnTypes);
+        return StorableUtils.writeStorableToString((StorableTableLine) value, columnTypes);
     }
 
     @Override

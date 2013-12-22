@@ -15,6 +15,10 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.ReentrantLock;
+
+import static ru.fizteh.fivt.students.kamilTalipov.database.utils.StoreableUtils.isEqualStoreable;
 
 public class TableTester {
     @Rule
@@ -150,5 +154,113 @@ public class TableTester {
         List<Class<?>> types = new ArrayList<>();
         types.add(BigInteger.class);
         MultiFileHashTable table2 = provider.createTable("TypesTest", types);
+    }
+
+
+    @Test
+    public void parallelGetTest() throws IOException, ExecutionException, InterruptedException {
+        Storeable storeable = new TableRow(table, Arrays.asList(1, "hello"));
+        table.put("123", storeable);
+        table.commit();
+
+        Callable<Storeable> task = new Callable<Storeable>() {
+            @Override
+            public Storeable call() throws Exception {
+                return table.get("123");
+            }
+        };
+
+        ExecutorService executor = Executors.newCachedThreadPool();
+        try {
+            Future<Storeable> result1 = executor.submit(task);
+            Future<Storeable> result2 = executor.submit(task);
+            Assert.assertEquals(isEqualStoreable(result1.get(), storeable), true);
+            Assert.assertEquals(isEqualStoreable(result2.get(), storeable), true);
+        } finally {
+            executor.shutdown();
+            if (!executor.awaitTermination(500, TimeUnit.MILLISECONDS)) {
+                throw new IllegalStateException("Timeout");
+            }
+        }
+    }
+
+    @Test
+    public void parallelGetPutTest() throws InterruptedException {
+        ExecutorService executor = Executors.newCachedThreadPool();
+        try {
+            executor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    Storeable storeable = new TableRow(table, Arrays.asList(1, "hello"));
+                    table.put("555", storeable);
+                    try {
+                        table.commit();
+                    } catch (IOException e) {
+                        throw new IllegalStateException("Bad test", e);
+                    }
+                }
+            });
+            executor.submit(new Runnable() {
+                @Override
+                public void run() {
+                    Storeable result = table.get("555");
+                    while (result == null) {
+                        result = table.get("555");
+                        try {
+                            Thread.sleep(10);
+                        } catch (InterruptedException e) {
+                            throw new IllegalStateException(e);
+                        }
+                    }
+                }
+            });
+        } finally {
+            executor.shutdown();
+            if (!executor.awaitTermination(500, TimeUnit.MILLISECONDS)) {
+                throw new IllegalStateException("Timeout");
+            }
+        }
+    }
+
+    @Test
+    public void parallelRemoveTest() throws ExecutionException, InterruptedException, IOException {
+        Storeable storeable = new TableRow(table, Arrays.asList(1, "hello"));
+        table.put("123", storeable);
+        table.commit();
+
+        final ReentrantLock lock = new ReentrantLock();
+
+        Callable<Storeable> task = new Callable<Storeable>() {
+            @Override
+            public Storeable call() throws Exception {
+                lock.lock();
+                Storeable oldValue;
+                try {
+                    oldValue = table.remove("123");
+                    table.commit();
+                } finally {
+                    lock.unlock();
+                }
+                return oldValue;
+            }
+        };
+
+        ExecutorService executor = Executors.newCachedThreadPool();
+        try {
+            Future<Storeable> result1 = executor.submit(task);
+            Future<Storeable> result2 = executor.submit(task);
+            if (isEqualStoreable(result1.get(), storeable)) {
+                if (!isEqualStoreable(result2.get(), null)) {
+                    throw new IllegalStateException("Bad test");
+                }
+            } else if (!isEqualStoreable(result2.get(), storeable)) {
+                throw new IllegalStateException("Bad test");
+            }
+        } finally {
+            executor.shutdown();
+            if (!executor.awaitTermination(500, TimeUnit.MILLISECONDS)) {
+                throw new IllegalStateException("Timeout");
+            }
+        }
     }
 }

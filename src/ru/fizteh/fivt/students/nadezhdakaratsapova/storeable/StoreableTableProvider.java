@@ -11,18 +11,26 @@ import ru.fizteh.fivt.students.nadezhdakaratsapova.tableutils.UniversalDataTable
 import ru.fizteh.fivt.students.nadezhdakaratsapova.tableutils.UniversalTableProvider;
 
 import javax.xml.stream.*;
-import java.io.*;
+import java.io.File;
+import java.io.IOException;
+import java.io.StringReader;
+import java.io.StringWriter;
 import java.text.ParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class StoreableTableProvider implements TableProvider, UniversalTableProvider {
+public class StoreableTableProvider implements TableProvider, UniversalTableProvider, AutoCloseable {
     public static final String TABLE_NAME = "[a-zA-Zа-яА-Я0-9]+";
     private File workingDirectory;
     public StoreableTable curDataBaseStorage = null;
+    private boolean closed = false;
     private Map<String, StoreableTable> dataBaseTables = new HashMap<String, StoreableTable>();
     private SignatureController signatureController = new SignatureController();
+    private final ReadWriteLock tableWorkController = new ReentrantReadWriteLock();
 
     public StoreableTableProvider(File dir) throws IOException {
         workingDirectory = dir;
@@ -30,7 +38,13 @@ public class StoreableTableProvider implements TableProvider, UniversalTableProv
         if (tables.length != 0) {
             for (File f : tables) {
                 if (f.isDirectory()) {
-                    List<Class<?>> columnTypes = signatureController.getSignature(f.getCanonicalFile());
+                    List<Class<?>> columnTypes = null;
+                    tableWorkController.readLock().lock();
+                    try {
+                        columnTypes = signatureController.getSignature(f.getCanonicalFile());
+                    } finally {
+                        tableWorkController.readLock().unlock();
+                    }
                     if (columnTypes == null) {
                         throw new IOException("signature.tsv is not found");
                     }
@@ -47,9 +61,19 @@ public class StoreableTableProvider implements TableProvider, UniversalTableProv
             if (!dataBaseTables.isEmpty()) {
                 dataTable = dataBaseTables.get(newTable);
                 if (dataTable != null) {
-                    dataTable.load();
+                    tableWorkController.readLock().lock();
+                    try {
+                        dataTable.load();
+                    } finally {
+                        tableWorkController.readLock().unlock();
+                    }
                     if (curDataBaseStorage != null) {
-                        curDataBaseStorage.writeToDataBase();
+                        tableWorkController.writeLock().lock();
+                        try {
+                            curDataBaseStorage.writeToDataBase();
+                        } finally {
+                            tableWorkController.writeLock().unlock();
+                        }
                     }
                 }
             }
@@ -61,16 +85,38 @@ public class StoreableTableProvider implements TableProvider, UniversalTableProv
     }
 
     public StoreableTable getTable(String name) throws IllegalArgumentException {
+        checkNotClosed();
         if ((name == null) || (name.isEmpty())) {
             throw new IllegalArgumentException("The table has not allowed name");
         }
         if (!name.matches(TABLE_NAME)) {
             throw new IllegalArgumentException("Not correct file name");
         }
-        return dataBaseTables.get(name);
+        tableWorkController.readLock().lock();
+        try {
+            checkNotClosed();
+            StoreableTable dataTable = dataBaseTables.get(name);
+            if (dataTable != null) {
+                if (dataTable.isTableClosed()) {
+                    try {
+                        StoreableTable newDataTable = new StoreableTable(dataTable);
+                        return newDataTable;
+                    } catch (IOException e) {
+                        throw new IllegalArgumentException(e.getMessage());
+                    } catch (ParseException e) {
+                        throw new IllegalArgumentException(e.getMessage());
+                    }
+                }
+            }
+            return dataBaseTables.get(name);
+        } finally {
+            tableWorkController.readLock().unlock();
+        }
     }
 
-    public Table createTable(String name, List<Class<?>> columnTypes) throws IOException, IllegalArgumentException {
+    public StoreableTable createTable(String name, List<Class<?>> columnTypes) throws IOException,
+            IllegalArgumentException {
+        checkNotClosed();
         if ((name == null) || (name.isEmpty())) {
             throw new IllegalArgumentException("create: the table has not allowed name");
         }
@@ -84,26 +130,34 @@ public class StoreableTableProvider implements TableProvider, UniversalTableProv
             throw new IllegalArgumentException("create: not correct types");
         }
         signatureController.checkSignatureValidity(columnTypes);
-        if (dataBaseTables.get(name) != null) {
-            return null;
-        } else {
-            File newTableFile = new File(workingDirectory, name);
-            try {
-                newTableFile = newTableFile.getCanonicalFile();
-            } catch (IOException e) {
-                throw new IllegalArgumentException("create: programme's mistake in getting canonical file");
+        tableWorkController.writeLock().lock();
+        try {
+            checkNotClosed();
+            if (dataBaseTables.get(name) != null) {
+                return null;
+            } else {
+                File newTableFile = new File(workingDirectory, name);
+                try {
+                    newTableFile = newTableFile.getCanonicalFile();
+                } catch (IOException e) {
+                    throw new IllegalArgumentException("create: programme's mistake in getting canonical file");
+                }
+                newTableFile.mkdir();
+                StoreableTable newTable = new StoreableTable(name, workingDirectory, columnTypes, this);
+                dataBaseTables.put(name, newTable);
+                File sign = new File(newTableFile, "signature.tsv");
+                sign.createNewFile();
+                signatureController.writeSignatureToFile(sign, columnTypes);
+                return newTable;
+
             }
-            newTableFile.mkdir();
-            StoreableTable newTable = new StoreableTable(name, workingDirectory, columnTypes, this);
-            dataBaseTables.put(name, newTable);
-            File sign = new File(newTableFile, "signature.tsv");
-            sign.createNewFile();
-            signatureController.writeSignatureToFile(sign, columnTypes);
-            return newTable;
+        } finally {
+            tableWorkController.writeLock().unlock();
         }
     }
 
     public void removeTable(String name) throws IOException, IllegalArgumentException {
+        checkNotClosed();
         if ((name == null) || (name.isEmpty())) {
             throw new IllegalArgumentException("The table has not allowed name");
         }
@@ -113,17 +167,21 @@ public class StoreableTableProvider implements TableProvider, UniversalTableProv
         if (dataBaseTables.get(name) != null) {
             File table = new File(workingDirectory, name);
             try {
+                checkNotClosed();
                 table = table.getCanonicalFile();
             } catch (IOException e) {
                 throw new IllegalArgumentException("Programme's mistake in getting canonical file");
             }
+            tableWorkController.writeLock().lock();
             try {
+                checkNotClosed();
                 CommandUtils.recDeletion(table);
+                dataBaseTables.remove(name);
             } catch (IOException e) {
                 throw new IllegalArgumentException(e.getMessage());
+            } finally {
+                tableWorkController.writeLock().unlock();
             }
-            dataBaseTables.remove(name);
-
         } else {
             throw new IllegalStateException(name + " not exists");
         }
@@ -131,13 +189,15 @@ public class StoreableTableProvider implements TableProvider, UniversalTableProv
 
     public Storeable deserialize(Table table, String value) throws ParseException {
         try {
+            checkNotClosed();
             XMLStreamReader xmlReader = XMLInputFactory.newInstance().createXMLStreamReader(new StringReader(value));
             Storeable ret = createFor(table);
             int columnCounter = 0;
             int node = 0;
             if (xmlReader.hasNext()) {
                 int startNode = xmlReader.next();
-                if (!(startNode == XMLStreamConstants.START_ELEMENT) || !(xmlReader.getName().getLocalPart().equals("row"))) {
+                if (!(startNode == XMLStreamConstants.START_ELEMENT)
+                        || !(xmlReader.getName().getLocalPart().equals("row"))) {
                     throw new ParseException("there is a mistake in getting first tag. <row> is expected", 0);
                 } else {
                     while (xmlReader.hasNext()) {
@@ -146,37 +206,46 @@ public class StoreableTableProvider implements TableProvider, UniversalTableProv
                             if (node == XMLStreamConstants.END_ELEMENT) {
                                 break;
                             } else {
-                                if ((node == XMLStreamConstants.START_ELEMENT) && (xmlReader.getName().getLocalPart().equals("col"))) {
+                                if ((node == XMLStreamConstants.START_ELEMENT)
+                                        && (xmlReader.getName().getLocalPart().equals("col"))) {
                                     if (xmlReader.hasNext()) {
                                         node = xmlReader.next();
                                         if (node == XMLStreamConstants.CHARACTERS) {
                                             String parseValue = xmlReader.getText();
-                                            ret.setColumnAt(columnCounter, StoreableColumnType.convertStringToAnotherObject(parseValue, table.getColumnType(columnCounter)));
+                                            ret.setColumnAt(columnCounter, StoreableColumnType.
+                                                    convertStringToAnotherObject(parseValue,
+                                                            table.getColumnType(columnCounter)));
                                             ++columnCounter;
                                         }
 
                                     } else {
-                                        throw new ParseException("Not managed to convert xml value. The text is expected", 0);
+                                        throw new ParseException("Not managed to convert xml value. "
+                                                + "The text is expected", 0);
                                     }
 
                                     if (xmlReader.hasNext()) {
                                         node = xmlReader.next();
                                         if (node != XMLStreamConstants.END_ELEMENT) {
-                                            throw new ParseException("Not managed to convert xml value. End tag is expected", 0);
+                                            throw new ParseException("Not managed to convert xml value."
+                                                    + " End tag is expected", 0);
                                         }
                                     } else {
-                                        throw new ParseException("Not managed to convert xml value. End tag is expected", 0);
+                                        throw new ParseException("Not managed to convert xml value."
+                                                + " End tag is expected", 0);
                                     }
 
                                 } else {
-                                    if ((node != XMLStreamConstants.START_ELEMENT) || (!(xmlReader.getName().getLocalPart().equals("null")))) {
-                                        throw new ParseException("Not managed to convert xml value. Start tag is expected", 0);
+                                    if ((node != XMLStreamConstants.START_ELEMENT)
+                                            || (!(xmlReader.getName().getLocalPart().equals("null")))) {
+                                        throw new ParseException("Not managed to convert xml value. "
+                                                + "Start tag is expected", 0);
                                     }
                                     ++columnCounter;
                                     if (xmlReader.hasNext()) {
                                         node = xmlReader.next();
                                         if (node != XMLStreamConstants.END_ELEMENT) {
-                                            throw new ParseException("Not managed to convert xml value. End tag is expected", 0);
+                                            throw new ParseException("Not managed to convert xml value. "
+                                                    + "End tag is expected", 0);
                                         }
                                     }
                                 }
@@ -199,6 +268,7 @@ public class StoreableTableProvider implements TableProvider, UniversalTableProv
 
     public String serialize(Table table, Storeable value) throws ColumnFormatException {
         try {
+            checkNotClosed();
             if (value == null) {
                 throw new IllegalArgumentException("Null value is not allowed");
             }
@@ -233,10 +303,12 @@ public class StoreableTableProvider implements TableProvider, UniversalTableProv
     }
 
     public Storeable createFor(Table table) {
+        checkNotClosed();
         return new StoreableDataValue(SignatureController.getColumnTypes(table));
     }
 
     public Storeable createFor(Table table, List<?> values) throws ColumnFormatException, IndexOutOfBoundsException {
+        checkNotClosed();
         if (values == null) {
             throw new IllegalArgumentException("It's impossible to create storeable from null list");
         }
@@ -252,7 +324,35 @@ public class StoreableTableProvider implements TableProvider, UniversalTableProv
     }
 
     public UniversalDataTable getCurTable() {
+
         return curDataBaseStorage;
+    }
+
+    public String toString() {
+        checkNotClosed();
+        return new String(this.getClass().getSimpleName() + "[" + workingDirectory.toString() + "]");
+    }
+
+    public void close() throws IOException {
+        if (!closed) {
+            Set<String> tableNames = dataBaseTables.keySet();
+            for (String name : tableNames) {
+                if (!dataBaseTables.get(name).isTableClosed()) {
+                    dataBaseTables.get(name).close();
+                }
+            }
+            closed = true;
+        }
+    }
+
+    public void checkNotClosed() {
+        if (closed) {
+            throw new IllegalStateException("TableProvider is closed");
+        }
+    }
+
+    public boolean isTableProviderClosed() {
+        return closed;
     }
 }
 

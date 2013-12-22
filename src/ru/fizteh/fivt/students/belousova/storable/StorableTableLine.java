@@ -1,7 +1,6 @@
 package ru.fizteh.fivt.students.belousova.storable;
 
 import ru.fizteh.fivt.storage.structured.ColumnFormatException;
-import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.storage.structured.Table;
 
 import java.util.ArrayList;

@@ -1,85 +1,96 @@
 package ru.fizteh.fivt.students.eltyshev.filemap.base;
 
-import ru.fizteh.fivt.storage.strings.Table;
+import ru.fizteh.fivt.students.eltyshev.multifilemap.DatabaseFileDescriptor;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
-public abstract class AbstractStorage<Key, Value> {
+public abstract class AbstractStorage<Key, Value> implements AutoCloseable {
+    private final Lock transactionLock = new ReentrantLock(true);
+
     public static final Charset CHARSET = StandardCharsets.UTF_8;
     // Data
-    protected final HashMap<Key, Value> oldData;
-    protected final ThreadLocal<HashMap<Key, ValueDifference<Value>>> modifiedData = new ThreadLocal<HashMap<Key, ValueDifference<Value>>>() {
+    protected HashMap<Key, Value> oldData;
+    protected final ThreadLocal<TransactionChanges<Key, Value>> transaction = new ThreadLocal<TransactionChanges<Key, Value>>() {
         @Override
-        protected HashMap<Key, ValueDifference<Value>> initialValue() {
-            return new HashMap<Key, ValueDifference<Value>>();
+        public TransactionChanges<Key, Value> initialValue() {
+            return new TransactionChanges<>();
         }
     };
 
-    final private String tableName;
-    private int size;
+    final protected String tableName;
     private String directory;
-    private int uncommittedChangesCount;
+    protected ContainerState state;
 
     // Strategy
     protected abstract void load() throws IOException;
 
     protected abstract void save() throws IOException;
 
+    public void setTransaction(TransactionChanges transaction) {
+        this.transaction.set(transaction);
+    }
+
+    public TransactionChanges getTransaction() {
+        return this.transaction.get();
+    }
+
     // Constructor
     public AbstractStorage(String directory, String tableName) {
         this.directory = directory;
         this.tableName = tableName;
         oldData = new HashMap<Key, Value>();
-        //modifiedData = new HashMap<Key, ValueDifference<Value>>();
-        uncommittedChangesCount = 0;
+        state = ContainerState.NOT_INITIALIZED;
         try {
             load();
         } catch (IOException e) {
             throw new IllegalArgumentException("invalid file format");
         }
+        transaction.get().setStorage(this);
+        state = ContainerState.WORKING;
     }
 
     public int getUncommittedChangesCount() {
-        return uncommittedChangesCount;
+        return transaction.get().getUncommittedChanges();
     }
 
     // Table implementation
     public String getName() {
+        state.checkOperationsAllowed();
         return tableName;
     }
 
     public Value storageGet(Key key) throws IllegalArgumentException {
+        state.checkOperationsAllowed();
+
         if (key == null) {
             throw new IllegalArgumentException("key cannot be null!");
         }
-        if (getModifiedTable().containsKey(key)) {
-            return getModifiedTable().get(key).newValue;
-        }
-
-        return oldData.get(key);
+        return transaction.get().getValue(key);
     }
 
     public Value storagePut(Key key, Value value) throws IllegalArgumentException {
+        state.checkOperationsAllowed();
+
         if (key == null || value == null) {
             String message = key == null ? "key " : "value ";
             throw new IllegalArgumentException(message + "cannot be null");
         }
-        Value oldValue = getOldValueFor(key);
-        if (oldValue == null) {
-            size += 1;
-        }
 
-        addChange(key, value);
-        uncommittedChangesCount += 1;
+        Value oldValue = transaction.get().getValue(key);
+
+        transaction.get().addChange(key, value);
         return oldValue;
     }
 
     public Value storageRemove(Key key) throws IllegalArgumentException {
+        state.checkOperationsAllowed();
+
         if (key == null) {
             throw new IllegalArgumentException("key cannot be null");
         }
@@ -87,110 +98,80 @@ public abstract class AbstractStorage<Key, Value> {
             return null;
         }
 
-        Value oldValue = getOldValueFor(key);
-        addChange(key, null);
-        if (oldValue != null) {
-            size -= 1;
-        }
-        uncommittedChangesCount += 1;
+        Value oldValue = transaction.get().getValue(key);
+        transaction.get().addChange(key, null);
         return oldValue;
     }
 
     public int storageSize() {
-        return size;
+        state.checkOperationsAllowed();
+
+        return transaction.get().getSize();
     }
 
     public int storageCommit() {
-        int recordsCommitted = 0;
-        for (final Key key : getModifiedTable().keySet()) {
-            ValueDifference diff = getModifiedTable().get(key);
-            if (!compareKeys(diff.oldValue, diff.newValue)) {
-                if (diff.newValue == null) {
-                    oldData.remove(key);
-                } else {
-                    oldData.put(key, (Value) diff.newValue);
-                }
-                recordsCommitted += 1;
-            }
-        }
-        getModifiedTable().clear();
-        size = oldData.size();
-        try {
-            save();
-        } catch (IOException e) {
-            System.err.println("storageCommit: " + e.getMessage());
-            return 0;
-        }
-        uncommittedChangesCount = 0;
+        state.checkOperationsAllowed();
 
-        return recordsCommitted;
+        try {
+            transactionLock.lock();
+            int recordsCommitted = transaction.get().applyChanges();
+            transaction.get().clear();
+
+            try {
+                save();
+            } catch (IOException e) {
+                System.err.println("storageCommit: " + e.getMessage());
+                return 0;
+            }
+
+            return recordsCommitted;
+        } finally {
+            transactionLock.unlock();
+        }
     }
 
     public int storageRollback() {
-        int recordsDeleted = 0;
-        for (final Key key : getModifiedTable().keySet()) {
-            ValueDifference diff = getModifiedTable().get(key);
-            if (!compareKeys(diff.oldValue, diff.newValue)) {
-                recordsDeleted += 1;
-            }
-        }
-        getModifiedTable().clear();
-        size = oldData.size();
+        state.checkOperationsAllowed();
 
-        uncommittedChangesCount = 0;
-
+        int recordsDeleted = transaction.get().countChanges();
+        transaction.get().clear();
         return recordsDeleted;
     }
 
-    public String getDirectory() {
+    public String getDatabaseDirectory() {
         return directory;
     }
 
-    // internal methods
-    private Value getOldValueFor(Key key) {
-        if (getModifiedTable().containsKey(key)) {
-            return getModifiedTable().get(key).newValue;
-        }
-        return oldData.get(key);
+    public Set<DatabaseFileDescriptor> getChangedFiles() {
+        return transaction.get().getChangedFiles();
     }
 
-    private void addChange(Key key, Value value) {
-        if (getModifiedTable().containsKey(key)) {
-            getModifiedTable().get(key).newValue = value;
-        } else {
-            getModifiedTable().put(key, new ValueDifference(oldData.get(key), value));
-        }
-    }
+    protected abstract DatabaseFileDescriptor makeDescriptor(Key key);
 
-    private boolean compareKeys(Object key1, Object key2) {
-        if (key1 == null && key2 == null) {
-            return true;
-        }
-        if (key1 == null || key2 == null) {
-            return false;
-        }
-        return key1.equals(key2);
-    }
-
-    private HashMap<Key, ValueDifference<Value>> getModifiedTable() {
-        return modifiedData.get();
-    }
-
-    void rawPut(Key key, Value value) {
+    public void rawPut(Key key, Value value) {
         oldData.put(key, value);
     }
 
-    Value rawGet(Key key) {
+    public Value rawGet(Key key) {
         return oldData.get(key);
     }
-}
 
-class ValueDifference<Value> {
-    public Value oldValue;
-    public Value newValue;
-
-    ValueDifference(Value oldValue, Value newValue) {
-        this.oldValue = oldValue;
-        this.newValue = newValue;
+    protected String rawGetName() {
+        return tableName;
     }
+
+    @Override
+    public void close() throws Exception {
+        //state.checkOperationsAllowed();
+        if (state.equals(ContainerState.CLOSED)) {
+            return;
+        }
+        storageRollback();
+        state = ContainerState.CLOSED;
+    }
+
+    public boolean isClosed() {
+        return state.equals(ContainerState.CLOSED);
+    }
+
 }

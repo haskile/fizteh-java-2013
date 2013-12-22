@@ -10,22 +10,17 @@ import ru.fizteh.fivt.students.elenarykunova.shell.Shell;
 
 public class ExecuteCmd extends Shell {
 
-    private Filemap mp;
+    private MyTable mp;
     private MyTableProvider mtp;
     
     
-    public ExecuteCmd(Filemap myMap, MyTableProvider myProvider) {
+    public ExecuteCmd(MyTable myMap, MyTableProvider myProvider) {
         mp = myMap;
         mtp = myProvider;
     }
 
     @Override
     public void exitWithError() {
-        try {
-            mp.saveChanges();
-        } catch (RuntimeException e) {
-            System.err.println(e.getMessage());
-        }
         System.exit(1);
     }
 
@@ -186,12 +181,12 @@ public class ExecuteCmd extends Shell {
             break;
         case "use":
             if (arg.length == 2) {
-                if (mp.getUncommitedChangesAndTrack(false) != 0) {
-                    System.err.println(mp.getUncommitedChangesAndTrack(false) + " unsaved changes");
+                if (mp.getUncommitedChanges() != 0) {
+                    System.err.println(mp.getUncommitedChanges() + " unsaved changes");
                     return ExitCode.ERR;
                 }
                 try {
-                    Filemap newFileMap = (Filemap) mtp.getTable(arg[1]);
+                    MyTable newFileMap = (MyTable) mtp.getTable(arg[1]);
                     if (newFileMap == null) {
                         System.out.println(arg[1] + " not exists");
                     } else {

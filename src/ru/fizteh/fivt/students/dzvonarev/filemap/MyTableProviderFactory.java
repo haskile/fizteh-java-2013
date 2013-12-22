@@ -1,34 +1,60 @@
 package ru.fizteh.fivt.students.dzvonarev.filemap;
 
-
-import ru.fizteh.fivt.storage.strings.TableProviderFactory;
+import ru.fizteh.fivt.storage.structured.TableProviderFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
-public class MyTableProviderFactory implements TableProviderFactory {
+public class MyTableProviderFactory implements TableProviderFactory, AutoCloseable {
+
+    private List<MyTableProvider> tableProvidersList;
+    private volatile boolean isTableProviderFactoryClosed;
+
+    public MyTableProviderFactory() {
+        tableProvidersList = new ArrayList<>();
+        isTableProviderFactoryClosed = false;
+    }
 
     @Override
-    public MyTableProvider create(String dir) throws IllegalArgumentException {
-        if (dir == null) {
-            throw new IllegalArgumentException("directory name is not valid");
+    public MyTableProvider create(String dir) throws IOException, RuntimeException {
+        checkFactoryIsClosed();
+        if (dir == null || dir.trim().isEmpty()) {
+            throw new IllegalArgumentException("wrong type (invalid name of table provider)");
         }
         File providerFile = new File(dir);
         if (!providerFile.exists()) {
-            if (!providerFile.mkdir()) {
-                throw new IllegalArgumentException("can't create provider in " + dir);
+            if (!providerFile.mkdirs()) {
+                throw new IOException("can't create provider in " + dir);
             }
         } else {
             if (!providerFile.isDirectory()) {
-                throw new IllegalArgumentException("directory name is not valid");
+                throw new IllegalArgumentException("wrong type (table provider is not a directory)");
             }
         }
-        MyTableProvider tableProvider;
-        try {
-            tableProvider = new MyTableProvider(dir);
-        } catch (IOException e) {
-            throw new IllegalArgumentException("can't read tables from " + dir);
-        }
-        return tableProvider;
+        MyTableProvider newTableProvider = new MyTableProvider(dir);
+        tableProvidersList.add(newTableProvider);
+        return newTableProvider;  // will read data in here
     }
+
+    @Override
+    public void close() {
+        if (isTableProviderFactoryClosed) {
+            return;
+        }
+        for (MyTableProvider tableProvider : tableProvidersList) {
+            tableProvider.close();
+        }
+        tableProvidersList.clear();         // here is clearing!
+        isTableProviderFactoryClosed = true;
+    }
+
+    private void checkFactoryIsClosed() {
+        if (isTableProviderFactoryClosed) {
+            throw new IllegalStateException("table provider factory "
+                    + this.getClass().getSimpleName() + " is closed");
+        }
+    }
+
 }

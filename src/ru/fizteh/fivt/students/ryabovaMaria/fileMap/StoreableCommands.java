@@ -13,12 +13,12 @@ public class StoreableCommands implements Storeable{
         this.types = new ArrayList(types);
         values = new ArrayList(types.size());
         for (int i = 0; i < types.size(); ++i) {
-            Object empty = null;
-            values.add(empty);
+            values.add(null);
         }
     }
     
-    StoreableCommands(List<Object> values, List<Class<?>> types) throws IndexOutOfBoundsException, ColumnFormatException {
+    StoreableCommands(List<Object> values, List<Class<?>> types) throws IndexOutOfBoundsException,
+                                                                        ColumnFormatException {
         if (values.size() != types.size()) {
             throw new IndexOutOfBoundsException("incorrect number of elements");
         }

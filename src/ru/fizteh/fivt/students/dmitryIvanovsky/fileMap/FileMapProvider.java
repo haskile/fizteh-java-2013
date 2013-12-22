@@ -26,18 +26,25 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import static ru.fizteh.fivt.students.dmitryIvanovsky.fileMap.FileMapUtils.*;
 
-public class FileMapProvider implements CommandAbstract, TableProvider {
+public class FileMapProvider implements CommandAbstract, TableProvider, AutoCloseable {
 
     private final Path pathDb;
     private final CommandShell mySystem;
+    private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
+    private final Lock read  = readWriteLock.readLock();
+    private final Lock write = readWriteLock.writeLock();
     String useNameTable;
     Set<String> setDirTable;
     FileMap dbData;
     boolean out;
-    HashMap<String, FileMap> mapFileMap;
+    boolean isProviderClose;
+    Map<String, FileMap> mapFileMap = new HashMap<>();
 
     final HashSet allowType = new HashSet(){ {
         add(String.class);
@@ -66,13 +73,12 @@ public class FileMapProvider implements CommandAbstract, TableProvider {
 
     public FileMapProvider(String pathDb) throws Exception {
         this.out = true;
-
         this.useNameTable = "";
         this.pathDb = Paths.get(pathDb);
         this.mySystem = new CommandShell(pathDb, false, false);
         this.dbData = null;
         this.setDirTable = new HashSet<>();
-        this.mapFileMap = new HashMap<>();
+        this.isProviderClose = false;
 
         try {
             checkBdDir(this.pathDb);
@@ -178,9 +184,9 @@ public class FileMapProvider implements CommandAbstract, TableProvider {
             outPrint(String.format("%d unsaved changes", changeKey));
         } else {
             if (!nameTable.equals(useNameTable)) {
-                if (dbData != null) {
-                    dbData.unloadTable();
-                }
+//                if (dbData != null) {
+//                    //dbData.unloadTable();
+//                }
                 dbData = (FileMap) getTable(nameTable);
                 useNameTable = nameTable;
             }
@@ -202,6 +208,9 @@ public class FileMapProvider implements CommandAbstract, TableProvider {
     }
 
     public void multiCreate(String[] args) throws Exception {
+        if (isProviderClose) {
+            throw new IllegalStateException("provider is closed");
+        }
         List<String> argsParse = parsingForCreate(args);
         String nameTable = argsParse.get(1);
         List<Class<?>> colType = new ArrayList<>();
@@ -225,6 +234,9 @@ public class FileMapProvider implements CommandAbstract, TableProvider {
 
 
     public Table createTable(String name, List<Class<?>> columnType) throws IOException {
+        if (isProviderClose) {
+            throw new IllegalStateException("provider is closed");
+        }
         if (name == null || name.equals("")) {
             throw new IllegalArgumentException("name is clear");
         }
@@ -239,24 +251,34 @@ public class FileMapProvider implements CommandAbstract, TableProvider {
                 throw new IllegalArgumentException("name is clear");
             }
         }
-        if (setDirTable.contains(name)) {
-            return null;
-        } else {
-            setDirTable.add(name);
-            try {
-                FileMap fileMap = new FileMap(pathDb, name, this, columnType);
-                mapFileMap.put(name, fileMap);
-                return fileMap;
-            } catch (Exception e) {
-                RuntimeException error = new RuntimeException();
-                error.addSuppressed(e);
-                throw error;
-            }
 
+        Table resTable = null;
+        write.lock();
+        try {
+            if (setDirTable.contains(name)) {
+                resTable = null;
+            } else {
+                setDirTable.add(name);
+                try {
+                    FileMap fileMap = new FileMap(pathDb, name, this, columnType);
+                    mapFileMap.put(name, fileMap);
+                    resTable = fileMap;
+                } catch (Exception e) {
+                    RuntimeException error = new RuntimeException();
+                    error.addSuppressed(e);
+                    throw error;
+                }
+            }
+        } finally {
+            write.unlock();
         }
+        return resTable;
     }
 
     public Table getTable(String name) {
+        if (isProviderClose) {
+            throw new IllegalStateException("provider is closed");
+        }
         if (name == null || name.equals("")) {
             throw new IllegalArgumentException("name is clear");
         }
@@ -267,49 +289,71 @@ public class FileMapProvider implements CommandAbstract, TableProvider {
         if (!currentFileMap.isDirectory()) {
             return null;
         }
-        if (mapFileMap.containsKey(name)) {
-            return mapFileMap.get(name);
-        }
-        if (setDirTable.contains(name)) {
-            try {
-                FileMap fileMap = new FileMap(pathDb, name, this);
-                mapFileMap.put(name, fileMap);
-                return fileMap;
-            } catch (Exception e) {
-                RuntimeException error = new RuntimeException();
-                error.addSuppressed(e);
-                throw error;
+
+        Table resTable = null;
+        write.lock();
+        try {
+            if (mapFileMap.containsKey(name)) {
+                resTable = mapFileMap.get(name);
+            } else {
+                if (setDirTable.contains(name)) {
+                    try {
+                        FileMap fileMap = new FileMap(pathDb, name, this);
+                        mapFileMap.put(name, fileMap);
+                        resTable = fileMap;
+                    } catch (Exception e) {
+                        RuntimeException error = new RuntimeException();
+                        error.addSuppressed(e);
+                        throw error;
+                    }
+                } else {
+                    resTable = null;
+                }
             }
-        } else {
-            return null;
+        } finally {
+            write.unlock();
         }
+        return resTable;
     }
 
     public void removeTable(String name) {
+        if (isProviderClose) {
+            throw new IllegalStateException("provider is closed");
+        }
         if (name == null || name.equals("")) {
             throw new IllegalArgumentException("name is clear");
         }
-        if (setDirTable.contains(name)) {
-            setDirTable.remove(name);
-            mapFileMap.remove(name);
-            if (dbData != null) {
-                dbData.setDrop();
+
+        write.lock();
+        try {
+            if (setDirTable.contains(name)) {
+                setDirTable.remove(name);
+                mapFileMap.remove(name);
+                if (dbData != null) {
+                    dbData.setDrop();
+                }
+                dbData = null;
+                try {
+                    mySystem.rm(new String[]{pathDb.resolve(name).toString()});
+                } catch (Exception e) {
+                    IllegalArgumentException ex = new IllegalArgumentException();
+                    ex.addSuppressed(e);
+                    throw ex;
+                }
+            } else {
+                throw new IllegalStateException();
             }
-            dbData = null;
-            try {
-                mySystem.rm(new String[]{pathDb.resolve(name).toString()});
-            } catch (Exception e) {
-                IllegalArgumentException ex = new IllegalArgumentException();
-                ex.addSuppressed(e);
-                throw ex;
-            }
-        } else {
-            throw new IllegalStateException();
+        } finally {
+            write.unlock();
         }
+
     }
 
     @Override
     public Storeable deserialize(Table table, String value) throws ParseException {
+        if (isProviderClose) {
+            throw new IllegalStateException("provider is closed");
+        }
         try {
             List<Class<?>> columnTypes = new ArrayList<>();
             for (int i = 0; i < table.getColumnsCount(); i++) {
@@ -370,6 +414,9 @@ public class FileMapProvider implements CommandAbstract, TableProvider {
 
     @Override
     public String serialize(Table table, Storeable value) throws ColumnFormatException {
+        if (isProviderClose) {
+            throw new IllegalStateException("provider is closed");
+        }
         List<Class<?>> columnType = new ArrayList<>();
         for (int i = 0; i < table.getColumnsCount(); i++) {
             columnType.add(table.getColumnType(i));
@@ -404,6 +451,9 @@ public class FileMapProvider implements CommandAbstract, TableProvider {
 
     @Override
     public Storeable createFor(Table table) {
+        if (isProviderClose) {
+            throw new IllegalStateException("provider is closed");
+        }
         List<Class<?>> colType = new ArrayList<>();
         for (int i = 0; i < table.getColumnsCount(); i++) {
             colType.add(table.getColumnType(i));
@@ -413,6 +463,9 @@ public class FileMapProvider implements CommandAbstract, TableProvider {
 
     @Override
     public Storeable createFor(Table table, List<?> values) throws ColumnFormatException, IndexOutOfBoundsException {
+        if (isProviderClose) {
+            throw new IllegalStateException("provider is closed");
+        }
         List<Class<?>> columnTypes = new ArrayList<>();
         for (int i = 0; i < table.getColumnsCount(); i++) {
             columnTypes.add(table.getColumnType(i));
@@ -424,6 +477,30 @@ public class FileMapProvider implements CommandAbstract, TableProvider {
             ++columnIndex;
         }
         return storeable;
+    }
+
+    public String toString() {
+        if (isProviderClose) {
+            throw new IllegalStateException("provider is closed");
+        }
+        return String.format("%s[%s]", getClass().getSimpleName(), pathDb.toAbsolutePath());
+    }
+
+    public void closeTable(String table) {
+        if (isProviderClose) {
+            throw new IllegalStateException("provider is closed");
+        }
+        mapFileMap.remove(table);
+    }
+
+    public void close() {
+        if (!isProviderClose) {
+            for (FileMap table: mapFileMap.values()) {
+                table.close();
+            }
+            mapFileMap.clear();
+            isProviderClose = true;
+        }
     }
 
     private void outPrint(String message) {

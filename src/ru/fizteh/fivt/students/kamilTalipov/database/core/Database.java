@@ -13,5 +13,5 @@ public interface Database {
 
     int size();
 
-    void exit() throws DatabaseException;
+    String serialize(Storeable storeable);
 }

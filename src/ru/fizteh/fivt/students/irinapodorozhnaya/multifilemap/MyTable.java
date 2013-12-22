@@ -15,7 +15,7 @@ public class MyTable extends GenericTable<String> implements ExtendTable {
 
     @Override
     public String put(String key, String value) {
-        if (value.trim().isEmpty()) {
+        if (value == null || value.trim().isEmpty()) {
              throw new IllegalArgumentException("null argument");
         }
         return super.put(key, value);
@@ -31,7 +31,7 @@ public class MyTable extends GenericTable<String> implements ExtendTable {
     }
 
     @Override
-    public void loadAll() {    
+    public void loadAll() {
         try {
             super.loadAll();
         } catch (IOException e) {

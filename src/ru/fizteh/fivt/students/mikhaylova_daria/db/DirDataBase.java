@@ -1,6 +1,9 @@
 package ru.fizteh.fivt.students.mikhaylova_daria.db;
 
 import java.io.File;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class DirDataBase {
 
@@ -13,6 +16,11 @@ public class DirDataBase {
     TableData table;
 
     FileMap[] fileArray = new FileMap[16];
+
+    private ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(true);
+
+
+    private final Lock creatingLock = new ReentrantLock();
 
     DirDataBase() {
 
@@ -32,28 +40,34 @@ public class DirDataBase {
     }
 
     void startWorking() throws Exception {
-        if (!isReady) {
+        creatingLock.lock();
+        try {
             if (!dir.exists()) {
                 if (!dir.mkdir()) {
                     throw new Exception(dir.toString() + ": Creating directory error");
                 }
             }
-            isReady = true;
+        } finally {
+            creatingLock.unlock();
         }
     }
 
+
     void deleteEmptyDir() throws Exception {
-        File[] f = dir.listFiles();
-        if (f != null) {
-            if (f.length == 0) {
-                if (!dir.delete()) {
-                    throw new Exception("Deleting directory error");
+        creatingLock.lock();
+        try {
+            File[] f = dir.listFiles();
+            if (f != null) {
+                if (f.length == 0) {
+                    if (!dir.delete()) {
+                        throw new Exception("Deleting directory error");
+                    }
                 }
             }
-        } else {
-            throw new Exception("Internal error");
+            isReady = false;
+        } finally {
+            creatingLock.unlock();
         }
-        isReady = false;
     }
 
     int countChanges() {
@@ -73,21 +87,25 @@ public class DirDataBase {
     }
 
     int commit() {
-        int numberOfChanges = 0;
-
-        for (int i = 0; i < 16; ++i) {
-            int changesInFile = fileArray[i].numberOfChangesCounter(this.table);
-            if (changesInFile != 0) {
-                try {
-                    startWorking();
-                } catch (Exception e) {
-                    throw new IllegalArgumentException(e.getMessage(), e);
+        creatingLock.lock();
+        try {
+            int numberOfChanges = 0;
+            for (int i = 0; i < 16; ++i) {
+                int changesInFile = fileArray[i].numberOfChangesCounter(this.table);
+                if (changesInFile != 0) {
+                    try {
+                        startWorking();
+                    } catch (Exception e) {
+                        throw new IllegalArgumentException(e.getMessage(), e);
+                    }
+                    fileArray[i].commit(this.table);
+                    numberOfChanges += changesInFile;
                 }
-                fileArray[i].commit(this.table);
-                numberOfChanges += changesInFile;
             }
+            return numberOfChanges;
+        } finally {
+            creatingLock.unlock();
         }
-        return numberOfChanges;
     }
 
     int rollback() {

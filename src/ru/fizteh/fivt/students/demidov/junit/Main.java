@@ -1,6 +1,7 @@
 package ru.fizteh.fivt.students.demidov.junit;
 
 import java.io.IOException;
+
 import ru.fizteh.fivt.students.demidov.filemap.Get;
 import ru.fizteh.fivt.students.demidov.filemap.Put;
 import ru.fizteh.fivt.students.demidov.filemap.Remove;
@@ -15,7 +16,7 @@ public class Main {
 		TableProviderImplementation provider = null;
 		try {
 			provider = (new TableProviderFactoryImplementation()).create(System.getProperty("fizteh.db.dir"));
-		} catch(IllegalArgumentException catchedException) {
+		} catch (IllegalArgumentException catchedException) {
 			System.err.println(catchedException.getMessage());
 			System.exit(1);
 		}
@@ -26,12 +27,12 @@ public class Main {
 		usedShell.curShell.loadCommand(new Get(state));
 		usedShell.curShell.loadCommand(new Put(state));
 		usedShell.curShell.loadCommand(new Remove(state));
-		usedShell.curShell.loadCommand(new Create(state));
-		usedShell.curShell.loadCommand(new Drop(state));
-		usedShell.curShell.loadCommand(new Use(state));
-		usedShell.curShell.loadCommand(new Commit(state));
-		usedShell.curShell.loadCommand(new Size(state));
-		usedShell.curShell.loadCommand(new Rollback(state));
+		usedShell.curShell.loadCommand(new Create<String, TableImplementation>(state));
+		usedShell.curShell.loadCommand(new Drop<String, TableImplementation>(state));
+		usedShell.curShell.loadCommand(new Use<String, TableImplementation>(state));
+		usedShell.curShell.loadCommand(new Commit<String, TableImplementation>(state));
+		usedShell.curShell.loadCommand(new Size<String, TableImplementation>(state));
+		usedShell.curShell.loadCommand(new Rollback<String, TableImplementation>(state));
 		usedShell.curShell.loadCommand(new Exit());
 		
 		try {

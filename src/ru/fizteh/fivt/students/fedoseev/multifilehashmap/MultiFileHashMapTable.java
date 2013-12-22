@@ -16,7 +16,7 @@ public class MultiFileHashMapTable implements Table {
     private static final int DIR_FILES_NUMBER = 16;
 
     private String tableName;
-    private Map<String, String> content;
+    private Map<String, String> contents;
     private Map<String, String> diff;
     private long tableSize;
     private boolean[] boolUsedDirs;
@@ -30,10 +30,10 @@ public class MultiFileHashMapTable implements Table {
 
         boolUsedDirs = new boolean[DIRS_NUMBER];
         boolUsedFiles = new boolean[DIRS_NUMBER][DIR_FILES_NUMBER];
-        content = new HashMap<String, String>();
-        diff = new HashMap<String, String>();
+        contents = new HashMap<>();
+        diff = new HashMap<>();
 
-        prevNumber = content.size();
+        prevNumber = contents.size();
         number = prevNumber;
     }
 
@@ -59,7 +59,7 @@ public class MultiFileHashMapTable implements Table {
         getBoolUsedDirs()[dirHash(key)] = true;
         getBoolUsedFiles()[dirHash(key)][fileHash(key)] = true;
 
-        return content.get(key);
+        return contents.get(key);
     }
 
     @Override
@@ -78,7 +78,7 @@ public class MultiFileHashMapTable implements Table {
             throw new IllegalArgumentException("PUT ERROR: incorrect value");
         }
 
-        if (!diff.containsKey(key) && !content.containsKey(key) || diff.containsKey(key) && diff.get(key) == null) {
+        if (!diff.containsKey(key) && !contents.containsKey(key) || diff.containsKey(key) && diff.get(key) == null) {
             number++;
         }
 
@@ -89,7 +89,7 @@ public class MultiFileHashMapTable implements Table {
 
         diff.put(key, value);
 
-        if (value.equals(content.get(key))) {
+        if (value.equals(contents.get(key))) {
             diff.remove(key);
         }
 
@@ -106,7 +106,7 @@ public class MultiFileHashMapTable implements Table {
             throw new IllegalArgumentException("REMOVE ERROR: incorrect key");
         }
 
-        if (!diff.containsKey(key) && content.get(key) != null || diff.get(key) != null) {
+        if (!diff.containsKey(key) && contents.get(key) != null || diff.get(key) != null) {
             number--;
         }
 
@@ -117,7 +117,7 @@ public class MultiFileHashMapTable implements Table {
 
         diff.put(key, null);
 
-        if (content.get(key) == null) {
+        if (contents.get(key) == null) {
             diff.remove(key);
         }
 
@@ -133,9 +133,9 @@ public class MultiFileHashMapTable implements Table {
     public int commit() {
         for (String key : diff.keySet()) {
             if (diff.get(key) == null) {
-                content.remove(key);
+                contents.remove(key);
             } else {
-                content.put(key, diff.get(key));
+                contents.put(key, diff.get(key));
             }
         }
 
@@ -187,8 +187,12 @@ public class MultiFileHashMapTable implements Table {
         return tableSize;
     }
 
+    public int getDiffSize() {
+        return diff.size();
+    }
+
     public Map<String, String> getMapContent() {
-        return content;
+        return contents;
     }
 
     public File getCurTableDir() {
@@ -196,7 +200,7 @@ public class MultiFileHashMapTable implements Table {
     }
 
     public void clearContentAndDiff() {
-        content.clear();
+        contents.clear();
         diff.clear();
     }
 
@@ -211,7 +215,7 @@ public class MultiFileHashMapTable implements Table {
     public void putMapTable(Map<String, String> map) {
         if (map != null) {
             for (String key : map.keySet()) {
-                content.put(key, map.get(key));
+                contents.put(key, map.get(key));
             }
         }
     }

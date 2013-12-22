@@ -2,34 +2,21 @@ package ru.fizteh.fivt.students.demidov.junit;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.List;
+
 import ru.fizteh.fivt.storage.strings.TableProvider;
-import ru.fizteh.fivt.students.demidov.multifilehashmap.FilesMap;
-import ru.fizteh.fivt.students.demidov.shell.Utils;
+import ru.fizteh.fivt.students.demidov.basicclasses.BasicTableProvider;
 
-public class TableProviderImplementation implements TableProvider {
-	public TableProviderImplementation(String root) {	
-		tables = new HashMap<String, TableImplementation>();		
-
-		this.root = root;		
-		if (!((new File(root)).isDirectory())) {
-			throw new IllegalArgumentException("wrong directory: " + root);
-		}
+public class TableProviderImplementation extends BasicTableProvider<TableImplementation> implements TableProvider {
+	public TableProviderImplementation(String root) {
+		super(root);
 	}
 	
-	public TableImplementation getTable(String name) {
-		if ((name == null) || (!(name.matches("\\w+")))) {    	
-			throw new IllegalArgumentException("wrong table name: " + name);    	
-		}	
-		return tables.get(name);
-	}
-
 	public TableImplementation createTable(String name) {
-		if ((name == null) || (!(name.matches("\\w+")))) {    	
-			throw new IllegalArgumentException("wrong table name: " + name);    	
-		}	
-		
+		if ((name == null) || (!(name.matches("\\w+")))) {
+			throw new IllegalArgumentException("wrong table name " + name);
+		}
+
 		if (tables.containsKey(name)) {
 			return null;
 		} else {
@@ -37,23 +24,12 @@ public class TableProviderImplementation implements TableProvider {
 				throw new IllegalStateException("unable to make directory " + name);
 			}
 			try {
-				tables.put(name, new TableImplementation(new FilesMap(root + File.separator + name), name));
-			} catch(IOException catchedException) {
+				tables.put(name, new TableImplementation(root + File.separator + name, name));
+			} catch (IOException catchedException) {
 				throw new IllegalStateException(catchedException);
 			}
 		}
 		return tables.get(name);
-	}
-
-	public void removeTable(String name) {
-		if ((name == null) || (!(name.matches("\\w+")))) {    	
-			throw new IllegalArgumentException("wrong table name: " + name);    	
-		}
-		if (!(tables.containsKey(name))) {
-			throw new IllegalStateException(name + " not exists");
-		}		
-		Utils.deleteFileOrDirectory(new File(root, name));
-		tables.remove(name);
 	}
 
 	public void readFilesMaps() throws IOException {
@@ -61,20 +37,21 @@ public class TableProviderImplementation implements TableProvider {
 			if (!((new File(root, subdirectory)).isDirectory())) {
 				throw new IOException("wrong directory " + subdirectory);
 			} else {
-				tables.put(subdirectory, new TableImplementation(new FilesMap(root + File.separator + subdirectory), subdirectory));
+				tables.put(subdirectory, new TableImplementation(root + File.separator + subdirectory, subdirectory));
 				tables.get(subdirectory).getFilesMap().readData();
 			}
 		}
 	}
-	
+
 	public void writeFilesMaps() throws IOException {
 		for (String key: tables.keySet()) {
 			TableImplementation table = tables.get(key);
 			table.autoCommit();
 			table.getFilesMap().writeData();
-		}		
+		}
 	}
-	
-	private Map<String, TableImplementation> tables;
-	private String root;
+
+	public TableImplementation createTable(String name, List<Class<?>> columnTypes) throws IOException {
+		return null;
+	}
 }

@@ -9,40 +9,76 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import ru.fizteh.fivt.storage.structured.ColumnFormatException;
 import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.storage.structured.Table;
 import ru.fizteh.fivt.storage.structured.TableProvider;
 
 public class TableCommands implements Table {
-    private ArrayList<Class<?>> types;
-    private TableProvider tableProvider;
-    private File tableDir;
-    private HashMap<String, String>[][] list;
+    private final ArrayList<Class<?>> types;
+    private final TableProvider tableProvider;
+    private final File tableDir;
     private HashMap<String, String>[][] lastList;
-    private HashMap<Integer, String> update;
-    private int hashCode;
-    private int numberOfDir;
-    private int numberOfFile;
+    private ReadWriteLock lock;
+    private Lock readLock;
+    private Lock writeLock;
+    
+    private class HashCalc {
+        int hashCode;
+        int numberOfDir;
+        int numberOfFile;
+        void get(String key) {
+            if (key == null) {
+                throw new IllegalArgumentException("Bad key");
+            }
+            hashCode = Math.abs(key.hashCode());
+            numberOfDir = hashCode % 16;
+            numberOfFile = hashCode / 16 % 16;
+        }
+    };
+    
+    private ThreadLocal<HashMap<String, String>[][]> diff = new ThreadLocal<HashMap<String, String>[][]>() {
+        @Override
+        protected HashMap<String, String> [][] initialValue() {
+            HashMap<String, String> [][] diffObject = new HashMap[16][16];
+            for (int i = 0; i < 16; ++i) {
+                for (int j = 0; j < 16; ++j) {
+                    diffObject[i][j] = new HashMap<String, String>();
+                }
+            }
+            return diffObject;
+        }
+    };
+    
+    private ThreadLocal<HashMap<Integer, String>> update = new ThreadLocal<HashMap<Integer, String>>() {
+        @Override
+        protected HashMap<Integer, String> initialValue() {
+            return new HashMap<Integer, String>();
+        }
+    };
     
     TableCommands(File directory, List<Class<?>> types, TableProvider tableProvider) throws IOException {
+        lock = new ReentrantReadWriteLock(true);
+        readLock = lock.readLock();
+        writeLock = lock.writeLock();
         this.tableProvider = tableProvider;
         this.types = new ArrayList(types);
-        list = new HashMap[16][16];
         lastList = new HashMap[16][16];
         for (int i = 0; i < 16; ++i) {
             for (int j = 0; j < 16; ++j) {
-                list[i][j] = new HashMap<String, String>();
                 lastList[i][j] = new HashMap<String, String>();
             }
         }
         tableDir = directory;
-        update = new HashMap<Integer, String>();
         isCorrectTable();
-        assigment(lastList, list);
     }
     
     private void isCorrectTable() throws IOException {
         String[] listOfDirs = tableDir.list();
+        int countOk = 0;
         for (int i = 0; i < listOfDirs.length; ++i) {
             boolean ok = false;
             int value = -1;
@@ -55,12 +91,16 @@ public class TableCommands implements Table {
                 }
             }
             if (ok) {
+                ++countOk;
                 isCorrectDir(value, listOfDirs[i]);
             } else {
                 if (!(listOfDirs[i].equals("signature.tsv") && new File(tableDir, listOfDirs[i]).isFile())) {
                     throw new IllegalArgumentException("Incorrect table");
                 }
             }
+        }
+        if (countOk == listOfDirs.length) {
+            throw new IllegalArgumentException("no signature.tsv");
         }
     }
     
@@ -97,10 +137,7 @@ public class TableCommands implements Table {
         if (!dbFile.isFile()) {
             throw new IllegalArgumentException("Incorrect table");
         }
-        RandomAccessFile db = null;
-        try {
-            db = new RandomAccessFile(dbFile, "rw");
-
+        try (RandomAccessFile db = new RandomAccessFile(dbFile, "rw")) {
             long curPointer = 0;
             long lastPointer = 0;
             long length = db.length();
@@ -133,11 +170,11 @@ public class TableCommands implements Table {
                         db.readFully(byteValue);
                         String lastValue = new String(byteValue, "UTF-8");
                         db.seek(curPointer);
-                        if (list[numOfDir][numOfFile].containsKey(lastKey)) {
+                        if (lastList[numOfDir][numOfFile].containsKey(lastKey)) {
                             System.err.println(lastKey + " meets twice in db.dat");
                             System.exit(1);
                         }
-                        list[numOfDir][numOfFile].put(lastKey, lastValue);
+                        lastList[numOfDir][numOfFile].put(lastKey, lastValue);
                     }
                     lastOffset = offset;
                     lastKey = currentKey;
@@ -152,18 +189,12 @@ public class TableCommands implements Table {
             db.seek(lastOffset);
             db.readFully(byteValue);
             String lastValue = new String(byteValue, "UTF-8");
-            if (list[numOfDir][numOfFile].containsKey(lastKey)) {
+            if (lastList[numOfDir][numOfFile].containsKey(lastKey)) {
                 throw new IllegalArgumentException("Incorrect file" + dbFile.toString());
             }
-            list[numOfDir][numOfFile].put(lastKey, lastValue);
-        } catch(Exception e) {
-            if (db != null) {
-                try {
-                    db.close();
-                } catch (Exception ex) {
-                }
-            }
-            throw new IOException("Incorrect table");
+            lastList[numOfDir][numOfFile].put(lastKey, lastValue);
+        } catch (Exception e) {
+            throw new IOException("Incorrect table", e);
         }
     }
     
@@ -172,26 +203,27 @@ public class TableCommands implements Table {
         return tableDir.getName();
     }
 
-    private void getUsingDatFile(String key) {
-        if (key == null) {
-            throw new IllegalArgumentException("Bad key");
-        }
-        hashCode = Math.abs(key.hashCode());
-        numberOfDir = hashCode % 16;
-        numberOfFile = hashCode / 16 % 16;
-    }
-
     @Override
     public Storeable get(String key) {
         if (key == null) {
             throw new IllegalArgumentException("Bad key");
         }
-        getUsingDatFile(key);
-        String value = list[numberOfDir][numberOfFile].get(key);
+        HashCalc file = new HashCalc();
+        file.get(key);
+        String value;
+        readLock.lock();
+        try {
+            value = lastList[file.numberOfDir][file.numberOfFile].get(key);
+        } finally {
+            readLock.unlock();
+        }
+        if (diff.get()[file.numberOfDir][file.numberOfFile].containsKey(key)) {
+            value = diff.get()[file.numberOfDir][file.numberOfFile].get(key);
+        }
         try {
             return tableProvider.deserialize(this, value);
         } catch (ParseException e) {
-            return null;
+            throw new RuntimeException(e);
         }
     }
 
@@ -201,14 +233,15 @@ public class TableCommands implements Table {
             throw new IllegalArgumentException("Bad args");
         }
         try {
-            getUsingDatFile(key);
-            update.put(numberOfDir*16 + numberOfFile, " ");
+            HashCalc file = new HashCalc();
+            file.get(key);
+            update.get().put(file.numberOfDir * 16 + file.numberOfFile, " ");
             String stringValue = tableProvider.serialize(this, value);
-            String lastValue = list[numberOfDir][numberOfFile].put(key, stringValue);
-            Storeable answer = tableProvider.deserialize(this, lastValue);
+            Storeable answer = get(key);
+            diff.get()[file.numberOfDir][file.numberOfFile].put(key, stringValue);
             return answer;
-        } catch (ParseException | NullPointerException e) {
-            throw new IllegalArgumentException("incorrect args ");
+        } catch (Exception e) {
+            throw new ColumnFormatException("incorrect args", e);
         }
     }
 
@@ -217,13 +250,34 @@ public class TableCommands implements Table {
         if (key == null) {
             throw new IllegalArgumentException("Bad args");
         }
-        getUsingDatFile(key);
-        update.put(numberOfDir*16 + numberOfFile, null);
-        String value = list[numberOfDir][numberOfFile].remove(key);
+        HashCalc file = new HashCalc();
+        file.get(key);
+        update.get().put(file.numberOfDir * 16 + file.numberOfFile, null);
+        Storeable answer = get(key);
+        diff.get()[file.numberOfDir][file.numberOfFile].put(key, null);
+        return answer;
+    }
+    
+    private int getCountSize(int first, int second) {
+        readLock.lock();
         try {
-            return tableProvider.deserialize(this, value);
-        } catch (ParseException e) {
-            return null;
+            int result = lastList[first][second].size();
+            for (Map.Entry entry : diff.get()[first][second].entrySet()) {
+                String key = (String) entry.getKey();
+                String value = (String) entry.getValue();
+                if (value == null) {
+                    if (lastList[first][second].containsKey(key)) {
+                        --result;
+                    }
+                } else {
+                    if (!lastList[first][second].containsKey(key)) {
+                        ++result;
+                    }
+                }
+            }
+            return result;
+        } finally {
+            readLock.unlock();
         }
     }
 
@@ -232,7 +286,7 @@ public class TableCommands implements Table {
         int countSize = 0;
         for (int i = 0; i < 16; ++i) {
             for (int j = 0; j < 16; ++j) {
-                countSize += list[i][j].size();
+                countSize += getCountSize(i, j);
             }
         }
         return countSize; 
@@ -248,7 +302,7 @@ public class TableCommands implements Table {
             }
         }
         File dbFile = dbDir.toPath().resolve(fileString).normalize().toFile();
-        if (list[numOfDir][numOfFile].isEmpty()) {
+        if (lastList[numOfDir][numOfFile].isEmpty()) {
             dbFile.delete();
             if (dbDir.list().length == 0) {
                 if (!dbDir.delete()) {
@@ -257,13 +311,11 @@ public class TableCommands implements Table {
             }
             return;
         }
-        RandomAccessFile db = null;
-        try {
-            db = new RandomAccessFile(dbFile, "rw");
+        try (RandomAccessFile db = new RandomAccessFile(dbFile, "rw")) {   
             db.setLength(0);
             Iterator<Map.Entry<String, String>> it;
-            it = list[numOfDir][numOfFile].entrySet().iterator();
-            long[] pointers = new long[list[numOfDir][numOfFile].size()];
+            it = lastList[numOfDir][numOfFile].entrySet().iterator();
+            long[] pointers = new long[lastList[numOfDir][numOfFile].size()];
             int counter = 0;
             while (it.hasNext()) {
                 Map.Entry<String, String> m = (Map.Entry<String, String>) it.next();
@@ -274,7 +326,7 @@ public class TableCommands implements Table {
                 db.seek(pointers[counter] + 4);
                 ++counter;
             }
-            it = list[numOfDir][numOfFile].entrySet().iterator();
+            it = lastList[numOfDir][numOfFile].entrySet().iterator();
             counter = 0;
             while (it.hasNext()) {
                 Map.Entry<String, String> m = (Map.Entry<String, String>) it.next();
@@ -287,72 +339,78 @@ public class TableCommands implements Table {
                 ++counter;
             }
         } catch (Exception e) {
-            if (db != null) {
-                try {
-                    db.close();
-                } catch (Exception ex) {
-                }
-            }
-            throw new IOException("incorrect file");
+            throw new IOException("incorrect file", e);
         }
-
     }
     
     public int countChanges(boolean isWrite) throws IOException {
         int result = 0;
-        for (Integer file : update.keySet()) {
-            numberOfFile = file % 16;
-            numberOfDir = (file - numberOfFile) / 16;
-            if (isWrite) {
-                writeIntoFile(numberOfDir, numberOfFile);
-            }
-            for (Map.Entry entry : list[numberOfDir][numberOfFile].entrySet()) {
+        for (Integer file : update.get().keySet()) {
+            int numberOfFile = file % 16;
+            int numberOfDir = (file - numberOfFile) / 16;
+            for (Map.Entry entry : diff.get()[numberOfDir][numberOfFile].entrySet()) {
                 String key = (String) entry.getKey();
                 String value = (String) entry.getValue();
-                if (lastList[numberOfDir][numberOfFile].containsKey(key)) {
-                    if (!lastList[numberOfDir][numberOfFile].get(key).equals(value)) {
+                if (value == null) {
+                    if (lastList[numberOfDir][numberOfFile].containsKey(key)) {
                         ++result;
-                    } 
+                        if (isWrite) {
+                            lastList[numberOfDir][numberOfFile].remove(key);
+                        }
+                    }
                 } else {
-                    ++result;
+                    if (!value.equals(lastList[numberOfDir][numberOfFile].get(key))) {
+                        ++result;
+                        if (isWrite) {
+                            lastList[numberOfDir][numberOfFile].put(key, value);
+                        }
+                    }
                 }
             }
-            for (Map.Entry entry : lastList[numberOfDir][numberOfFile].entrySet()) {
-                String key = (String) entry.getKey();
-                if (!list[numberOfDir][numberOfFile].containsKey(key)) {
-                    ++result;
-                }
+            if (isWrite) {
+                writeIntoFile(numberOfDir, numberOfFile);
             }
         }
         return result;
     }
     
-    private void assigment(HashMap<String, String>[][] first, HashMap<String, String>[][] second) {
+    @Override
+    public int commit() throws IOException {
+        int result = 0;
+        writeLock.lock();
+        try {
+            result = countChanges(true);
+        } finally {
+            writeLock.unlock();
+        }
         for (int i = 0; i < 16; ++i) {
             for (int j = 0; j < 16; ++j) {
-                first[i][j].clear();
-                for (Map.Entry entry : second[i][j].entrySet()) {
-                    first[i][j].put((String) entry.getKey(), (String) entry.getValue());
+                if (!diff.get()[i][j].isEmpty()) {
+                    diff.get()[i][j].clear();
                 }
             }
         }
-    }
-    
-    @Override
-    public int commit() throws IOException {
-        int result = countChanges(true);
-        assigment(lastList, list);
         return result;
     }
 
     @Override
     public int rollback() {
         int result = 0;
+        readLock.lock();
         try {
             result = countChanges(false);
         } catch (IOException e) {
+            throw new RuntimeException(e);
+        } finally {
+            readLock.unlock();
         }
-        assigment(list, lastList);
+        for (int i = 0; i < 16; ++i) {
+            for (int j = 0; j < 16; ++j) {
+                if (!diff.get()[i][j].isEmpty()) {
+                    diff.get()[i][j].clear();
+                }
+            }
+        }
         return result;
     }
 

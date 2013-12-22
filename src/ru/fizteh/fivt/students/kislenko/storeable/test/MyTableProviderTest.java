@@ -35,12 +35,12 @@ public class MyTableProviderTest {
         provider.createTable("", typeList);
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = RuntimeException.class)
     public void testCreateTableWithDot() throws Exception {
         provider.createTable(".", typeList);
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test(expected = RuntimeException.class)
     public void testCreateTableWithDots() throws Exception {
         provider.createTable("..", typeList);
     }

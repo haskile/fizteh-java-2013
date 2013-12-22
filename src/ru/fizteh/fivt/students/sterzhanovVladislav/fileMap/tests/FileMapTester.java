@@ -13,10 +13,10 @@ import ru.fizteh.fivt.students.sterzhanovVladislav.fileMap.FileMap;
 import ru.fizteh.fivt.students.sterzhanovVladislav.fileMap.storeable.StoreableRow;
 
 public class FileMapTester {
-    static Table table;
-    static List<Class<?>> sampleSignature;
-    static Storeable sampleValue;
-    static Storeable otherValue;
+    Table table;
+    List<Class<?>> sampleSignature;
+    Storeable sampleValue;
+    Storeable otherValue;
 
     @Before
     public void init() {

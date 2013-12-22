@@ -44,7 +44,8 @@ public class Remove implements CommandInterface {
             throw new IOException("Wrong parametres of remove");
         }
         String path = Shell.getAbsPath(expr.substring(spaceIndex + 1, expr.length()));
-        if (args.size() != 2 && ( path.equals(Shell.getCurrentDirectory()) || Shell.getCurrentDirectory().contains(path))) {                                  // can't delete father of son
+        if (args.size() != 2                                                           // can't delete father of son
+                && (path.equals(Shell.getCurrentDirectory()) || Shell.getCurrentDirectory().contains(path))) {
             throw new IOException("rm: can't remove " + path);
         }
         if ((new File(path)).isFile() || (new File(path)).isDirectory()) {

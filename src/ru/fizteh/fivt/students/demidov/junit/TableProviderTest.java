@@ -1,5 +1,8 @@
 package ru.fizteh.fivt.students.demidov.junit;
 
+import java.io.File;
+import java.io.IOException;
+
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -7,10 +10,24 @@ import org.junit.Test;
 import ru.fizteh.fivt.storage.strings.Table;
 
 public class TableProviderTest {
+	private TableProviderImplementation currentProvider;
+	
 	@Before
 	public void setUp() {
 		try {
-			currentProvider = new TableProviderImplementation(System.getProperty("fizteh.db.dir"));
+			File tempDirectory = null;
+			try {
+				tempDirectory = File.createTempFile("TableProviderImplementationTest", null);
+			} catch (IOException catchedException) {
+				return;
+			}
+			if (!tempDirectory.delete()) {
+				return;
+			}
+			if (!tempDirectory.mkdir()) {
+				return;
+			}
+			currentProvider = new TableProviderImplementation(tempDirectory.getPath());
 		} catch (IllegalArgumentException catchedException) {
 			Assert.fail("unable to create TableProviderImplementation example");
 		}
@@ -60,6 +77,4 @@ public class TableProviderTest {
 	public void removeTableWithNullParameter() {
 		currentProvider.removeTable(null);
 	}
-	
-	private TableProviderImplementation currentProvider;
-} 
+}

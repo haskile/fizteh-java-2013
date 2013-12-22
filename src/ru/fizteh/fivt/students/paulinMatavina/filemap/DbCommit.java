@@ -11,7 +11,13 @@ public class DbCommit implements Command {
             return 0;
         }
         
-        int result = multiState.getCurrTable().commit();
+        int result = 0;
+        try {
+            result = multiState.getCurrTable().commit();
+        } catch (Exception e) {
+            System.err.println("commit: " + e.getMessage());
+            return 1;
+        } 
         System.out.println(result);
         return 0;
     }

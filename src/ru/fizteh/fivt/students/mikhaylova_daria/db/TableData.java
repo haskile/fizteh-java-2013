@@ -5,15 +5,21 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import ru.fizteh.fivt.storage.structured.*;
 
-public class TableData implements Table {
+public class TableData implements Table, AutoCloseable {
 
     File tableFile;
+    boolean isClosed = false;
     DirDataBase[] dirArray = new DirDataBase[16];
     private ArrayList<Class<?>> columnTypes;
     TableManager manager;
+    private  ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(true);
+    private final Lock myWriteLock = readWriteLock.writeLock();
+    private final Lock myReadLock = readWriteLock.readLock();
 
     private static ArrayList<Class<?>> normList(List<Class<?>> arg) {
         HashMap<String, Class<?>> types = new HashMap<>();
@@ -137,6 +143,7 @@ public class TableData implements Table {
         if (signatures.length == 0) {
             throw new IllegalArgumentException(sign.toString() + " Empty type list");
         }
+
         for (int i = 0; i < signatures.length; ++i) {
             if (signatures[i].equals("int")) {
                 columnTypes.add(Integer.class);
@@ -166,7 +173,16 @@ public class TableData implements Table {
     }
 
     public String getName() {
-        return tableFile.getName();
+        myReadLock.lock();
+        try {
+            if (isClosed) {
+
+                throw new  IllegalStateException("Table is closed");
+            }
+            return tableFile.getName();
+        } finally {
+            myReadLock.unlock();
+        }
     }
 
     void checkKey(String key) {
@@ -186,45 +202,53 @@ public class TableData implements Table {
         if (value == null) {
             throw new IllegalArgumentException("value is null");
         }
-        int i = 0;
+        myReadLock.lock();
         try {
-            for (; i < getColumnsCount(); ) {
-                if (normType(getColumnType(i).getSimpleName()) == null) {
-                    throw new IllegalArgumentException("wrong type (The table contains "
-                            + "unsupported type:" + getColumnType(i));
-                }
-                if (normType(getColumnType(i).getSimpleName()).equals(Integer.class)) {
-                    value.getIntAt(i);
-                } else if (normType(getColumnType(i).getSimpleName()).equals(Long.class)) {
-                    value.getLongAt(i);
-                } else if (normType(getColumnType(i).getSimpleName()).equals(Byte.class)) {
-                    value.getByteAt(i);
-                } else if (normType(getColumnType(i).getSimpleName()).equals(Float.class)) {
-                    value.getFloatAt(i);
-                } else if (normType(getColumnType(i).getSimpleName()).equals(Double.class)) {
-                    value.getDoubleAt(i);
-                } else if (normType(getColumnType(i).getSimpleName()).equals(Boolean.class)) {
-                    value.getBooleanAt(i);
-                } else if (normType(getColumnType(i).getSimpleName()).equals(String.class)) {
-                    value.getStringAt(i);
-                }
-                ++i;
+            if (isClosed) {
+                throw new  IllegalStateException("Table is closed");
             }
-        } catch (IndexOutOfBoundsException e) {
-            throw new ColumnFormatException("wrong type (" + e.getMessage() + " index i = " + i + ")", e);
-        } catch (ClassCastException  e) {
-            throw new ColumnFormatException("wrong type (" + e.getMessage() + " index i = " + i + "::"
-                    + value.getColumnAt(i) + ")", e);
+            int i = 0;
+            try {
+                for (; i < getColumnsCount(); ) {
+                    if (normType(getColumnType(i).getSimpleName()) == null) {
+                        throw new IllegalArgumentException("wrong type (The table contains "
+                                + "unsupported type:" + getColumnType(i));
+                    }
+                    if (normType(getColumnType(i).getSimpleName()).equals(Integer.class)) {
+                        value.getIntAt(i);
+                    } else if (normType(getColumnType(i).getSimpleName()).equals(Long.class)) {
+                        value.getLongAt(i);
+                    } else if (normType(getColumnType(i).getSimpleName()).equals(Byte.class)) {
+                        value.getByteAt(i);
+                    } else if (normType(getColumnType(i).getSimpleName()).equals(Float.class)) {
+                        value.getFloatAt(i);
+                    } else if (normType(getColumnType(i).getSimpleName()).equals(Double.class)) {
+                        value.getDoubleAt(i);
+                    } else if (normType(getColumnType(i).getSimpleName()).equals(Boolean.class)) {
+                        value.getBooleanAt(i);
+                    } else if (normType(getColumnType(i).getSimpleName()).equals(String.class)) {
+                        value.getStringAt(i);
+                    }
+                    ++i;
+                }
+            } catch (IndexOutOfBoundsException e) {
+                throw new ColumnFormatException("wrong type (" + e.getMessage() + " index i = " + i + ")", e);
+            } catch (ClassCastException  e) {
+                throw new ColumnFormatException("wrong type (" + e.getMessage() + " index i = " + i + "::"
+                        + value.getColumnAt(i) + ")", e);
 
-        }
+            }
 
-        byte b = key.getBytes()[0];
-        if (b < 0) {
-            b *= (-1);
+            byte b = key.getBytes()[0];
+            if (b < 0) {
+                b *= (-1);
+            }
+            int nDirectory = b % 16;
+            int nFile = (b / 16) % 16;
+            return dirArray[nDirectory].fileArray[nFile].put(key, value, this);
+        } finally {
+            myReadLock.unlock();
         }
-        int nDirectory = b % 16;
-        int nFile = (b / 16) % 16;
-        return dirArray[nDirectory].fileArray[nFile].put(key, value, this);
     }
 
     public Storeable remove(String key) throws IllegalArgumentException {
@@ -236,14 +260,20 @@ public class TableData implements Table {
         int nDirectory = b % 16;
         int nFile = b / 16 % 16;
         Storeable removedValue;
+        myReadLock.lock();
         try {
-            dirArray[nDirectory].startWorking();
-            removedValue = dirArray[nDirectory].fileArray[nFile].remove(key, this);
-            dirArray[nDirectory].deleteEmptyDir();
-        } catch (Exception e) {
-            throw new IllegalArgumentException(e.getMessage(), e);
+            if (isClosed) {
+                throw new  IllegalStateException("Table is closed");
+            }
+            try {
+                removedValue = dirArray[nDirectory].fileArray[nFile].remove(key, this);
+            } catch (Exception e) {
+                throw new IllegalArgumentException(e.getMessage(), e);
+            }
+            return removedValue;
+        } finally {
+            myReadLock.unlock();
         }
-        return removedValue;
     }
 
     public Storeable get(String key) throws IllegalArgumentException {
@@ -255,59 +285,129 @@ public class TableData implements Table {
         int nDirectory = b % 16;
         int nFile = (b / 16) % 16;
         Storeable getValue;
+        myReadLock.lock();
         try {
-            dirArray[nDirectory].startWorking();
-            getValue = dirArray[nDirectory].fileArray[nFile].get(key, this);
-            dirArray[nDirectory].deleteEmptyDir();
-        } catch (Exception e) {
-            throw new IllegalArgumentException(e.getMessage(), e);
+            if (isClosed) {
+                throw new  IllegalStateException("Table is closed");
+            }
+            try {
+                getValue = dirArray[nDirectory].fileArray[nFile].get(key, this);
+            } catch (Exception e) {
+                throw new IllegalArgumentException(e.getMessage(), e);
+            }
+            return getValue;
+        } finally {
+            myReadLock.unlock();
         }
-        return getValue;
     }
 
     int countChanges() {
-        int numberOfChanges = 0;
-        for (int i = 0; i < 16; ++i) {
-            numberOfChanges += dirArray[i].countChanges();
+        myReadLock.lock();
+        try {
+            if (isClosed) {
+                throw new  IllegalStateException("Table is closed");
+            }
+            int numberOfChanges = 0;
+            for (int i = 0; i < 16; ++i) {
+                numberOfChanges += dirArray[i].countChanges();
+            }
+            return numberOfChanges;
+        } finally {
+            myReadLock.unlock();
         }
-        return numberOfChanges;
     }
 
     public int size() {
         int numberOfKeys = 0;
-        for (int i = 0; i < 16; ++i) {
-            numberOfKeys += dirArray[i].size();
+        myWriteLock.lock();
+        try {
+            if (isClosed) {
+                throw new IllegalStateException("Table is closed");
+            }
+            for (int i = 0; i < 16; ++i) {
+                numberOfKeys += dirArray[i].size();
+            }
+        } finally {
+            myWriteLock.unlock();
         }
         return numberOfKeys;
     }
 
     public int commit() {
         int numberOfChanges = 0;
-        for (int i = 0; i < 16; ++i) {
-            numberOfChanges += dirArray[i].commit();
+        myWriteLock.lock();
+        try {
+            if (isClosed) {
+                throw new IllegalStateException("Table is closed");
+            }
+            for (int i = 0; i < 16; ++i) {
+                numberOfChanges += dirArray[i].commit();
+            }
+        } finally {
+            myWriteLock.unlock();
         }
         return numberOfChanges;
     }
 
     public int rollback() {
-        int numberOfChanges = 0;
-        for (int i = 0; i < 16; ++i) {
-            numberOfChanges += dirArray[i].rollback();
+        myReadLock.lock();
+        try {
+            if (isClosed) {
+                throw new  IllegalStateException("Table is closed");
+            }
+            int numberOfChanges = 0;
+            for (int i = 0; i < 16; ++i) {
+                numberOfChanges += dirArray[i].rollback();
+            }
+            return numberOfChanges;
+        } finally {
+            myReadLock.unlock();
         }
-        return numberOfChanges;
     }
 
     public int getColumnsCount() {
-        return columnTypes.size();
+        myReadLock.lock();
+        try {
+            if (isClosed) {
+                throw new  IllegalStateException("Table is closed");
+            }
+            return columnTypes.size();
+        } finally {
+            myReadLock.unlock();
+        }
     }
 
     public Class<?> getColumnType(int columnIndex) throws IndexOutOfBoundsException {
-        if (columnIndex >= columnTypes.size()) {
-            throw new IndexOutOfBoundsException("Index " + columnIndex
-                    + "does not exist. Number of columns is" + columnTypes.size());
+        myReadLock.lock();
+        try {
+            if (isClosed) {
+                throw new  IllegalStateException("Table is closed");
+            }
+            if (columnIndex >= columnTypes.size()) {
+                throw new IndexOutOfBoundsException("Index " + columnIndex
+                        + "does not exist. Number of columns is" + columnTypes.size());
+            }
+            return columnTypes.get(columnIndex);
+        } finally {
+            myReadLock.unlock();
         }
-        return columnTypes.get(columnIndex);
+    }
+
+    public void close() {
+        myWriteLock.lock();
+        try {
+            if (!isClosed) {
+                rollback();
+                manager.bidDataBase.remove(this.getName());
+                isClosed = true;
+            }
+        } finally {
+            myWriteLock.unlock();
+        }
+    }
+
+    public String toString() {
+        return this.getClass().getSimpleName() + "[" + tableFile.toPath().toAbsolutePath() + "]";
     }
 
 }
-

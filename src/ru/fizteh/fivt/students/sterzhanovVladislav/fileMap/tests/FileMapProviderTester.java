@@ -11,8 +11,8 @@ import ru.fizteh.fivt.students.sterzhanovVladislav.fileMap.FileMapProvider;
 import static org.junit.Assert.*;
 
 public class FileMapProviderTester {
-    static FileMapProvider provider;
-    static List<Class<?>> sampleSignature;
+    FileMapProvider provider;
+    List<Class<?>> sampleSignature;
     
     @Before
     public void init() throws IllegalArgumentException, IOException {
@@ -24,6 +24,7 @@ public class FileMapProviderTester {
     @Test
     public void createAndGetForSameTableShouldBeEqual() throws IOException {
         assertEquals(provider.createTable("table", sampleSignature), provider.getTable("table"));
+        provider.removeTable("table");
     }
     
     @Test(expected = IllegalStateException.class)
@@ -35,6 +36,7 @@ public class FileMapProviderTester {
     public void addSameNameShouldBeNull() throws IOException {
         provider.createTable("table", sampleSignature);
         assertNull(provider.createTable("table", sampleSignature));
+        provider.removeTable("table");
     }
     
     @Test
@@ -51,7 +53,8 @@ public class FileMapProviderTester {
     
     @Test(expected = IllegalArgumentException.class)
     public void createNullSignatureShouldFail() throws IOException {
-        provider.createTable("test", null);
+        provider.createTable("table", null);
+        provider.removeTable("table");
     }
     
     @Test(expected = IllegalArgumentException.class)
@@ -66,15 +69,15 @@ public class FileMapProviderTester {
     
     @Test
     public void createForTest() throws IOException {
-        Table testTable = provider.createTable("test", sampleSignature);
+        Table testTable = provider.createTable("table", sampleSignature);
         List<String> values = new ArrayList<String>();
         values.add("test value");
         assertNull(testTable.put("key", provider.createFor(testTable, values)));
         assertEquals(testTable.get("key").getStringAt(0), "test value");
+        provider.removeTable("table");
     }
     
     @After
     public void wipe() {
-        provider.removeAllTables();
     }
 }

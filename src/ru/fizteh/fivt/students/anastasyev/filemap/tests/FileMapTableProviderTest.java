@@ -6,6 +6,8 @@ import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.storage.structured.Table;
 import ru.fizteh.fivt.storage.structured.TableProvider;
 import ru.fizteh.fivt.storage.structured.TableProviderFactory;
+import ru.fizteh.fivt.students.anastasyev.filemap.FileMapTable;
+import ru.fizteh.fivt.students.anastasyev.filemap.FileMapTableProvider;
 import ru.fizteh.fivt.students.anastasyev.filemap.FileMapTableProviderFactory;
 import ru.fizteh.fivt.students.anastasyev.filemap.MyStoreable;
 
@@ -18,8 +20,14 @@ import static junit.framework.Assert.*;
 
 public class FileMapTableProviderTest {
     TableProviderFactory tableProviderFactory;
+    String path;
     TableProvider tableProvider;
+    List<Class<?>> types;
     List<Class<?>> classes;
+    Table firstParallelTable;
+    Table secondParallelTable;
+    Thread first;
+    Thread second;
 
     @Rule
     public TemporaryFolder folder = new TemporaryFolder();
@@ -27,11 +35,20 @@ public class FileMapTableProviderTest {
     @Before
     public void setTableProvider() throws IOException {
         tableProviderFactory = new FileMapTableProviderFactory();
+        path = folder.newFolder().toString();
+        tableProvider = tableProviderFactory.create(path);
+        assertNotNull(tableProvider);
         classes = new ArrayList<Class<?>>();
         classes.add(Integer.class);
         classes.add(String.class);
-        tableProvider = tableProviderFactory.create(folder.newFolder().toString());
-        assertNotNull(tableProvider);
+
+        types = new ArrayList<Class<?>>();
+        types.add(Integer.class);
+        types.add(Long.class);
+        types.add(Byte.class);
+        types.add(Float.class);
+        types.add(Double.class);
+        types.add(String.class);
     }
 
     @Test
@@ -107,6 +124,7 @@ public class FileMapTableProviderTest {
         assertEquals(storeable.getStringAt(2), "val");
         String serialize = tableProvider.serialize(table, storeable);
         assertEquals(serialize, "[null,5.505,\"val\"]");
+        tableProvider.removeTable("table");
     }
 
     @Test
@@ -122,18 +140,11 @@ public class FileMapTableProviderTest {
         assertEquals(compositValueStoreable.getFloatAt(0), ((Double) 1.5).floatValue());
         assertEquals(compositValueStoreable.getDoubleAt(1), 2.5);
         assertEquals(compositValueStoreable.getStringAt(2), "val");
+        tableProvider.removeTable("table");
     }
 
     @Test
     public void createForTest() throws IOException {
-        List<Class<?>> types = new ArrayList<Class<?>>();
-        types.add(Integer.class);
-        types.add(Long.class);
-        types.add(Byte.class);
-        types.add(Float.class);
-        types.add(Double.class);
-        types.add(String.class);
-
         Table table = tableProvider.createTable("createForTable", types);
 
         List<Object> values = new ArrayList<Object>();
@@ -151,6 +162,194 @@ public class FileMapTableProviderTest {
         assertEquals(storeable.getFloatAt(3), ((Double) 4.5).floatValue());
         assertEquals(storeable.getDoubleAt(4), ((Integer) 5).doubleValue());
         assertEquals(storeable.getStringAt(5), "string");
+        tableProvider.removeTable("createForTable");
+    }
+
+    @Test
+    public void testParallelsCreateSameTables() throws Exception {
+        first = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    firstParallelTable = tableProvider.createTable("parallelTable", types);
+                } catch (IOException e) {
+                    //
+                }
+            }
+        });
+        second = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    secondParallelTable = tableProvider.createTable("parallelTable", types);
+                } catch (IOException e) {
+                    //
+                }
+            }
+        });
+        first.start();
+        second.start();
+        first.join();
+        second.join();
+        assertTrue(firstParallelTable == null || secondParallelTable == null);
+        tableProvider.removeTable("parallelTable");
+    }
+
+    @Test
+    public void testParallelsCreateDifferentTables() throws Exception {
+        first = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    firstParallelTable = tableProvider.createTable("firstTable", types);
+                } catch (IOException e) {
+                    //
+                }
+            }
+        });
+        second = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    secondParallelTable = tableProvider.createTable("secondTable", types);
+                } catch (IOException e) {
+                    //
+                }
+            }
+        });
+        first.start();
+        second.start();
+        first.join();
+        second.join();
+
+        assertTrue(firstParallelTable != null && secondParallelTable != null);
+        tableProvider.removeTable("firstTable");
+        tableProvider.removeTable("secondTable");
+    }
+
+    @Test
+    public void testParallelsCreateGet() throws InterruptedException, IOException {
+        first = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    firstParallelTable = tableProvider.createTable("table", types);
+                } catch (IOException e) {
+                    //
+                }
+            }
+        });
+        second = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    first.join();
+                } catch (InterruptedException e) {
+                    //
+                }
+                secondParallelTable = tableProvider.getTable("table");
+            }
+        });
+        first.start();
+        second.start();
+        first.join();
+        second.join();
+
+        assertEquals(firstParallelTable, secondParallelTable);
+        tableProvider.removeTable("table");
+    }
+
+    @Test
+    public void testParallelsCreateRemoveCreate() throws Exception {
+        first = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    firstParallelTable = tableProvider.createTable("table", types);
+                    second.join();
+                    Thread.sleep(100);
+                    secondParallelTable = tableProvider.createTable("table", types);
+                } catch (IOException | InterruptedException e) {
+                    //
+                }
+            }
+        });
+        second = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Thread.sleep(100);
+                    tableProvider.removeTable("table");
+                } catch (InterruptedException | IOException e) {
+                    //
+                }
+            }
+        });
+        first.start();
+        second.start();
+        second.join();
+        assertNull(tableProvider.getTable("table"));
+        first.join();
+
+        assertEquals(secondParallelTable, tableProvider.getTable("table"));
+        assertEquals(firstParallelTable.getName(), secondParallelTable.getName());
+        tableProvider.removeTable("table");
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testGetTableAfterClose() throws IOException {
+        FileMapTableProvider fileMapTableProvider = (FileMapTableProvider) tableProvider;
+        assertNotNull(fileMapTableProvider.createTable("ClosingTable", types));
+        fileMapTableProvider.close();
+        fileMapTableProvider.getTable("ClosingTable");
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testCreateTableAfterClose() throws IOException {
+        FileMapTableProvider fileMapTableProvider = (FileMapTableProvider) tableProvider;
+        assertNotNull(fileMapTableProvider.createTable("ClosingTable", types));
+        fileMapTableProvider.close();
+        fileMapTableProvider.getTable("ClosingTable");
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testDeserializeAfterClose() throws IOException, ParseException {
+        FileMapTableProvider fileMapTableProvider = (FileMapTableProvider) tableProvider;
+        Table table = fileMapTableProvider.createTable("ClosingTable", types);
+        fileMapTableProvider.close();
+        fileMapTableProvider.deserialize(table, "[\"not valide string\"]");
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testPutAfterClose() throws IOException, ParseException {
+        FileMapTableProvider fileMapTableProvider = (FileMapTableProvider) tableProvider;
+        Table table = fileMapTableProvider.createTable("ClosingTable", types);
+        Storeable storeable = fileMapTableProvider.deserialize(table, "[1,2,3,4,5,\"str\"]");
+        fileMapTableProvider.close();
+        table.put("key", storeable);
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testSerializeAfterClose() throws IOException, ParseException {
+        FileMapTableProvider fileMapTableProvider = (FileMapTableProvider) tableProvider;
+        Table table = fileMapTableProvider.createTable("ClosingTable", types);
+        Storeable storeable = fileMapTableProvider.deserialize(table, "[1,2,3,4,5,\"str\"]");
+        fileMapTableProvider.close();
+        fileMapTableProvider.serialize(table, storeable);
+    }
+
+    @Test
+    public void testToString() {
+        String str = tableProvider.toString();
+        assertEquals(str, "FileMapTableProvider[" + path + "]");
+    }
+
+    @Test(expected = IllegalStateException.class)
+    public void testClosingOfTablesInProvider() throws IOException {
+        FileMapTableProvider fileMapTableProvider = (FileMapTableProvider) tableProvider;
+        FileMapTable table1 = (FileMapTable) fileMapTableProvider.createTable("newTable1", types);
+        fileMapTableProvider.close();
+        table1.get("key");
     }
 }
 

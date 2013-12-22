@@ -12,7 +12,6 @@ import org.junit.Test;
 import ru.fizteh.fivt.storage.structured.ColumnFormatException;
 import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.storage.structured.TableProvider;
-import ru.fizteh.fivt.students.irinapodorozhnaya.storeable.MyTableProvider;
 import ru.fizteh.fivt.students.irinapodorozhnaya.storeable.MyStoreable;
 import ru.fizteh.fivt.students.irinapodorozhnaya.storeable.MyTableProviderFactory;
 
@@ -59,6 +58,11 @@ public class StoreableTest {
     public void setColumnAt() throws Exception {
         s.setColumnAt(2, "Hello");
         s.setColumnAt(4, 4.0);
+    }
+
+    @Test
+    public void toStringTest() {
+        Assert.assertEquals(s.toString(), "MyStoreable[1,false,Hello,3.0,4.0,5,6]");
     }
     
     @Test (expected = IndexOutOfBoundsException.class)

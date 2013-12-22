@@ -6,16 +6,11 @@ import java.util.StringTokenizer;
 
 public abstract class ShellEmulator {
 
-    public interface ShellCommand {
-        String getName();
-
-        void execute(String[] args) throws ShellException;
-    }
-
     private HashMap<String, ShellCommand> mapCommand = new HashMap<>();
+    private final ShellInfo shellInfo;
 
-    protected void clearCommandList() {
-        mapCommand.clear();
+    protected ShellEmulator(ShellInfo info) {
+        shellInfo = info;
     }
 
     protected void addToCommandList(ShellCommand[] commandList) {
@@ -23,10 +18,6 @@ public abstract class ShellEmulator {
         for (ShellCommand command : commandList) {
             mapCommand.put(command.getName(), command);
         }
-    }
-
-    protected void justBeforeExecutingAction(String commandName) {
-
     }
 
     protected String getGreetingString() {
@@ -70,8 +61,34 @@ public abstract class ShellEmulator {
             throw new ShellException(commandName, "No such command");
         }
 
-        justBeforeExecutingAction(commandName);
-        currentCommand.execute(arguments);
+        try {
+            currentCommand.execute(arguments, shellInfo);
+        } catch (Exception e) {
+            throw new ShellException("Command " + commandName + " failed", e);
+        }
+    }
+
+    private static StringBuilder getNiceMessageBuilder(Throwable e) {
+        StringBuilder builder = new StringBuilder();
+        String message = e.getMessage();
+        if (message != null) {
+            builder.append(message);
+        }
+        if (e.getCause() != null) {
+            StringBuilder nextThrowable = getNiceMessageBuilder(e.getCause());
+            if (nextThrowable.length() > 0) {
+                if (builder.length() > 0) {
+                    builder.append(": ");
+                }
+                builder.append(nextThrowable);
+            }
+        }
+
+        return builder;
+    }
+
+    public static String getNiceMessage(Throwable e) {
+        return getNiceMessageBuilder(e).toString();
     }
 
     private void executeQuery(String query) throws ShellException {
@@ -106,9 +123,9 @@ public abstract class ShellEmulator {
             try {
                 executeQuery(query);
             } catch (ShellException sh) {
-                System.err.println(sh.toString());
+                System.err.println("Shell: " + getNiceMessage(sh));
             } catch (Exception e) {
-                System.err.println("Unhandled exception: " + e.toString());
+                System.err.println("Shell: Unhandled exception: " + getNiceMessage(e));
             } finally {
                 printGreeting();
             }

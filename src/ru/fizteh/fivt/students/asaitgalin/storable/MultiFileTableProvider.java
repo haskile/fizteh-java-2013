@@ -17,10 +17,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class MultiFileTableProvider implements ExtendedTableProvider {
     private static final String TABLE_NAME_FORMAT = "[A-Za-zА-Яа-я0-9]+";
 
+    private final ReadWriteLock tableProviderTransactionLock = new ReentrantReadWriteLock(true);
     private File dbDirectory;
     private Map<String, ExtendedTable> tableMap = new HashMap<>();
 
@@ -51,7 +54,12 @@ public class MultiFileTableProvider implements ExtendedTableProvider {
         if (!name.matches(TABLE_NAME_FORMAT)) {
             throw new IllegalArgumentException("provider, get: table name contains bad symbols");
         }
-        return tableMap.get(name);
+        try {
+            tableProviderTransactionLock.readLock().lock();
+            return tableMap.get(name);
+        } finally {
+            tableProviderTransactionLock.readLock().unlock();
+        }
     }
 
     @Override
@@ -70,16 +78,21 @@ public class MultiFileTableProvider implements ExtendedTableProvider {
                 throw new IllegalArgumentException("provider, create: invalid column type");
             }
         }
-        File tableDir = new File(dbDirectory, name);
-        if (tableDir.exists()) {
-            return null;
+        try {
+            tableProviderTransactionLock.writeLock().lock();
+            File tableDir = new File(dbDirectory, name);
+            if (tableDir.exists()) {
+                return null;
+            }
+            if (!tableDir.mkdir()) {
+                throw new IOException("provider, create: failed to create table directory");
+            }
+            ExtendedTable table = new MultiFileTable(tableDir, name, this, columnTypes);
+            tableMap.put(table.getName(), table);
+            return table;
+        } finally {
+            tableProviderTransactionLock.writeLock().unlock();
         }
-        if (!tableDir.mkdir()) {
-            throw new IOException("provider, create: failed to create table directory");
-        }
-        ExtendedTable table = new MultiFileTable(tableDir, name, this, columnTypes);
-        tableMap.put(table.getName(), table);
-        return table;
     }
 
     @Override
@@ -87,12 +100,17 @@ public class MultiFileTableProvider implements ExtendedTableProvider {
         if (name == null || name.trim().isEmpty()) {
             throw new IllegalArgumentException("provider, remove: bad table name");
         }
-        File tableDir = new File(dbDirectory, name);
-        if (!tableDir.exists()) {
-            throw new IllegalStateException("provider, remove: table does not exist");
+        try {
+            tableProviderTransactionLock.writeLock().lock();
+            File tableDir = new File(dbDirectory, name);
+            if (!tableDir.exists()) {
+                throw new IllegalStateException("provider, remove: table does not exist");
+            }
+            tableMap.remove(name);
+            FileUtils.deleteRecursively(tableDir);
+        } finally {
+            tableProviderTransactionLock.writeLock().unlock();
         }
-        tableMap.remove(name);
-        FileUtils.deleteRecursively(tableDir);
     }
 
     @Override

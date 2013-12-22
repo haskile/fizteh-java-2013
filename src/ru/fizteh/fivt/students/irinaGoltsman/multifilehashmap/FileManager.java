@@ -84,8 +84,7 @@ public class FileManager {
         }
         checkKeyOnRightHashCode(key, dirIndex, fileIndex);
         long lengthOfLine = inputLength - length;
-        LineOfDB result = new LineOfDB(lengthOfLine, key, value);
-        return result;
+        return new LineOfDB(lengthOfLine, key, value);
     }
 
     private static byte[] readKeyOrValue(RandomAccessFile datFile, int length) throws IOException {
@@ -109,7 +108,7 @@ public class FileManager {
 
     private static void readFromDisk(RandomAccessFile datFile, HashMap<String, String> storage,
                                      int dirIndex, int fileIndex) throws IOException {
-        long length = -1;
+        long length;
         length = datFile.length();
         if (length == 0) {
             return;

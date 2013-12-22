@@ -34,7 +34,7 @@ public class MyTableProviderFactoryTest {
     }
     
     @Test (expected = IOException.class)
-    public void dirNotExists() throws IOException{
+    public void dirNotExists() throws IOException {
         tempFactory.create("notExistsDir");
     }
     

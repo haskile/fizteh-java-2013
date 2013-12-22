@@ -1,8 +1,5 @@
 package ru.fizteh.fivt.students.belousova.multifilehashmap;
 
-import ru.fizteh.fivt.students.belousova.filemap.SingleFileTable;
-import ru.fizteh.fivt.students.belousova.filemap.TableState;
-
 public class MultiFileHashMap {
     public static void main(String[] args) {
         MultiFileShell shell = new MultiFileShell();

@@ -1,23 +1,21 @@
 package ru.fizteh.fivt.students.fedoseev.multifilehashmap;
 
 import ru.fizteh.fivt.students.fedoseev.common.AbstractCommand;
+import ru.fizteh.fivt.students.fedoseev.common.State;
 
 import java.io.IOException;
 
-public class MultiFileHashMapSizeCommand extends AbstractCommand<MultiFileHashMapState> {
+public class MultiFileHashMapSizeCommand extends AbstractCommand<State> {
     public MultiFileHashMapSizeCommand() {
         super("size", 0);
     }
 
     @Override
-    public void execute(String[] input, MultiFileHashMapState state) throws IOException {
-        MultiFileHashMapTable table = state.getCurTable();
-
-        if (table == null) {
-            System.out.println("no table");
-            throw new IOException("ERROR: not existing table");
+    public void execute(String[] input, State state) throws IOException {
+        if (state.getCurTable() == null) {
+            throw new IOException("no table");
         } else {
-            System.out.println(table.size());
+            System.out.println(state.size());
         }
     }
 }

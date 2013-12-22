@@ -7,8 +7,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class MultiFileHashMapTableProvider implements TableProvider {
-    private final String NAME_FORMAT = "[а-яА-яa-zA-Z0-9]+";
-
     private Map<String, MultiFileHashMapTable> databaseTables = new HashMap<String, MultiFileHashMapTable>();
 
     @Override
@@ -44,7 +42,9 @@ public class MultiFileHashMapTableProvider implements TableProvider {
     }
 
     private void checkTableName(String tableName) throws IllegalArgumentException {
-        if (tableName == null || !new File(tableName).toPath().getFileName().toString().matches(NAME_FORMAT)) {
+        String nameFormat = "[а-яА-яa-zA-Z0-9]+";
+
+        if (tableName == null || !new File(tableName).toPath().getFileName().toString().matches(nameFormat)) {
             throw new IllegalArgumentException("GET | CREATE | REMOVE TABLE ERROR: incorrect table name");
         }
     }

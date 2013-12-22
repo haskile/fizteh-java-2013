@@ -42,32 +42,21 @@ public class Value implements Storeable {
             }
             if (types.get(i).equals(Integer.class)) {
                 values.add(i, Integer.MIN_VALUE);
-            } else {
-                if (types.get(i).equals(Long.class)) {
-                    values.add(i, Long.MIN_VALUE);
-                } else {
-                    if (types.get(i).equals(Byte.class)) {
-                        values.add(i, Byte.MIN_VALUE);
-                    } else {
-                        if (types.get(i).equals(Float.class)) {
-                            values.add(i, Float.MIN_VALUE);
-                        } else {
-                            if (types.get(i).equals(Double.class)) {
-                                values.add(i, Double.MIN_VALUE);
-                            } else {
-                                if (types.get(i).equals(String.class)) {
-                                    values.add(i, "default");
-                                } else {
-                                    if (types.get(i).equals(Boolean.class)) {
-                                        values.add(i, true);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+            } else if (types.get(i).equals(Long.class)) {
+                values.add(i, Long.MIN_VALUE);
+            } else if (types.get(i).equals(Byte.class)) {
+                values.add(i, Byte.MIN_VALUE);
+            } else if (types.get(i).equals(Float.class)) {
+                values.add(i, Float.MIN_VALUE);
+            } else if (types.get(i).equals(Double.class)) {
+                values.add(i, Double.MIN_VALUE);
+            } else if (types.get(i).equals(String.class)) {
+                values.add(i, "default");
+            } else if (types.get(i).equals(Boolean.class)) {
+                values.add(i, true);
             }
         }
+
     }
 
     public void setColumnAt(int columnIndex, Object value) throws ColumnFormatException, IndexOutOfBoundsException {
@@ -199,6 +188,20 @@ public class Value implements Storeable {
             val = (String) values.get(columnIndex);
         }
         return val;
+    }
+
+    public String toString() {
+        StringBuilder strValue = new StringBuilder();
+        for (int i = 0; i < this.types.size(); ++i) {
+            Object objAtCol = this.getColumnAt(i);
+            if (objAtCol != null) {
+                strValue.append(objAtCol.toString());
+            }
+            if (i != this.types.size() - 1) {
+                strValue.append(",");
+            }
+        }
+        return this.getClass().getSimpleName() + "[" + strValue + "]";
     }
 
 }

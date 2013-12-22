@@ -1,14 +1,17 @@
 package ru.fizteh.fivt.students.eltyshev.storable;
 
-import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.List;
-
 import ru.fizteh.fivt.storage.structured.ColumnFormatException;
 import ru.fizteh.fivt.storage.structured.Table;
 import ru.fizteh.fivt.students.eltyshev.shell.commands.CommandParser;
 import ru.fizteh.fivt.students.eltyshev.storable.database.TableInfo;
-import ru.fizteh.fivt.students.eltyshev.storable.xml.XmlDeserializer;
+
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class StoreableUtils {
 
@@ -23,16 +26,18 @@ public class StoreableUtils {
         return values;
     }
 
-    public static String join(List<?> list) {
+    public static String join(List<?> list, boolean nameNulls, String delimiter) {
         StringBuilder sb = new StringBuilder();
         boolean first = true;
         for (final Object listEntry : list) {
             if (!first) {
-                sb.append(" ");
+                sb.append(delimiter);
             }
             first = false;
             if (listEntry == null) {
-                sb.append("null");
+                if (nameNulls) {
+                    sb.append("null");
+                }
             } else {
                 sb.append(listEntry.toString());
             }
@@ -76,14 +81,27 @@ public class StoreableUtils {
         switch (TypesFormatter.getSimpleName(type)) {
             case "String":
                 String stringValue = (String) value;
-                if (checkStringCorrect(stringValue)) {
+                /*if (checkStringCorrect(stringValue)) {
                     throw new ParseException("value cannot be null", 0);
-                }
+                }    */
                 break;
         }
     }
 
     public static boolean checkStringCorrect(String string) {
         return string.matches("\\s*") || string.split("\\s+").length != 1;
+    }
+
+    public static void writeSignature(File signatureFile, List<Class<?>> columnTypes) throws IOException {
+        File parent = signatureFile.getParentFile();
+        if (!parent.exists()) {
+            parent.mkdir();
+        }
+        signatureFile.createNewFile();
+        BufferedWriter writer = new BufferedWriter(new FileWriter(signatureFile));
+        List<String> formattedColumnTypes = StoreableUtils.formatColumnTypes(columnTypes);
+        String signature = StoreableUtils.join(formattedColumnTypes, true, " ");
+        writer.write(signature);
+        writer.close();
     }
 }

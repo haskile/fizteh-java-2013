@@ -68,11 +68,14 @@ public class CommandRunner {
                     args[command.getArgNum() - 1] = query.substring(currSize).trim();
                     try {
                         return command.execute(args, state);
-                    } catch (ExitException e) {
-                        state.exitWithError(Integer.parseInt(e.getMessage()));
                     } catch (RuntimeException e) {
-                        System.err.println(e.getMessage());
-                        return 1;
+                        try {
+                            int code = Integer.parseInt(e.getMessage());
+                            state.exitWithError(code);
+                        } catch (NumberFormatException e2) {
+                            System.err.println(e.getMessage());
+                            return 1;
+                        } 
                     }
                 }                
                 for (int i = 0; i < command.getArgNum(); i++) {
@@ -80,11 +83,14 @@ public class CommandRunner {
                 }
                 try {
                     return command.execute(args, state);
-                } catch (ExitException e) {
-                    state.exitWithError(Integer.parseInt(e.getMessage()));
                 } catch (RuntimeException e) {
-                    System.err.println(e.getMessage());
-                    return 1;
+                    try {
+                        int code = Integer.parseInt(e.getMessage());
+                        state.exitWithError(code);
+                    } catch (NumberFormatException e2) {
+                        System.err.println(e.getMessage());
+                        return 1;
+                    } 
                 }
             }
         }

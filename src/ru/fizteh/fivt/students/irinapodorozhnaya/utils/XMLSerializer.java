@@ -65,7 +65,7 @@ public class XMLSerializer {
         
         reader.next();
         if (!reader.isStartElement() || !reader.getName().getLocalPart().equals("row")) {
-            throw new ParseException("", 0);
+            throw new ParseException("String doesn't begin with <row>", i);
         }
 
         int size = table.getColumnsCount();
@@ -74,52 +74,30 @@ public class XMLSerializer {
             if (reader.isStartElement() && reader.getName().getLocalPart().equals("col")) {
                 reader.next();
                 if (reader.isCharacters()) {
-                    String object = reader.getText();
-                    storeable.setColumnAt(i, getObject(object, table.getColumnType(i++).getSimpleName()));
+                    try {
+                        storeable.setColumnAt(i, Types.parse(reader.getText(), table.getColumnType(i++)));
+                    } catch (NumberFormatException e) {
+                        throw new ParseException(e.getMessage(), i);
+                    }
                 } else {
-                    throw new ParseException("", 0);
+                    throw new ParseException("empty value", i);
                 }
             } else if (reader.isStartElement() && reader.getName().getLocalPart().equals("null")) {
-                storeable.setColumnAt(i++, null);
+                ++i;
             } else {
-                throw new ParseException("", 0);
+                throw new ParseException("expected new element", i);
             }
             
             reader.next();
             if (!reader.isEndElement()) {
-                throw new ParseException("", 0);
+                throw new ParseException("end element not found", i);
             }
-
         }
         reader.next();
         if (!reader.isEndElement()) {
-            throw new ParseException("", 0);
+            throw new ParseException("end element not found", i);
         }
 
         return storeable;
-    }
-    
-    public static Object getObject(String string, String expectedClassName) throws ParseException {
-        try {
-            if (expectedClassName.equals("String")) {
-                return string;
-            } else if (expectedClassName.equals("Integer")) {
-                return Integer.parseInt(string);
-            }  else if (expectedClassName.equals("Long")) {
-                return Long.parseLong(string);
-            }  else if (expectedClassName.equals("Byte")) {
-                return Byte.parseByte(string);
-            }  else if (expectedClassName.equals("Float")) {
-                return Float.parseFloat(string);
-            }  else if (expectedClassName.equals("Double")) {
-                return Double.parseDouble(string);
-            }  else if (expectedClassName.equals("Boolean")) {
-                return Boolean.parseBoolean(string);
-            } else {
-               throw new ParseException("", 0); 
-            }
-        } catch (NumberFormatException e) {
-            throw new ParseException("", 0);
-        }
     }
 }

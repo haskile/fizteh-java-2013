@@ -31,6 +31,11 @@ public class MultiFileDataTable extends UniversalDataTable<String> implements Ta
     }
 
     @Override
+    public int commit() {
+        return commitWithoutWriteToDataBase();
+    }
+
+    @Override
     public void load() throws IOException, IllegalArgumentException, ParseException {
         universalLoad();
     }

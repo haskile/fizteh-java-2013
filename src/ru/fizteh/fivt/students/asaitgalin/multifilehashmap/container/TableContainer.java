@@ -7,132 +7,157 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class TableContainer<ValueType> {
     private static final int DIR_COUNT = 16;
     private static final int FILES_PER_DIR = 16;
 
-    private class Diff {
-        ValueType oldValue;
-        ValueType newValue;
+    private class TransactionData {
+        private Map<String, ValueType> currentTable;
+        private int changesCount;
 
-        public Diff(ValueType oldValue, ValueType newValue) {
-            this.oldValue = oldValue;
-            this.newValue = newValue;
+        public TransactionData() {
+            this.currentTable = new HashMap<>();
+            this.changesCount = 0;
+        }
+
+        public void transactionPut(String key, ValueType value) {
+            currentTable.put(key, value);
+        }
+
+        public ValueType transactionGet(String key) {
+            if (currentTable.containsKey(key)) {
+                return currentTable.get(key);
+            }
+            return originalTable.get(key);
+        }
+
+        public int transactionCommit() {
+            int count = 0;
+            for (String key : currentTable.keySet()) {
+                ValueType value = currentTable.get(key);
+                if (transactionHasChanges(value, originalTable.get(key))) {
+                    if (value == null) {
+                        originalTable.remove(key);
+                    } else {
+                        originalTable.put(key, value);
+                    }
+                    ++count;
+                }
+            }
+            return count;
+        }
+
+        public void transactionIncreaseChangesCount() {
+            ++changesCount;
+        }
+
+        public int transactionGetChangesCount() {
+            return changesCount;
+        }
+
+        public void transactionClearChanges() {
+            currentTable.clear();
+            changesCount = 0;
+        }
+
+        public int transactionGetSize() {
+            return originalTable.size() + transactionCalcSize();
+        }
+
+        public int transactionsCalcChanges() {
+            int count = 0;
+            for (String key : currentTable.keySet()) {
+                ValueType newValue = currentTable.get(key);
+                if (transactionHasChanges(newValue, originalTable.get(key))) {
+                    ++count;
+                }
+            }
+            return count;
+        }
+
+        private int transactionCalcSize() {
+            int count = 0;
+            for (String key : currentTable.keySet()) {
+                ValueType newValue = currentTable.get(key);
+                ValueType oldValue = originalTable.get(key);
+                if (newValue == null && oldValue != null) {
+                    --count;
+                } else if (newValue != null && oldValue == null) {
+                    ++count;
+                }
+            }
+            return count;
+        }
+
+        private boolean transactionHasChanges(ValueType oldValue, ValueType newValue) {
+            if (newValue == null && oldValue == null) {
+                return false;
+            }
+            if (newValue == null || oldValue == null) {
+                return true;
+            }
+            return !oldValue.equals(newValue);
         }
     }
 
-    private Map<String, Diff> currentTable;
+    private ThreadLocal<TransactionData> transactions;
     private Map<String, ValueType> originalTable;
-    private int changesCount;
-    private int actualSize;
-
     private TableValuePacker<ValueType> packer;
     private TableValueUnpacker<ValueType> unpacker;
+
+    protected final Lock transactionsLock = new ReentrantLock(true);
 
     private File tableDirectory;
 
     public TableContainer(File tableDirectory, TableValuePacker<ValueType> packer, TableValueUnpacker<ValueType> unpacker) {
-        this.currentTable = new HashMap<>();
+        this.transactions = new ThreadLocal<TransactionData>() {
+            @Override
+            protected TransactionData initialValue() {
+                return new TransactionData();
+            }
+        };
         this.originalTable = new HashMap<>();
         this.tableDirectory = tableDirectory;
         this.packer = packer;
         this.unpacker = unpacker;
-        this.changesCount = 0;
-        this.actualSize = 0;
     }
 
     public ValueType containerGetValue(String key) {
-        Diff diff = currentTable.get(key);
-        if (diff != null) {
-            return diff.newValue;
-        }
-        return originalTable.get(key);
+        return transactions.get().transactionGet(key);
     }
 
     public ValueType containerPutValue(String key, ValueType value) {
-        ValueType oldValue;
-        Diff diff = currentTable.get(key);
-        if (diff != null) {
-            oldValue = diff.newValue;
-            diff.newValue = value;
-        } else {
-            oldValue = originalTable.get(key);
-            currentTable.put(key, new Diff(oldValue, value));
-            ++changesCount;
-        }
-        if (oldValue == null) {
-            ++actualSize;
-        }
+        ValueType oldValue = transactions.get().transactionGet(key);
+        transactions.get().transactionPut(key, value);
         return oldValue;
     }
 
     public ValueType containerRemoveValue(String key) {
-        ValueType oldValue;
-        Diff diff = currentTable.get(key);
-        if (diff != null) {
-            if (diff.oldValue == null) {
-                --changesCount;
-            } else {
-                ++changesCount;
-            }
-            oldValue = diff.newValue;
-            if (diff.oldValue == null) {
-                currentTable.remove(key);
-            } else {
-                diff.newValue = null;
-            }
-        } else {
-            oldValue = originalTable.get(key);
-            if (oldValue != null) {
-                currentTable.put(key, new Diff(oldValue, null));
-                ++changesCount;
-            }
-        }
-        if (oldValue != null) {
-            --actualSize;
-        }
+        ValueType oldValue = transactions.get().transactionGet(key);
+        transactions.get().transactionPut(key, null);
+        transactions.get().transactionIncreaseChangesCount();
         return oldValue;
     }
 
     public int containerCommit() throws IOException {
-        int count = 0;
-        for (String key : currentTable.keySet()) {
-            Diff diff = currentTable.get(key);
-            if (diffHasChanges(diff)) {
-                if (diff.newValue == null) {
-                    originalTable.remove(key);
-                } else {
-                    originalTable.put(key, diff.newValue);
-                }
-                ++count;
-            }
+        try {
+            transactionsLock.lock();
+            int changesCount = transactions.get().transactionCommit();
+            transactions.get().transactionClearChanges();
+            containerSave();
+            return changesCount;
+        } finally {
+            transactionsLock.unlock();
         }
-        currentTable.clear();
-        changesCount = 0;
-        actualSize = originalTable.size();
-        containerSave();
-        return count;
     }
 
     public int containerRollback() {
-        int count = 0;
-        for (String key : currentTable.keySet()) {
-            if (diffHasChanges(currentTable.get(key))) {
-                ++count;
-            }
-        }
-        currentTable.clear();
-        changesCount = 0;
-        actualSize = originalTable.size();
+        int count = transactions.get().transactionsCalcChanges();
+        transactions.get().transactionClearChanges();
         return count;
-    }
-
-    private boolean diffHasChanges(Diff diff) {
-       if (diff.newValue == null || diff.oldValue == null) {
-           return true;
-       }
-       return !diff.oldValue.equals(diff.newValue);
     }
 
     public void containerSave() throws IOException {
@@ -187,15 +212,14 @@ public class TableContainer<ValueType> {
                 }
             }
         }
-        actualSize = originalTable.size();
     }
 
     public int containerGetSize() {
-        return actualSize;
+        return transactions.get().transactionGetSize();
     }
 
     public int containerGetChangesCount() {
-        return changesCount;
+        return transactions.get().transactionGetChangesCount();
     }
 
     private int getKeyDir(String key) {

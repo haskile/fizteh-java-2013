@@ -31,6 +31,7 @@ public enum TypesEnum {
     }
 
     private static final Map<String, TypesEnum> BY_NAME;
+
     static {
         Map<String, TypesEnum> map = new HashMap<>();
         for (TypesEnum type : values()) {
@@ -44,6 +45,7 @@ public enum TypesEnum {
     }
 
     private static final Map<Class<?>, TypesEnum> BY_CLAZZ;
+
     static {
         Map<Class<?>, TypesEnum> map = new HashMap<>();
         for (TypesEnum type : values()) {

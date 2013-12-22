@@ -15,15 +15,22 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
-public class DBTableProvider implements TableProvider {
-    private Map<String, Table> allTables = new HashMap<String, Table>();
+public class DBTableProvider implements TableProvider, AutoCloseable {
+    private volatile boolean isClosed = false;
+    private Map<String, Table> allTables = new HashMap<>();
     private File rootDirectoryOfTables;
     private static final String TABLE_NAME_FORMAT = "[A-Za-zА-Яа-я0-9@.]+";
+    private final ReadWriteLock lock = new ReentrantReadWriteLock(true);
+    private final Lock readLock = lock.readLock();
+    private final Lock writeLock = lock.writeLock();
 
     public DBTableProvider(File rootDirectory) throws IOException {
         if (!rootDirectory.exists()) {
-            if (!rootDirectory.mkdir()) {
+            if (!rootDirectory.mkdirs()) {
                 throw new IOException(rootDirectory.getName() + ": not exist and can't be created");
             }
         }
@@ -39,6 +46,7 @@ public class DBTableProvider implements TableProvider {
 
     @Override
     public Table getTable(String tableName) throws IllegalArgumentException {
+        checkIsClosed();
         if (tableName == null) {
             throw new IllegalArgumentException("null table name");
         }
@@ -48,11 +56,36 @@ public class DBTableProvider implements TableProvider {
         if (!tableName.matches(TABLE_NAME_FORMAT)) {
             throw new IllegalArgumentException("get table: error table name");
         }
-        return allTables.get(tableName);
+        writeLock.lock();
+        try {
+            Table tab = allTables.get(tableName);
+            if (tab == null) {
+                return null;
+            }
+            if (((DBTable) tab).isClosed()) {
+                File tableDir = new File(rootDirectoryOfTables, tableName);
+                if (!tableDir.exists()) {
+                    return null;
+                }
+                Table newTable = null;
+                try {
+                    newTable = new DBTable(tableDir, this);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                allTables.put(tableName, newTable);
+                return newTable;
+            } else {
+                return tab;
+            }
+        } finally {
+            writeLock.unlock();
+        }
     }
 
     @Override
     public Table createTable(String tableName, List<Class<?>> columnTypes) throws IOException {
+        checkIsClosed();
         if (tableName == null || tableName.trim().isEmpty()) {
             throw new IllegalArgumentException("create table: null table name or table name is empty");
         }
@@ -65,22 +98,28 @@ public class DBTableProvider implements TableProvider {
         ColumnTypes ct = new ColumnTypes();
         ct.checkTypes(columnTypes);
         Table newTable = null;
-        File tableFile = new File(rootDirectoryOfTables, tableName);
-        if (tableFile.exists()) {
-            return null;
-        }
-        if (!tableFile.mkdir()) {
-            throw new IOException("table" + tableName + "can't be create");
-        }
         List<String> types = ct.convertListOfClassesToListOfStrings(columnTypes);
-        FileManager.writeSignature(tableFile, types);
-        newTable = new DBTable(tableFile, this);
-        allTables.put(tableName, newTable);
+        writeLock.lock();
+        try {
+            File tableFile = new File(rootDirectoryOfTables, tableName);
+            if (tableFile.exists()) {
+                return null;
+            }
+            if (!tableFile.mkdir()) {
+                throw new IOException("table" + tableName + "can't be create");
+            }
+            FileManager.writeSignature(tableFile, types);
+            newTable = new DBTable(tableFile, this);
+            allTables.put(tableName, newTable);
+        } finally {
+            writeLock.unlock();
+        }
         return newTable;
     }
 
     @Override
     public void removeTable(String tableName) throws IOException {
+        checkIsClosed();
         if (tableName == null || !tableName.matches(TABLE_NAME_FORMAT)) {
             throw new IllegalArgumentException("remove table: incorrect table name");
         }
@@ -90,20 +129,26 @@ public class DBTableProvider implements TableProvider {
         MapOfCommands cm = new MapOfCommands();
         cm.addCommand(new ShellCommands.Remove());
         cm.addCommand(new ShellCommands.ChangeDirectory());
-        if (!allTables.containsKey(tableName)) {
-            throw new IllegalStateException(String.format("%s not exists", tableName));
+        writeLock.lock();
+        try {
+            if (!allTables.containsKey(tableName)) {
+                throw new IllegalStateException(String.format("%s not exists", tableName));
+            }
+            //File table = new File(rootDirectoryOfTables, tableName);
+            cm.commandProcessing("cd " + rootDirectoryOfTables.toString());
+            Code returnCode = cm.commandProcessing("rm " + tableName);
+            if (returnCode != Code.OK) {
+                throw new IOException("");
+            }
+            allTables.remove(tableName);
+        } finally {
+            writeLock.unlock();
         }
-        //File table = new File(rootDirectoryOfTables, tableName);
-        cm.commandProcessing("cd " + rootDirectoryOfTables.toString());
-        Code returnCode = cm.commandProcessing("rm " + tableName);
-        if (returnCode != Code.OK) {
-            throw new IOException("");
-        }
-        allTables.remove(tableName);
     }
 
     @Override
     public String serialize(Table table, Storeable rowOfTable) throws ColumnFormatException {
+        checkIsClosed();
         Object[] values = new Object[table.getColumnsCount()];
         for (int i = 0; i < table.getColumnsCount(); i++) {
             values[i] = rowOfTable.getColumnAt(i);
@@ -119,6 +164,7 @@ public class DBTableProvider implements TableProvider {
 
     @Override
     public Storeable deserialize(Table table, String value) throws ParseException {
+        checkIsClosed();
         if (table == null || value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException("deserialize: table or value is null, or value is empty");
         }
@@ -143,6 +189,7 @@ public class DBTableProvider implements TableProvider {
 
     @Override
     public Storeable createFor(Table table) {
+        checkIsClosed();
         List<Class<?>> types = new ArrayList<>();
         for (int i = 0; i < table.getColumnsCount(); ++i) {
             types.add(table.getColumnType(i));
@@ -152,6 +199,10 @@ public class DBTableProvider implements TableProvider {
 
     @Override
     public Storeable createFor(Table table, List<?> values) throws ColumnFormatException, IndexOutOfBoundsException {
+        checkIsClosed();
+        if (((DBTable) table).isClosed()) {
+            throw new IllegalStateException("table was closed");
+        }
         List<Class<?>> types = new ArrayList<>();
         for (int i = 0; i < table.getColumnsCount(); ++i) {
             types.add(table.getColumnType(i));
@@ -161,5 +212,26 @@ public class DBTableProvider implements TableProvider {
             row.setColumnAt(i, values.get(i));
         }
         return row;
+    }
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName() + "[" + rootDirectoryOfTables + "]";
+    }
+
+    @Override
+    public void close() {
+        if (!isClosed) {
+            for (String nameOfTable : allTables.keySet()) {
+                ((DBTable) allTables.get(nameOfTable)).close();
+            }
+            isClosed = true;
+        }
+    }
+
+    private void checkIsClosed() throws IllegalStateException {
+        if (isClosed) {
+            throw new IllegalStateException("table provider was closed");
+        }
     }
 }

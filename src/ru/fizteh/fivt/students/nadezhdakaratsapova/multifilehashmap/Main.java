@@ -1,8 +1,8 @@
 package ru.fizteh.fivt.students.nadezhdakaratsapova.multifilehashmap;
 
+import ru.fizteh.fivt.students.nadezhdakaratsapova.commands.*;
 import ru.fizteh.fivt.students.nadezhdakaratsapova.shell.Shell;
 import ru.fizteh.fivt.students.nadezhdakaratsapova.shell.StringMethods;
-import ru.fizteh.fivt.students.nadezhdakaratsapova.commands.*;
 
 import java.io.IOException;
 import java.util.Arrays;

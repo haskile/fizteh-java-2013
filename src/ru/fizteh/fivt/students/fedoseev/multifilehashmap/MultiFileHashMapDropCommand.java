@@ -1,19 +1,20 @@
 package ru.fizteh.fivt.students.fedoseev.multifilehashmap;
 
 import ru.fizteh.fivt.students.fedoseev.common.AbstractCommand;
+import ru.fizteh.fivt.students.fedoseev.common.State;
 
 import java.io.File;
 import java.io.IOException;
 
-public class MultiFileHashMapDropCommand extends AbstractCommand<MultiFileHashMapState> {
+public class MultiFileHashMapDropCommand extends AbstractCommand<State> {
     public MultiFileHashMapDropCommand() {
         super("drop", 1);
     }
 
     @Override
-    public void execute(String[] input, MultiFileHashMapState state) throws IOException {
+    public void execute(String[] input, State state) throws IOException {
         String tableName = input[0];
-        File curTableDir = state.getCurDir().toPath().resolve(tableName).toFile();
+        File curTableDir = new File(state.getCurDir(), tableName);
 
         if (curTableDir.exists()) {
             if (curTableDir.listFiles() != null) {
@@ -28,9 +29,8 @@ public class MultiFileHashMapDropCommand extends AbstractCommand<MultiFileHashMa
                 }
             }
 
-            if (state.getCurTable() != null &&
-                    tableName.equals(state.getCurTable().getCurTableDir().getName().toString())) {
-                state.getCurTable().clearContentAndDiff();
+            if (state.getCurTable() != null && tableName.equals(state.getCurTableDir().getName())) {
+                state.clearContentAndDiff();
                 state.setCurTable(null);
             }
 

@@ -5,6 +5,8 @@ import ru.fizteh.fivt.students.belousova.multifilehashmap.MultiFileShellState;
 
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class StorableState extends MultiFileShellState {
     private ChangesCountingTableProvider tableProvider;
@@ -22,7 +24,23 @@ public class StorableState extends MultiFileShellState {
 
     @Override
     public boolean createTable(String name) {
-        return (tableProvider.getTable(name) != null);
+        throw new UnsupportedOperationException("you can't create table without a signature in this version");
+    }
+
+    public boolean createTableWithSignature(String name, String[] signature) throws IOException {
+        if (tableProvider.getTable(name) != null) {
+            return false;
+        }
+        List<Class<?>> columnTypes = new ArrayList<>();
+        for (String type : signature) {
+            TypesEnum typesEnum = TypesEnum.getBySignature(type);
+            if (typesEnum == null) {
+                throw new IOException("bad value type: " + type);
+            }
+            columnTypes.add(typesEnum.getClazz());
+        }
+        tableProvider.createTable(name, columnTypes);
+        return true;
     }
 
     @Override

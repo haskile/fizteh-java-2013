@@ -16,12 +16,13 @@ import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.List;
+import java.util.Set;
 
 import ru.fizteh.fivt.storage.structured.ColumnFormatException;
 import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.students.sterzhanovVladislav.fileMap.storeable.StoreableUtils;
+import ru.fizteh.fivt.students.sterzhanovVladislav.shell.ShellUtility;
 
 public class IOUtility {
     private static final int MAX_KEY_SIZE = 1 << 24;
@@ -101,40 +102,49 @@ public class IOUtility {
         return new AbstractMap.SimpleEntry<String, Storeable>(new String(keyBuf, StandardCharsets.UTF_8), value);
     }
     
-    public static void writeDatabase(HashMap<String, Storeable> dataBase, Path path, List<Class<?>> classes) 
-            throws IOException {
-        if (!path.toFile().mkdir()) {
-            throw new IOException("Error: Unable to create directory");
+    public static void writeDiff(Set<Integer> modifiedFiles, MultiHashMap dataBase, 
+            Path path, List<Class<?>> classes) throws IOException {
+        if (!path.toFile().exists() || !path.toFile().isDirectory()) {
+            throw new IOException("Error: bad directory path");
         }
-        for (Map.Entry<String, Storeable> entry : dataBase.entrySet()) {
-            int b = entry.getKey().getBytes()[0];
-            if (b < 0) {
-                b *= -1;
+        for (int fileHash : modifiedFiles) {
+            int dirId = fileHash % 16;
+            int fileId = fileHash / 16 % 16;
+            HashMap<String, Storeable> db = dataBase.dbArray[dirId][fileId];
+            File subdir = Paths.get(path.normalize() + "/" + dirId + ".dir").toFile();
+            File file = Paths.get(path.normalize() + "/" + dirId + ".dir/" + fileId + ".dat").toFile();
+            if (db.isEmpty()) {
+                if (subdir.exists() && subdir.listFiles().length == 0) {
+                    ShellUtility.removeDir(subdir.toPath());
+                } else if (file.exists()) {
+                    if (!file.delete()) {
+                        throw new IOException("Unable to delete file");
+                    }
+                }
+                continue;
             }
-            int directoryID = b % 16;
-            int fileID = b / 16 % 16;
-            File subdir = Paths.get(path.normalize() + "/" + directoryID + ".dir").toFile();
             if (!subdir.exists()) {
                 subdir.mkdir();
             }
-            File file = Paths.get(path.normalize() + "/" + directoryID + ".dir/" + fileID + ".dat").toFile();
             if (!file.exists()) {
                 file.createNewFile();
             }
             try (FileOutputStream fstream = new FileOutputStream(file, true)) {
-                IOUtility.writeEntry(entry, fstream, classes);
+                IOUtility.writeFile(db, fstream, classes);
             }
         } 
     }
 
-    public static void writeEntry(Entry<String, Storeable> entry, FileOutputStream fstream, List<Class<?>> signature) 
+    public static void writeFile(HashMap<String, Storeable> db, FileOutputStream fstream, List<Class<?>> signature) 
             throws IOException {
-        byte[] keyBuf = entry.getKey().getBytes(StandardCharsets.UTF_8);
-        byte[] valueBuf = StoreableUtils.serialize(entry.getValue(), signature).getBytes(StandardCharsets.UTF_8);
-        fstream.write(ByteBuffer.allocate(4).putInt(keyBuf.length).array());
-        fstream.write(ByteBuffer.allocate(4).putInt(valueBuf.length).array());
-        fstream.write(keyBuf);
-        fstream.write(valueBuf);
+        for (Map.Entry<String, Storeable> entry : db.entrySet()) {
+            byte[] keyBuf = entry.getKey().getBytes(StandardCharsets.UTF_8);
+            byte[] valueBuf = StoreableUtils.serialize(entry.getValue(), signature).getBytes(StandardCharsets.UTF_8);
+            fstream.write(ByteBuffer.allocate(4).putInt(keyBuf.length).array());
+            fstream.write(ByteBuffer.allocate(4).putInt(valueBuf.length).array());
+            fstream.write(keyBuf);
+            fstream.write(valueBuf);
+        }
     }
 
     public static void safeRead(FileInputStream fstream, byte[] buf, int readCount) 

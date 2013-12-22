@@ -14,6 +14,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -37,10 +39,16 @@ import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.storage.structured.Table;
 import ru.fizteh.fivt.storage.structured.TableProvider;
 
-public class TableProviderImplementation implements TableProvider {
+public class TableProviderImplementation implements TableProvider, AutoCloseable {
     
     Path databaseDirectory;
-    private Map<String, Table> tables = new HashMap<String, Table>();
+    private Map<String, TableImplementation> tables = new HashMap<String, TableImplementation>();
+    
+    private final ReentrantReadWriteLock readWriteLock = new ReentrantReadWriteLock(true);
+    private final Lock readLock = readWriteLock.readLock();
+    private final Lock writeLock = readWriteLock.writeLock();
+    
+    private volatile boolean isClosed = false;
     
     public TableProviderImplementation(Path databaseDirectory) throws IOException {
         this.databaseDirectory = databaseDirectory;
@@ -54,56 +62,71 @@ public class TableProviderImplementation implements TableProvider {
     
     @Override
     public Table getTable(String name) {
+        isClosed();
+        
         if (!isValidTableName(name)) {
             throw new IllegalArgumentException("Invalid table name");
         }
         
-        return tables.get(name);
+        readLock.lock();
+        try {
+            return tables.get(name);
+        } finally {
+            readLock.unlock();
+        }
     }
 
     @Override
     public Table createTable(String name, List<Class<?>> columnTypes) throws IOException {
+        isClosed();
+        
         if (!isValidTableName(name)) {
             throw new IllegalArgumentException("Invalid table name");
         }
         if (!areValidColumnTypes(columnTypes)) {
             throw new ColumnFormatException("Invalid column types");
         }
-        if (tables.containsKey(name)) {
-            return null;
-        }
         
-        Path tablePath = databaseDirectory.resolve(name);
+        writeLock.lock();
         try {
-            Files.createDirectory(tablePath);
-        } catch (IOException e) {
-            throw new IOException("Error while creating a directory: " + tablePath + " "
-                    + ((e.getMessage() != null) ? e.getMessage() : "unknown error"), e);
-        }
-        
-        Path signatureFilePath = tablePath.resolve("signature.tsv");
-        try {
-            Files.createFile(signatureFilePath);
-        } catch (IOException e) {
-            throw new IOException("Error while creating a signature file: " + signatureFilePath + " "
-                    + ((e.getMessage() != null) ? e.getMessage() : "unknown error"), e);
-        }
-        
-        try (FileWriter signatureFile = new FileWriter(signatureFilePath.toString())) {
-            for (int i = 0; i < columnTypes.size(); ++i) {
-                if (i != 0) {
-                    signatureFile.write(" ");
-                }
-                signatureFile.write(toName(columnTypes.get(i)));
+            if (tables.containsKey(name)) {
+                return null;
             }
-        } catch (IOException e) {
-            throw new IOException("Error while writing to the signature file: "
-                    + ((e.getMessage() != null) ? e.getMessage() : "unknown error"), e);
+        
+            Path tablePath = databaseDirectory.resolve(name);
+            try {
+                Files.createDirectory(tablePath);
+            } catch (IOException e) {
+                throw new IOException("Error while creating a directory: " + tablePath + " "
+                        + ((e.getMessage() != null) ? e.getMessage() : "unknown error"), e);
+            }
+            
+            Path signatureFilePath = tablePath.resolve("signature.tsv");
+            try {
+                Files.createFile(signatureFilePath);
+            } catch (IOException e) {
+                throw new IOException("Error while creating a signature file: " + signatureFilePath + " "
+                        + ((e.getMessage() != null) ? e.getMessage() : "unknown error"), e);
+            }
+            
+            try (FileWriter signatureFile = new FileWriter(signatureFilePath.toString())) {
+                for (int i = 0; i < columnTypes.size(); ++i) {
+                    if (i != 0) {
+                        signatureFile.write(" ");
+                    }
+                    signatureFile.write(toName(columnTypes.get(i)));
+                }
+            } catch (IOException e) {
+                throw new IOException("Error while writing to the signature file: "
+                        + ((e.getMessage() != null) ? e.getMessage() : "unknown error"), e);
+            }
+            
+            tables.put(name, new TableImplementation(this, databaseDirectory, name, columnTypes));
+            
+            return tables.get(name);
+        } finally {
+            writeLock.unlock();
         }
-        
-        tables.put(name, new TableImplementation(this, databaseDirectory, name, columnTypes));
-        
-        return tables.get(name);
     }
     
     private static String toName(Class<?> className) {
@@ -121,26 +144,36 @@ public class TableProviderImplementation implements TableProvider {
 
     @Override
     public void removeTable(String name) throws IOException {
+        isClosed();
+        
         if (!isValidTableName(name)) {
             throw new IllegalArgumentException("Invalid table name");
         }
-        if (!tables.containsKey(name)) {
-            throw new IllegalStateException("No such table");
-        }
         
-        tables.remove(name);
-        
-        Path tablePath = databaseDirectory.resolve(name);
+        writeLock.lock();
         try {
-            FileUtils.recursiveDelete(tablePath);
-        } catch (IOException e) {
-            throw new IOException("Error while deleting a directory: "
-                    + ((e.getMessage() != null) ? e.getMessage() : "unknown error"), e);
+            if (!tables.containsKey(name)) {
+                throw new IllegalStateException("No such table");
+            }
+        
+            tables.remove(name);
+            
+            Path tablePath = databaseDirectory.resolve(name);
+            try {
+                FileUtils.recursiveDelete(tablePath);
+            } catch (IOException e) {
+                throw new IOException("Error while deleting a directory: "
+                        + ((e.getMessage() != null) ? e.getMessage() : "unknown error"), e);
+            }
+        } finally {
+            writeLock.unlock();
         }
     }
     
 
     public Storeable deserialize(Table table, String value) throws ParseException {
+        isClosed();
+        
         if (value == null) {
             return null;
         }
@@ -210,6 +243,8 @@ public class TableProviderImplementation implements TableProvider {
     }
         
     public String serialize(Table table, Storeable value) throws ColumnFormatException {
+        isClosed();
+        
         if (value == null) {
             return null;
         }
@@ -254,12 +289,15 @@ public class TableProviderImplementation implements TableProvider {
     }
 
     public Storeable createFor(Table table) {
+        isClosed();
+        
         return new StoreableImplementation(table);
     }
 
     public Storeable createFor(Table table, List<?> values) throws ColumnFormatException, IndexOutOfBoundsException {
-        return new StoreableImplementation(table, values);
+        isClosed();
         
+        return new StoreableImplementation(table, values);
     }
     
     private boolean isValidTableName(final String tableName) {
@@ -332,5 +370,54 @@ public class TableProviderImplementation implements TableProvider {
         }
         
         return columnTypes;
+    }
+    
+    @Override
+    public String toString() {
+        isClosed();
+        
+        String result = "";
+        result += this.getClass().getSimpleName();
+        result += "[" + databaseDirectory.normalize() + "]";
+        return result;
+    }
+
+    @Override
+    public void close() throws Exception {
+        if (!isClosed) {
+            writeLock.lock();
+            try {
+                if (!isClosed) {
+                    for (String tableName : tables.keySet()) {
+                        tables.get(tableName).close();
+                    }
+                    isClosed = true;
+                }
+            } finally {
+                writeLock.unlock();
+            }
+        }
+    }
+    
+    void reinitialize(String tableName) throws IOException {
+        writeLock.lock();
+        try {
+            Table prevTable = tables.remove(tableName);
+            
+            List<Class<?>> columnTypes = new ArrayList<Class<?>>();
+            for (int columnIndex = 0; columnIndex < prevTable.getColumnsCount(); ++columnIndex) {
+                columnTypes.add(prevTable.getColumnType(columnIndex));
+            }
+            
+            tables.put(tableName, new TableImplementation(this, databaseDirectory, tableName, columnTypes));
+        } finally {
+            writeLock.unlock();
+        }
+    }
+    
+    private void isClosed() {
+        if (isClosed) {
+            throw new IllegalStateException("TableProvider object is closed");
+        }
     }
 }

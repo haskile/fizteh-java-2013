@@ -114,7 +114,7 @@ public class FileMapCommands extends AbstractCommands {
             throw new Exception("incorrect nubmer of args");
         }
         String tableName = lexems[1];
-        if (usingTable == true) {
+        if (usingTable) {
             Class c = myTable.getClass();
             Method makeCommand = c.getMethod("countChanges", boolean.class);
             int counted = (int) makeCommand.invoke(myTable, false);

@@ -6,10 +6,13 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public abstract class AbstractTableProvider<TableType> {
     protected final String TABLE_NAME_FORMAT = "[A-Za-zА-Яа-я0-9]+";
-    protected Map<String, TableType> tableMap = new HashMap<String, TableType>();
+    protected final ReadWriteLock tableProviderTransactionLock = new ReentrantReadWriteLock(true);
+    protected Map<String, TableType> tableMap = new HashMap<>();
     protected File dataDitectory;
 
     public TableType getTable(String name) {
@@ -22,10 +25,13 @@ public abstract class AbstractTableProvider<TableType> {
         if (!name.matches(TABLE_NAME_FORMAT)) {
             throw new IllegalArgumentException("incorrect name");
         }
-        if (!tableMap.containsKey(name)) {
-            return null;
+
+        tableProviderTransactionLock.readLock().lock();
+        try {
+            return tableMap.get(name);
+        } finally {
+            tableProviderTransactionLock.readLock().unlock();
         }
-        return tableMap.get(name);
     }
 
     public void removeTable(String name) {
@@ -38,12 +44,19 @@ public abstract class AbstractTableProvider<TableType> {
         if (!tableMap.containsKey(name)) {
             throw new IllegalStateException("table doesn't exists");
         }
-        File tableDirectory = new File(dataDitectory, name);
+
+        tableProviderTransactionLock.writeLock().lock();
         try {
-            FileUtils.deleteDirectory(tableDirectory);
-        } catch (IOException e) {
-            System.err.println(e.getMessage());
+
+            File tableDirectory = new File(dataDitectory, name);
+            try {
+                FileUtils.deleteDirectory(tableDirectory);
+            } catch (IOException e) {
+                System.err.println(e.getMessage());
+            }
+            tableMap.remove(name);
+        } finally {
+            tableProviderTransactionLock.writeLock().unlock();
         }
-        tableMap.remove(name);
     }
 }

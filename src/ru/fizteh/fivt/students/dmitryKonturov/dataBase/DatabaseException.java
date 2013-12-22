@@ -37,7 +37,7 @@ public class DatabaseException extends Exception {
         return current;
     }
 
-    String getDatabaseExceptionLongMessage() {
+    public String getDatabaseExceptionLongMessage() {
         if (nesting > 0) {
             DatabaseException dbe = (DatabaseException) getCause();
             return getUnitedMessage(getMessage(), dbe.getDatabaseExceptionLongMessage());
@@ -51,7 +51,7 @@ public class DatabaseException extends Exception {
         }
     }
 
-    DatabaseException(String message, Throwable throwable) {
+    public DatabaseException(String message, Throwable throwable) {
         super(message, throwable);
         if (throwable instanceof DatabaseException) {
             DatabaseException dbe = (DatabaseException) throwable;
@@ -61,22 +61,22 @@ public class DatabaseException extends Exception {
         }
     }
 
-    DatabaseException(String message, String reason) {
+    public DatabaseException(String message, String reason) {
         super(getUnitedMessage(message, reason));
         nesting = 0;
     }
 
-    DatabaseException(String message) {
+    public DatabaseException(String message) {
         super(getUnitedMessage(message, null));
         nesting = 0;
     }
 
-    DatabaseException() {
+    public DatabaseException() {
         super();
         nesting = 0;
     }
 
-    DatabaseException(Throwable throwable) {
+    public DatabaseException(Throwable throwable) {
         super(throwable);
         nesting = 0;
     }

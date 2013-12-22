@@ -7,9 +7,9 @@ import ru.fizteh.fivt.students.irinapodorozhnaya.db.DbState;
 
 public interface MultiDbState extends DbState {
 
-    int getCurrentTableSize();
+    int getCurrentTableSize() throws IOException;
 
-    int rollBack();
+    int rollBack() throws IOException;
 
     void drop(String name) throws IOException;
 

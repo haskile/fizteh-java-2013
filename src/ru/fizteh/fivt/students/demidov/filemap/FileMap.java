@@ -6,19 +6,29 @@ import java.io.RandomAccessFile;
 import java.util.HashMap;
 import java.util.Map;
 
-import ru.fizteh.fivt.storage.strings.Table;
+import ru.fizteh.fivt.students.demidov.basicclasses.BasicTable;
+import ru.fizteh.fivt.students.demidov.multifilehashmap.MultiFileMapUtils;
 
-public class FileMap implements Table, BasicState {
-	public FileMap(String path) {	
+public class FileMap<ElementType> {
+	private Map<String, ElementType> currentTable;
+	private String path;
+	private BasicTable<ElementType> table;
+	private Integer ndirectory, nfile;
+	
+	public FileMap(Integer ndirectory, Integer nfile, String path, BasicTable<ElementType> table) {
 		if ((new File(path)).isDirectory()) {
 			path += File.separator + "db.dat";
 		}
-		this.path = path;
 		
-		currentTable = new HashMap<String, String>();
+		this.path = path;		
+		this.table = table;
+		this.ndirectory = ndirectory;
+		this.nfile = nfile;
+		
+		currentTable = new HashMap<String, ElementType>();
 	}
 	
-	public Map<String, String> getCurrentTable() {
+	public Map<String, ElementType> getCurrentTable() {
 		return currentTable;
 	}
 	
@@ -31,6 +41,16 @@ public class FileMap implements Table, BasicState {
 		
 		if (!currentFile.createNewFile()) {
 			throw new IOException("unable to create " + path);
+		}
+	}
+	
+	public void checkKey(String key) throws IOException {
+		Integer curNdirectory = MultiFileMapUtils.getNDirectory(key.hashCode());
+		Integer curNfile = MultiFileMapUtils.getNFile(key.hashCode());
+		if ((ndirectory == -1) || ((curNdirectory == ndirectory) && (curNfile == nfile))) {
+			return;
+		} else {
+			throw new IOException("wrong key placement");
 		}
 	}
 	
@@ -72,7 +92,8 @@ public class FileMap implements Table, BasicState {
 			dataBaseFile.seek(readPosition);
 
 			while (readPosition < positionOfValues) {
-				while ((dataBaseFile.getFilePointer() < dataBaseFile.length()) && !(dataBaseFile.readByte() == '\0')) {}
+				while ((dataBaseFile.getFilePointer() < dataBaseFile.length()) && !(dataBaseFile.readByte() == '\0')) {
+				}
 			
 				int nextOffset = dataBaseFile.readInt();
 				if (nextOffset < 0) {
@@ -86,7 +107,8 @@ public class FileMap implements Table, BasicState {
 				if (previousOffset == -1) {
 					positionOfValues = nextOffset;
 				} else {
-					currentTable.put(previousKey, readString(dataBaseFile, previousOffset, nextOffset));
+					checkKey(previousKey);
+					currentTable.put(previousKey, table.deserialize(readString(dataBaseFile, previousOffset, nextOffset)));
 				}
 			
 				previousOffset = nextOffset;		
@@ -94,7 +116,8 @@ public class FileMap implements Table, BasicState {
 				readPosition = (int)dataBaseFile.getFilePointer();
 			} 
 	
-			currentTable.put(readKey, readString(dataBaseFile, previousOffset, (int)dataBaseFile.length()));
+			checkKey(readKey);
+			currentTable.put(readKey, table.deserialize(readString(dataBaseFile, previousOffset, (int)dataBaseFile.length())));
 		
 			dataBaseFile.close();
 		}
@@ -111,14 +134,14 @@ public class FileMap implements Table, BasicState {
 			}
 		
 			long writenPosition = 0;
-			for (Map.Entry<String, String> currentPair : getCurrentTable().entrySet()) {
+			for (Map.Entry<String, ElementType> currentPair : getCurrentTable().entrySet()) {
 				dataBaseFile.seek(writenPosition);
 				dataBaseFile.write(currentPair.getKey().getBytes("UTF-8"));
 				dataBaseFile.writeByte('\0');
 				dataBaseFile.writeInt(offset);
 				writenPosition = dataBaseFile.getFilePointer();
 				dataBaseFile.seek(offset);
-				dataBaseFile.write(currentPair.getValue().getBytes("UTF-8"));
+				dataBaseFile.write(table.serialize(currentPair.getValue()).getBytes("UTF-8"));
 				offset = (int)dataBaseFile.getFilePointer();
 			}
 		
@@ -130,48 +153,4 @@ public class FileMap implements Table, BasicState {
 			dataBaseFile.close();
 		}
 	}
-	
-	public String getName() {
-		return "db";
-	}
-
-	public String get(String key) {
-		if (key == null) {
-			throw new IllegalArgumentException("null key");
-		}
-		return currentTable.get(key);
-	}
-
-	public String put(String key, String value) {
-		if ((key == null) || (value == null)) {
-			throw new IllegalArgumentException("null parameter");
-		}
-		return currentTable.put(key, value);
-	}
-	
-	public String remove(String key){
-		if (key == null) {
-			throw new IllegalArgumentException("null key");
-		}
-		return currentTable.remove(key);
-	}
-
-	public int size() {
-		return 0;
-	}
-	
-	public int commit() {
-		return 0;
-	}
-	
-	public int rollback() {
-		return 0;
-	}
-	
-	public Table getUsedTable() {
-		return this;
-	}
-	
-	private Map<String, String> currentTable;
-	private String path;
 }

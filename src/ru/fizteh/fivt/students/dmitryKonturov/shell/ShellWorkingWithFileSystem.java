@@ -15,7 +15,7 @@ public class ShellWorkingWithFileSystem extends ShellEmulator {
         }
 
         @Override
-        public void execute(String[] args) throws ShellException {
+        public void execute(String[] args, ShellInfo info) throws ShellException {
             if (args.length > 1) {
                 throw new ShellException(getName(), "Too many arguments");
             } else if (args.length == 0) {
@@ -43,7 +43,7 @@ public class ShellWorkingWithFileSystem extends ShellEmulator {
         }
 
         @Override
-        public void execute(String[] args) throws ShellException {
+        public void execute(String[] args, ShellInfo info) throws ShellException {
             if (args.length > 1) {
                 throw new ShellException(getName(), "Too many arguments");
             } else if (args.length == 0) {
@@ -67,7 +67,7 @@ public class ShellWorkingWithFileSystem extends ShellEmulator {
         }
 
         @Override
-        public void execute(String[] args) throws ShellException {
+        public void execute(String[] args, ShellInfo info) throws ShellException {
             if (args.length != 0) {
                 throw new ShellException(getName(), "Too many arguments");
             }
@@ -86,7 +86,7 @@ public class ShellWorkingWithFileSystem extends ShellEmulator {
         }
 
         @Override
-        public void execute(String[] args) throws ShellException {
+        public void execute(String[] args, ShellInfo info) throws ShellException {
             if (args.length > 1) {
                 throw new ShellException(getName(), "Too many arguments");
             } else if (args.length == 0) {
@@ -101,7 +101,7 @@ public class ShellWorkingWithFileSystem extends ShellEmulator {
                     File[] entries = tmpPath.toFile().listFiles();
                     if (entries != null) {
                         for (File file : entries) {
-                            execute(new String[]{file.getAbsolutePath()});
+                            execute(new String[]{file.getAbsolutePath()}, info);
                         }
                     }
                 }
@@ -123,7 +123,7 @@ public class ShellWorkingWithFileSystem extends ShellEmulator {
         }
 
         @Override
-        public void execute(String[] args) throws ShellException {
+        public void execute(String[] args, ShellInfo info) throws ShellException {
             if (args.length != 0) {
                 throw new ShellException(getName(), "Too many arguments");
             }
@@ -158,7 +158,7 @@ public class ShellWorkingWithFileSystem extends ShellEmulator {
         }
 
         @Override
-        public void execute(String[] args) throws ShellException {
+        public void execute(String[] args, ShellInfo info) throws ShellException {
             if (args.length > 2) {
                 throw new ShellException(getName(), "Too many arguments");
             } else if (args.length < 2) {
@@ -193,7 +193,7 @@ public class ShellWorkingWithFileSystem extends ShellEmulator {
                     for (File entry : sourceEntries) {
                         String name = entry.getName();
                         execute(new String[]{sourcePath.resolve(name).normalize().toString(),
-                                destinationPath.resolve(name).normalize().toString()});
+                                destinationPath.resolve(name).normalize().toString()}, info);
                     }
                 }
 
@@ -224,7 +224,7 @@ public class ShellWorkingWithFileSystem extends ShellEmulator {
         }
 
         @Override
-        public void execute(String[] args) throws ShellException {
+        public void execute(String[] args, ShellInfo info) throws ShellException {
             if (args.length > 0) {
                 throw new ShellException(getName(), "Too many arguments");
             }
@@ -239,6 +239,7 @@ public class ShellWorkingWithFileSystem extends ShellEmulator {
     }
 
     public ShellWorkingWithFileSystem(String userPath) {
+        super(null);
         ShellCommand[] commandsList = new ShellCommand[]{new ChangeDirectory(),
                                                          new MakeDirectory(),
                                                          new PrintWritingDirectory(),

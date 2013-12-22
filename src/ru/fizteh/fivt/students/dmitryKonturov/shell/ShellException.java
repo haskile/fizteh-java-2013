@@ -18,20 +18,6 @@ public class ShellException extends Exception {
         }
     }
 
-    @Override
-    public String toString() {
-        String current = super.toString();
-        String[] strings = current.split(":", 2);
-        if (strings.length > 1) {
-            if (strings[1] != null) {
-                if (!strings[1].equals("")) {
-                    return strings[1];
-                }
-            }
-        }
-        return current;
-    }
-
     public ShellException(String message, Throwable throwable) {
         super(message, throwable);
     }

@@ -3,6 +3,7 @@ package ru.fizteh.fivt.students.adanilyak.tools;
 import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.storage.structured.Table;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -63,5 +64,32 @@ public class CountingTools {
         result += changes.size();
         result -= notNeedToRewrite;
         return result;
+    }
+
+    public static int correctCountingOfSize(Map<String, Storeable> data,
+                                            Map<String, Storeable> changes, Set<String> removedKeys) {
+        for (String key : removedKeys) {
+            if (!data.containsKey(key)) {
+                removedKeys.remove(key);
+            }
+        }
+        Set<String> changesKeysSet = changes.keySet();
+        Set<String> addedKeysForDeletion = new HashSet<>();
+        for (String key : changesKeysSet) {
+            if (data.containsKey(key)) {
+                if (data.get(key).equals(changes.get(key))) {
+                    addedKeysForDeletion.add(key);
+                    if (removedKeys.contains(key)) {
+                        removedKeys.remove(key);
+                    }
+                } else {
+                    if (!removedKeys.contains(key)) {
+                        removedKeys.add(key);
+                    }
+                }
+            }
+        }
+        changes.keySet().removeAll(addedKeysForDeletion);
+        return data.size() + changes.size() - removedKeys.size();
     }
 }

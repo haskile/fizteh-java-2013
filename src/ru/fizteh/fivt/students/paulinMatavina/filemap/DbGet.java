@@ -1,5 +1,7 @@
 package ru.fizteh.fivt.students.paulinMatavina.filemap;
 
+import ru.fizteh.fivt.storage.structured.ColumnFormatException;
+import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.students.paulinMatavina.utils.*;
 
 public class DbGet implements Command {
@@ -12,10 +14,17 @@ public class DbGet implements Command {
             return 0;
         }
         
-        String result = multiState.getCurrTable().get(key);  
+        Storeable result = multiState.getCurrTable().get(key); 
         if (result != null) {
+            String resStr;
+            try {
+                resStr = multiState.serialize(multiState.getCurrTable(), result);
+            } catch (ColumnFormatException e) {
+                System.out.println("wrong type (" + e.getMessage() + ")");
+                return 0;
+            }
             System.out.println("found");
-            System.out.println(result);
+            System.out.println(resStr);            
         } else {
             System.out.println("not found");
         }

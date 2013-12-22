@@ -2,7 +2,7 @@
 
 Логирование интерфейсов базы данных.
 
-Необходимо написать реализацию интерфейса [LoggingProxyFactory](../src/ru/fizteh/fivt/storage/structured/LoggingProxyFactory.java).
+Необходимо написать реализацию интерфейса [LoggingProxyFactory](../src/ru/fizteh/fivt/proxy/LoggingProxyFactory.java).
 Реализация интерфейса должна иметь публичный конструктор без параметров.
 
 Необходимо, чтобы реализации интерфейсов Table, TableProvider и TableProviderFactory реализовали интерфейс

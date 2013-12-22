@@ -1,6 +1,10 @@
 package ru.fizteh.fivt.students.eltyshev.storable.database;
 
-import ru.fizteh.fivt.storage.structured.*;
+import ru.fizteh.fivt.storage.structured.ColumnFormatException;
+import ru.fizteh.fivt.storage.structured.Storeable;
+import ru.fizteh.fivt.storage.structured.Table;
+import ru.fizteh.fivt.storage.structured.TableProvider;
+import ru.fizteh.fivt.students.eltyshev.filemap.base.ContainerState;
 import ru.fizteh.fivt.students.eltyshev.multifilemap.MultifileMapUtils;
 import ru.fizteh.fivt.students.eltyshev.storable.StoreableUtils;
 import ru.fizteh.fivt.students.eltyshev.storable.TypesFormatter;
@@ -15,16 +19,18 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
-public class DatabaseTableProvider implements TableProvider {
+public class DatabaseTableProvider implements TableProvider, AutoCloseable {
     static final String SIGNATURE_FILE = "signature.tsv";
     private static final String CHECK_EXPRESSION = "[0-9A-Za-zА-Яа-я]+";
+    private final Lock tableLock = new ReentrantLock(true);
 
     HashMap<String, DatabaseTable> tables = new HashMap<String, DatabaseTable>();
     private String databaseDirectoryPath;
     private DatabaseTable activeTable = null;
+    protected ContainerState state;
 
     public DatabaseTableProvider(String databaseDirectoryPath) {
         if (databaseDirectoryPath == null) {
@@ -32,6 +38,7 @@ public class DatabaseTableProvider implements TableProvider {
         }
 
         this.databaseDirectoryPath = databaseDirectoryPath;
+        state = ContainerState.WORKING;
         File databaseDirectory = new File(databaseDirectoryPath);
         if (databaseDirectory.isFile()) {
             throw new IllegalArgumentException("set database directory, not file");
@@ -54,67 +61,102 @@ public class DatabaseTableProvider implements TableProvider {
 
     @Override
     public Table getTable(String name) {
-        if (name == null || name.isEmpty()) {
-            throw new IllegalArgumentException("table's name cannot be null");
+        try {
+            tableLock.lock();
+
+            state.checkOperationsAllowed();
+
+            if (name == null || name.isEmpty()) {
+                throw new IllegalArgumentException("table's name cannot be null");
+            }
+
+            checkTableName(name);
+
+            DatabaseTable table = tables.get(name);
+
+            if (table == null) {
+                return null;
+            }
+
+            if (activeTable != null && activeTable.getUncommittedChangesCount() > 0) {
+                throw new IllegalStateException(String.format("%d unsaved changes", activeTable.getUncommittedChangesCount()));
+            }
+
+            if (table.isClosed()) {
+                table = new DatabaseTable(table);
+                tables.put(table.getName(), table);
+            }
+
+            activeTable = table;
+            return table;
+        } finally {
+            tableLock.unlock();
         }
-
-        checkTableName(name);
-
-        DatabaseTable table = tables.get(name);
-
-        if (table == null) {
-            return null;
-        }
-
-        if (activeTable != null && activeTable.getUncommittedChangesCount() > 0) {
-            throw new IllegalStateException(String.format("%d unsaved changes", activeTable.getUncommittedChangesCount()));
-        }
-
-        activeTable = table;
-        return table;
     }
 
     @Override
     public Table createTable(String name, List<Class<?>> columnTypes) throws IOException {
-        if (name == null || name.isEmpty()) {
-            throw new IllegalArgumentException("table's name cannot be null");
+        try {
+            tableLock.lock();
+
+            state.checkOperationsAllowed();
+
+            if (name == null || name.isEmpty()) {
+                throw new IllegalArgumentException("table's name cannot be null");
+            }
+
+            checkTableName(name);
+
+            if (columnTypes == null || columnTypes.isEmpty()) {
+                throw new IllegalArgumentException("column types cannot be null");
+            }
+
+            checkColumnTypes(columnTypes);
+
+            if (tables.containsKey(name)) {
+                return null;
+            }
+
+            File tableDirectory = new File(databaseDirectoryPath, name);
+            File signatureFile = new File(tableDirectory, DatabaseTableProvider.SIGNATURE_FILE);
+            StoreableUtils.writeSignature(signatureFile, columnTypes);
+
+            DatabaseTable table = new DatabaseTable(this, databaseDirectoryPath, name, columnTypes);
+            tables.put(name, table);
+            return table;
+        } finally {
+            tableLock.unlock();
         }
-
-        checkTableName(name);
-
-        if (columnTypes == null || columnTypes.isEmpty()) {
-            throw new IllegalArgumentException("column types cannot be null");
-        }
-
-        checkColumnTypes(columnTypes);
-
-        if (tables.containsKey(name)) {
-            return null;
-        }
-
-        DatabaseTable table = new DatabaseTable(this, databaseDirectoryPath, name, columnTypes);
-        tables.put(name, table);
-        return table;
     }
 
     @Override
     public void removeTable(String name) throws IOException {
-        if (name == null || name.isEmpty()) {
-            throw new IllegalArgumentException("table's name cannot be null");
+        try {
+            tableLock.lock();
+
+            state.checkOperationsAllowed();
+
+            if (name == null || name.isEmpty()) {
+                throw new IllegalArgumentException("table's name cannot be null");
+            }
+
+            if (!tables.containsKey(name)) {
+                throw new IllegalStateException(String.format("%s not exists", name));
+            }
+
+            tables.remove(name);
+
+            File tableFile = new File(databaseDirectoryPath, name);
+            MultifileMapUtils.deleteFile(tableFile);
+        } finally {
+            tableLock.unlock();
         }
-
-        if (!tables.containsKey(name)) {
-            throw new IllegalStateException(String.format("%s not exists", name));
-        }
-
-        tables.remove(name);
-
-        File tableFile = new File(databaseDirectoryPath, name);
-        MultifileMapUtils.deleteFile(tableFile);
     }
 
     @Override
     public Storeable deserialize(Table table, String value) throws ParseException {
+        state.checkOperationsAllowed();
+
         if (value == null || value.isEmpty()) {
             throw new IllegalArgumentException("value cannot be null or empty");
         }
@@ -148,6 +190,8 @@ public class DatabaseTableProvider implements TableProvider {
 
     @Override
     public String serialize(Table table, Storeable value) throws ColumnFormatException {
+        state.checkOperationsAllowed();
+
         if (value == null) {
             throw new IllegalArgumentException("value cannot be null");
         }
@@ -168,11 +212,15 @@ public class DatabaseTableProvider implements TableProvider {
 
     @Override
     public Storeable createFor(Table table) {
+        state.checkOperationsAllowed();
+
         return rawCreateFor(table);
     }
 
     @Override
     public Storeable createFor(Table table, List<?> values) throws ColumnFormatException, IndexOutOfBoundsException {
+        state.checkOperationsAllowed();
+
         if (values == null) {
             throw new IllegalArgumentException("values cannot be null");
         }
@@ -210,11 +258,6 @@ public class DatabaseTableProvider implements TableProvider {
         return columnTypes;
     }
 
-    private boolean checkCorrectTable(File tableDirectory) {
-        File signatureFile = new File(tableDirectory, SIGNATURE_FILE);
-        return signatureFile.exists();
-    }
-
     private DatabaseRow rawCreateFor(Table table) {
         DatabaseRow row = new DatabaseRow();
         for (int index = 0; index < table.getColumnsCount(); ++index) {
@@ -236,5 +279,22 @@ public class DatabaseTableProvider implements TableProvider {
         if (!name.matches(CHECK_EXPRESSION)) {
             throw new IllegalArgumentException("Bad symbol!");
         }
+    }
+
+    @Override
+    public void close() throws Exception {
+        //state.checkOperationsAllowed();
+        if (state.equals(ContainerState.CLOSED)) {
+            return;
+        }
+        for (final String tableName : tables.keySet()) {
+            tables.get(tableName).close();
+        }
+        state = ContainerState.CLOSED;
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s[%s]", getClass().getSimpleName(), databaseDirectoryPath);
     }
 }

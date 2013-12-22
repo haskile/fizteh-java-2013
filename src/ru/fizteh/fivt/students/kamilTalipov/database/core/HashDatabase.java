@@ -2,6 +2,7 @@ package ru.fizteh.fivt.students.kamilTalipov.database.core;
 
 
 import ru.fizteh.fivt.storage.structured.Storeable;
+import ru.fizteh.fivt.students.kamilTalipov.database.utils.JsonUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -106,6 +107,14 @@ public class HashDatabase implements MultiTableDatabase, TransactionDatabase {
     }
 
     @Override
+    public String serialize(Storeable storeable) {
+        if (activeTable == null) {
+            throw new NoTableSelectedException("HashDatabase: No table selected");
+        }
+        return JsonUtils.serialize(storeable, activeTable);
+    }
+
+    @Override
     public int commit() throws NoTableSelectedException, IOException {
         if (activeTable == null) {
             throw new NoTableSelectedException("HashDatabase: No table selected");
@@ -119,10 +128,5 @@ public class HashDatabase implements MultiTableDatabase, TransactionDatabase {
             throw new NoTableSelectedException("HashDatabase: No table selected");
         }
         return activeTable.rollback();
-    }
-
-    @Override
-    public void exit() throws DatabaseException {
-        tableProvider.exit();
     }
 }

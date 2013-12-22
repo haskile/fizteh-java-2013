@@ -6,7 +6,6 @@ import ru.fizteh.fivt.students.nadezhdakaratsapova.shell.CommandUtils;
 import ru.fizteh.fivt.students.nadezhdakaratsapova.tableutils.UniversalDataTable;
 import ru.fizteh.fivt.students.nadezhdakaratsapova.tableutils.UniversalTableProvider;
 
-
 import java.io.File;
 import java.io.IOException;
 import java.text.ParseException;
@@ -117,6 +116,9 @@ public class MultiFileHashMapProvider implements TableProvider, UniversalTablePr
         return curDataBaseStorage;
     }
 
+    public String toString() {
+        return new String(this.getClass().getSimpleName() + "[" + workingDirectory.toString() + "]");
+    }
 }
 
 

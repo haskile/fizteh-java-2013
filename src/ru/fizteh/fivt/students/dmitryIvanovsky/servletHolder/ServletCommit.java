@@ -43,7 +43,7 @@ public class ServletCommit extends HttpServlet {
             int res;
             try {
                 FileMap table = (FileMap) provider.getTable(provider.getPool().getNameTable(transaction));
-                res = table.commit(transaction);
+                res = table.commit(transaction, true);
             } catch (Exception e) {
                 resp.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
                 return;

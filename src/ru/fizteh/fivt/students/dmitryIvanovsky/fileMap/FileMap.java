@@ -637,10 +637,10 @@ public class FileMap implements Table, AutoCloseable {
     }
 
     public int commit() {
-        return commit(getLocalTransaction());
+        return commit(getLocalTransaction(), false);
     }
 
-    public int commit(int numberTransaction) {
+    public int commit(int numberTransaction, boolean needChangeTransaction) {
         if (tableDrop || isTableClose) {
             throw new IllegalStateException("table was deleted");
         }
@@ -689,7 +689,9 @@ public class FileMap implements Table, AutoCloseable {
                 }
             } finally {
                 currentDiff.clear();
-                //parent.getPool().deleteTransaction(numberTransaction);
+                if (needChangeTransaction) {
+                    parent.getPool().deleteTransaction(numberTransaction);
+                }
                 write.unlock();
                 if (err != null) {
                     throw new IllegalStateException(err);
@@ -700,10 +702,10 @@ public class FileMap implements Table, AutoCloseable {
     }
 
     public int rollback() {
-        return rollback(getLocalTransaction());
+        return rollback(getLocalTransaction(), false);
     }
 
-    public int rollback(int numberTransaction) {
+    public int rollback(int numberTransaction, boolean needChangeTransaction) {
         if (tableDrop || isTableClose) {
             throw new IllegalStateException("table was deleted");
         }
@@ -735,7 +737,9 @@ public class FileMap implements Table, AutoCloseable {
             }
         }
         currentDiff.clear();
-        //parent.getPool().deleteTransaction(numberTransaction);
+        if (needChangeTransaction) {
+            parent.getPool().deleteTransaction(numberTransaction);
+        }
         return count;
     }
 

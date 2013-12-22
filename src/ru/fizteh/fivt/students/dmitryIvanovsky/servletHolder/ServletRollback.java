@@ -43,7 +43,7 @@ public class ServletRollback extends HttpServlet {
             int res;
             try {
                 FileMap table = (FileMap) provider.getTable(provider.getPool().getNameTable(transaction));
-                res = table.rollback(transaction);
+                res = table.rollback(transaction, true);
             } catch (Exception e) {
                 resp.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
                 return;

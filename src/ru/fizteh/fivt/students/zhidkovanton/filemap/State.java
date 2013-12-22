@@ -1,11 +1,13 @@
 package ru.fizteh.fivt.students.zhidkovanton.filemap;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.HashMap;
 import java.util.Map;
-import java.io.*;
 
 public class State {
-    Map <String, String> state = new HashMap<>();
+    Map<String, String> state = new HashMap<>();
 
     public String put(String key, String value) {
         String oldValue = state.get(key);
@@ -23,7 +25,7 @@ public class State {
         return oldValue;
     }
 
-    public void print(File input) throws IOException{
+    public void print(File input) throws IOException {
         RandomAccessFile in = new RandomAccessFile(input, "rw");
 
         in.getChannel().truncate(0);

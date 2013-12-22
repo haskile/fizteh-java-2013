@@ -4,8 +4,9 @@ import ru.fizteh.fivt.students.zhidkovanton.shell.BaseShellCommand;
 import ru.fizteh.fivt.students.zhidkovanton.shell.Command;
 import ru.fizteh.fivt.students.zhidkovanton.shell.InvalidCommandException;
 
-public class ShellRemove extends BaseShellCommand{
+public class ShellRemove extends BaseShellCommand {
     private State state;
+
     public ShellRemove(State state) {
         setName("remove");
         setNumberOfArgs(2);

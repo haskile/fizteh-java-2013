@@ -4,10 +4,9 @@ import ru.fizteh.fivt.students.zhidkovanton.shell.BaseShellCommand;
 import ru.fizteh.fivt.students.zhidkovanton.shell.Command;
 import ru.fizteh.fivt.students.zhidkovanton.shell.InvalidCommandException;
 
-import java.io.IOException;
-
 public final class ShellPut extends BaseShellCommand {
     private State state;
+
     public ShellPut(State state) {
         setName("put");
         setNumberOfArgs(3);

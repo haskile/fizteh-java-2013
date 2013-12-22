@@ -7,6 +7,7 @@ import ru.fizteh.fivt.students.zhidkovanton.shell.InvalidCommandException;
 
 public final class ShellGet extends BaseShellCommand {
     private State state;
+
     public ShellGet(State state) {
         setName("get");
         setNumberOfArgs(2);

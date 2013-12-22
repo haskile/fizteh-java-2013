@@ -1,12 +1,14 @@
 package ru.fizteh.fivt.students.zhidkovanton.filemap;
 
-import java.io.*;
-import java.util.*;
-
 import ru.fizteh.fivt.students.zhidkovanton.shell.InvalidCommandException;
+import ru.fizteh.fivt.students.zhidkovanton.shell.Main;
 import ru.fizteh.fivt.students.zhidkovanton.shell.Parser;
 import ru.fizteh.fivt.students.zhidkovanton.shell.Shell;
-import ru.fizteh.fivt.students.zhidkovanton.shell.Main;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.util.Scanner;
 
 public class FileService {
     private static Shell shell;
@@ -101,7 +103,7 @@ public class FileService {
             } else {
                 notInteractiveMode(args);
             }
-        } catch(ShellExitException e) {
+        } catch (ShellExitException e) {
             state.print(data);
             System.exit(0);
         }

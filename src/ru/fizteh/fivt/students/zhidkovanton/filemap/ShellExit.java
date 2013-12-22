@@ -10,7 +10,7 @@ public final class ShellExit extends BaseShellCommand {
     }
 
     @Override
-    public void execute(){
+    public void execute() {
         throw new ShellExitException("Exit command");
     }
 }

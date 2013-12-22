@@ -35,6 +35,6 @@ public class BeginServlet extends HttpServlet {
         resp.setContentType("text/plain");
         resp.setCharacterEncoding("UTF8");
 
-        resp.getWriter().println(transactionId);
+        resp.getWriter().println("tid=" + transactionId);
     }
 }

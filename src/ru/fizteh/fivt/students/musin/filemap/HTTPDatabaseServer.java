@@ -252,7 +252,7 @@ public class HTTPDatabaseServer {
             resp.setStatus(HttpServletResponse.SC_OK);
             resp.setContentType("text/plain");
             resp.setCharacterEncoding("UTF8");
-            resp.getWriter().println(String.format("%d", changes));
+            resp.getWriter().println(changes);
         }
     }
 

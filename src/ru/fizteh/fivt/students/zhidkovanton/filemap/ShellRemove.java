@@ -23,16 +23,4 @@ public class ShellRemove extends BaseShellCommand {
             System.out.println("removed");
         }
     }
-
-    @Override
-    public boolean isAvaliableCommand(final Command command) {
-        if (name.equals(command.getArg(0))) {
-            if (command.length() < numberOfArgs) {
-                throw new InvalidCommandException(name + " " + hint);
-            }
-            args = command;
-            return true;
-        }
-        return false;
-    }
 }

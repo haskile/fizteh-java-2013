@@ -399,13 +399,18 @@ public class FileMap implements Table, AutoCloseable {
     }
 
     private int getLocalTransaction() {
-        int transaction = localTransaction.get();
-        if (parent.getPool().isExistTransaction(transaction)) {
-            return transaction;
-        } else {
-            transaction = parent.getPool().createNewTransaction(nameTable);
-            localTransaction.set(transaction);
-            return transaction;
+        write.lock();
+        try {
+            int transaction = localTransaction.get();
+            if (parent.getPool().isExistTransaction(transaction)) {
+                return transaction;
+            } else {
+                transaction = parent.getPool().createNewTransaction(nameTable);
+                localTransaction.set(transaction);
+                return transaction;
+            }
+        } finally {
+            write.unlock();
         }
     }
 

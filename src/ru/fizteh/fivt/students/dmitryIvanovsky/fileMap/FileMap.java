@@ -639,6 +639,7 @@ public class FileMap implements Table, AutoCloseable {
     public int commit() {
         return commit(getLocalTransaction());
     }
+
     public int commit(int numberTransaction) {
         if (tableDrop || isTableClose) {
             throw new IllegalStateException("table was deleted");

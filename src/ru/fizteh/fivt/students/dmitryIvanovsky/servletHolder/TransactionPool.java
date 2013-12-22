@@ -17,11 +17,11 @@ public class TransactionPool {
     HashMap<Integer, String> transactionTable = new HashMap<>();
 
     public MyHashMap getMap(int numberTransaction) {
-        read.lock();
+        write.lock();
         try {
             return allMap.get(numberTransaction);
         } finally {
-            read.unlock();
+            write.unlock();
         }
     }
 
@@ -55,11 +55,11 @@ public class TransactionPool {
     }
 
     public boolean isExistTransaction(int numberTransaction) {
-        read.lock();
+        write.lock();
         try {
             return allMap.containsKey(numberTransaction);
         } finally {
-            read.unlock();
+            write.unlock();
         }
     }
 }

@@ -1,4 +1,4 @@
-package ru.fizteh.fivt.students.dmitryIvanovsky.ServletHolder;
+package ru.fizteh.fivt.students.dmitryIvanovsky.servletHolder;
 
 import ru.fizteh.fivt.students.dmitryIvanovsky.fileMap.FileMap;
 import ru.fizteh.fivt.students.dmitryIvanovsky.fileMap.FileMapProvider;
@@ -9,10 +9,12 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-public class ServletRollback extends HttpServlet {
+import static ru.fizteh.fivt.students.dmitryIvanovsky.servletHolder.CommonServletFunction.checkTid;
+
+public class ServletSize extends HttpServlet {
     FileMapProvider provider;
 
-    public ServletRollback(FileMapProvider provider) {
+    public ServletSize(FileMapProvider provider) {
         this.provider = provider;
     }
 
@@ -27,7 +29,7 @@ public class ServletRollback extends HttpServlet {
 
             int transaction;
             try {
-                transaction = Integer.parseInt(name);
+                transaction = checkTid(name);
             } catch (Exception e) {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "wrong tid");
                 return;
@@ -41,7 +43,7 @@ public class ServletRollback extends HttpServlet {
             int res;
             try {
                 FileMap table = (FileMap) provider.getTable(provider.getPool().getNameTable(transaction));
-                res = table.rollback(transaction);
+                res = table.size(transaction);
             } catch (Exception e) {
                 resp.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
                 return;
@@ -50,6 +52,6 @@ public class ServletRollback extends HttpServlet {
             resp.setStatus(HttpServletResponse.SC_OK);
             resp.setContentType("text/plain");
             resp.setCharacterEncoding("UTF8");
-            resp.getWriter().println("diff=" +  String.format("%d", res));
+            resp.getWriter().println(String.format("%d", res));
         }
 }

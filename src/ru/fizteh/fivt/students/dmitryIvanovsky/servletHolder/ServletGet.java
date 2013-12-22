@@ -1,5 +1,6 @@
-package ru.fizteh.fivt.students.dmitryIvanovsky.ServletHolder;
+package ru.fizteh.fivt.students.dmitryIvanovsky.servletHolder;
 
+import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.students.dmitryIvanovsky.fileMap.FileMap;
 import ru.fizteh.fivt.students.dmitryIvanovsky.fileMap.FileMapProvider;
 
@@ -9,10 +10,12 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-public class ServletPut extends HttpServlet {
+import static ru.fizteh.fivt.students.dmitryIvanovsky.servletHolder.CommonServletFunction.checkTid;
+
+public class ServletGet extends HttpServlet {
     FileMapProvider provider;
 
-    public ServletPut(FileMapProvider provider) {
+    public ServletGet(FileMapProvider provider) {
         this.provider = provider;
     }
 
@@ -21,8 +24,6 @@ public class ServletPut extends HttpServlet {
         throws ServletException, IOException {
             String tid = req.getParameter("tid");
             String key = req.getParameter("key");
-            String value = req.getParameter("value");
-
             if (tid == null) {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "tid expected");
                 return;
@@ -31,14 +32,10 @@ public class ServletPut extends HttpServlet {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "key expected");
                 return;
             }
-            if (value == null) {
-                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "value expected");
-                return;
-            }
 
             int transaction;
             try {
-                transaction = Integer.parseInt(tid);
+                transaction = checkTid(tid);
             } catch (Exception e) {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "wrong tid");
                 return;
@@ -52,7 +49,12 @@ public class ServletPut extends HttpServlet {
             String res;
             try {
                 FileMap table = (FileMap) provider.getTable(provider.getPool().getNameTable(transaction));
-                res = provider.serialize(table, table.put(key, provider.deserialize(table, value), transaction));
+                Storeable st = table.get(key, transaction);
+                if (st == null) {
+                    resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "key not found");
+                    return;
+                }
+                res = provider.serialize(table, st);
             } catch (Exception e) {
                 resp.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
                 return;

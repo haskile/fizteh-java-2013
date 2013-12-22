@@ -73,16 +73,15 @@ public class FileMap implements Table, AutoCloseable {
             throw e;
         }
 
-        final int transaction = parent.getPool().createNewTransaction(nameTable);
         this.localTransaction = new ThreadLocal<Integer>() {
             @Override
             protected Integer initialValue() {
-                return transaction;
+                return parent.getPool().createNewTransaction(nameTable);
             }
         };
     }
 
-    public FileMap(Path path, String table, FileMapProvider parent, List<Class<?>> columnType) throws Exception {
+    public FileMap(Path path, String table, final FileMapProvider parent, List<Class<?>> columnType) throws Exception {
         this.nameTable = table;
         this.pathDb = path;
         this.parent = parent;
@@ -113,11 +112,10 @@ public class FileMap implements Table, AutoCloseable {
             throw e;
         }
 
-        final int transaction = parent.getPool().createNewTransaction(table);
         this.localTransaction = new ThreadLocal<Integer>() {
             @Override
             protected Integer initialValue() {
-                return transaction;
+                return parent.getPool().createNewTransaction(nameTable);
             }
         };
     }

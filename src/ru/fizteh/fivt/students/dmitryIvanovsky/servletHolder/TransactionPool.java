@@ -1,4 +1,4 @@
-package ru.fizteh.fivt.students.dmitryIvanovsky.ServletHolder;
+package ru.fizteh.fivt.students.dmitryIvanovsky.servletHolder;
 
 import ru.fizteh.fivt.students.dmitryIvanovsky.fileMap.MyHashMap;
 
@@ -26,8 +26,14 @@ public class TransactionPool {
     }
 
     public void deleteTransaction(int numberTransaction) {
-        transactionTable.remove(numberTransaction);
-        allMap.remove(numberTransaction);
+        write.lock();
+        try {
+            transactionTable.remove(numberTransaction);
+            allMap.remove(numberTransaction);
+        } finally {
+            write.unlock();
+        }
+
     }
 
     public int createNewTransaction(String nameTable) {

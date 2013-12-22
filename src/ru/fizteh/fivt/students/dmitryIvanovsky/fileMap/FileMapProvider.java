@@ -7,7 +7,7 @@ import ru.fizteh.fivt.storage.structured.ColumnFormatException;
 import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.storage.structured.Table;
 import ru.fizteh.fivt.storage.structured.TableProvider;
-import ru.fizteh.fivt.students.dmitryIvanovsky.ServletHolder.*;
+import ru.fizteh.fivt.students.dmitryIvanovsky.servletHolder.*;
 import ru.fizteh.fivt.students.dmitryIvanovsky.shell.CommandAbstract;
 import ru.fizteh.fivt.students.dmitryIvanovsky.shell.CommandShell;
 import ru.fizteh.fivt.students.dmitryIvanovsky.shell.ErrorShell;

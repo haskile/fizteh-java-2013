@@ -1,6 +1,5 @@
-package ru.fizteh.fivt.students.dmitryIvanovsky.ServletHolder;
+package ru.fizteh.fivt.students.dmitryIvanovsky.servletHolder;
 
-import ru.fizteh.fivt.storage.structured.Storeable;
 import ru.fizteh.fivt.students.dmitryIvanovsky.fileMap.FileMap;
 import ru.fizteh.fivt.students.dmitryIvanovsky.fileMap.FileMapProvider;
 
@@ -10,30 +9,27 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-public class ServletGet extends HttpServlet {
+import static ru.fizteh.fivt.students.dmitryIvanovsky.servletHolder.CommonServletFunction.checkTid;
+
+public class ServletRollback extends HttpServlet {
     FileMapProvider provider;
 
-    public ServletGet(FileMapProvider provider) {
+    public ServletRollback(FileMapProvider provider) {
         this.provider = provider;
     }
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp)
         throws ServletException, IOException {
-            String tid = req.getParameter("tid");
-            String key = req.getParameter("key");
-            if (tid == null) {
+            String name = req.getParameter("tid");
+            if (name == null) {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "tid expected");
-                return;
-            }
-            if (key == null) {
-                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "key expected");
                 return;
             }
 
             int transaction;
             try {
-                transaction = Integer.parseInt(tid);
+                transaction = checkTid(name);
             } catch (Exception e) {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "wrong tid");
                 return;
@@ -44,15 +40,10 @@ public class ServletGet extends HttpServlet {
                 return;
             }
 
-            String res;
+            int res;
             try {
                 FileMap table = (FileMap) provider.getTable(provider.getPool().getNameTable(transaction));
-                Storeable st = table.get(key, transaction);
-                if (st == null) {
-                    resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "key not found");
-                    return;
-                }
-                res = provider.serialize(table, st);
+                res = table.rollback(transaction);
             } catch (Exception e) {
                 resp.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
                 return;
@@ -61,6 +52,6 @@ public class ServletGet extends HttpServlet {
             resp.setStatus(HttpServletResponse.SC_OK);
             resp.setContentType("text/plain");
             resp.setCharacterEncoding("UTF8");
-            resp.getWriter().println(res);
+            resp.getWriter().println("diff=" +  String.format("%d", res));
         }
 }

@@ -7,12 +7,12 @@ public abstract class BaseShellCommand implements ShellCommand {
     protected Command args;
 
     @Override
-    public void execute(){
+    public void execute() {
 
     }
 
     @Override
-    public boolean isAvaliableCommand(final Command command){
+    public boolean isAvaliableCommand(final Command command) {
         if (name.equals(command.getArg(0))) {
             if (command.length() > numberOfArgs) {
                 throw new InvalidCommandException(name + ": too many arguments");

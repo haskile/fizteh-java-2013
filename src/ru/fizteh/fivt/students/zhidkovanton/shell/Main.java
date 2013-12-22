@@ -1,15 +1,14 @@
 package ru.fizteh.fivt.students.zhidkovanton.shell;
 
-import java.util.Scanner;
-import java.util.Map;
 import java.io.IOException;
+import java.util.Scanner;
 
 public class Main {
     static final int END_OF_INPUT = -1;
     static final int END_OF_TRANSMISSION = 4;
     private static Shell shell;
 
-    public static boolean checkTerminate(final String s){
+    public static boolean checkTerminate(final String s) {
         for (int i = 0; i < s.length(); ++i) {
             if (s.charAt(i) == END_OF_INPUT || s.charAt(i) == END_OF_TRANSMISSION) {
                 return true;

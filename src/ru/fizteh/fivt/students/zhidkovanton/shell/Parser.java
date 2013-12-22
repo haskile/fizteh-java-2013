@@ -1,7 +1,5 @@
 package ru.fizteh.fivt.students.zhidkovanton.shell;
 
-import ru.fizteh.fivt.students.dmitryIvanovsky.shell.CommandShell;
-
 public class Parser {
     private StringBuilder commands;
 
@@ -16,6 +14,7 @@ public class Parser {
             commands.append(';');
         }
     }
+
     public Parser(final String arg) {
         commands = new StringBuilder(arg);
         if ((!arg.isEmpty()) && (commands.charAt(commands.length() - 1) != ';')) {
@@ -27,7 +26,7 @@ public class Parser {
         String command = "";
         for (int i = 0; i < commands.length(); ++i) {
             if (commands.charAt(i) == ';') {
-                command = commands.substring(0,i);
+                command = commands.substring(0, i);
                 commands.replace(0, i + 1, "");
                 break;
             }

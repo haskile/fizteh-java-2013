@@ -1,7 +1,5 @@
 package ru.fizteh.fivt.students.musin.filemap;
 
-import ru.fizteh.fivt.storage.structured.Storeable;
-
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Queue;

@@ -64,7 +64,7 @@ public class HTTPDatabaseServer {
                 transaction = transactionPool.getTransaction(id);
                 table = transactionPool.getTable(id);
             } catch (IllegalArgumentException e) {
-                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
                 return;
             }
             int changes = table.commit(transaction);
@@ -91,7 +91,7 @@ public class HTTPDatabaseServer {
                 transaction = transactionPool.getTransaction(id);
                 table = transactionPool.getTable(id);
             } catch (IllegalArgumentException e) {
-                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
                 return;
             }
             int changes = table.rollback(transaction);
@@ -123,7 +123,7 @@ public class HTTPDatabaseServer {
                 transaction = transactionPool.getTransaction(id);
                 table = transactionPool.getTable(id);
             } catch (IllegalArgumentException e) {
-                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
                 return;
             }
             Storeable value = table.get(transaction, key);
@@ -170,7 +170,7 @@ public class HTTPDatabaseServer {
                 transaction = transactionPool.getTransaction(id);
                 table = transactionPool.getTable(id);
             } catch (IllegalArgumentException e) {
-                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
                 return;
             }
             Storeable value;
@@ -221,7 +221,7 @@ public class HTTPDatabaseServer {
                 transaction = transactionPool.getTransaction(id);
                 table = transactionPool.getTable(id);
             } catch (IllegalArgumentException e) {
-                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
                 return;
             }
             Storeable value = table.remove(transaction, key);
@@ -258,7 +258,7 @@ public class HTTPDatabaseServer {
                 transaction = transactionPool.getTransaction(id);
                 table = transactionPool.getTable(id);
             } catch (IllegalArgumentException e) {
-                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
                 return;
             }
             int changes = table.size(transaction);

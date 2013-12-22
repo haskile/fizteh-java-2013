@@ -688,9 +688,9 @@ public class FileMap implements Table, AutoCloseable {
                     err.addSuppressed(errRefresh);
                 }
             } finally {
+                currentDiff.clear();
                 parent.getPool().deleteTransaction(numberTransaction);
                 write.unlock();
-                currentDiff.clear();
                 if (err != null) {
                     throw new IllegalStateException(err);
                 }

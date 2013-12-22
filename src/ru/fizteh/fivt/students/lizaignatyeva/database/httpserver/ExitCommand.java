@@ -13,9 +13,6 @@ public class ExitCommand extends Command {
 
     @Override
     public void run(String[] args) throws Exception {
-        if (!server.isUp()) {
-            System.exit(0);
-        }
         try {
             server.stop();
         } catch (Exception e) {

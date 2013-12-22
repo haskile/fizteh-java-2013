@@ -42,7 +42,7 @@ public class Database {
         try {
             for (int transactionId = 0; transactionId < MAX_TRANSACTION_ID; transactionId ++) {
                 String transactionName = String.format("%5d", transactionId);
-                if (transactions.containsKey(transactionName)) {
+                if (!transactions.containsKey(transactionName)) {
                     MyTable table = tableProvider.getTable(tableName);
                     transactions.put(tableName, table);
                     return transactionName;

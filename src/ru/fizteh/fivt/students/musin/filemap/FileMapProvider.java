@@ -18,6 +18,7 @@ import java.util.List;
 public class FileMapProvider implements TableProvider, AutoCloseable {
     private File location;
     private HashMap<String, MultiFileMap> used;
+    private TransactionPool transactionPool;
     private volatile boolean valid;
 
     public FileMapProvider(File location) {
@@ -27,6 +28,7 @@ public class FileMapProvider implements TableProvider, AutoCloseable {
         this.location = location;
         used = new HashMap<>();
         valid = true;
+        transactionPool = new TransactionPool(5);
     }
 
     private boolean badSymbolCheck(String string) {
@@ -86,6 +88,11 @@ public class FileMapProvider implements TableProvider, AutoCloseable {
         return true;
     }
 
+    public TransactionPool getTransactionPool() {
+        checkState();
+        return transactionPool;
+    }
+
     public synchronized MultiFileMap getTable(String name) {
         checkState();
         if (name == null) {
@@ -111,7 +118,7 @@ public class FileMapProvider implements TableProvider, AutoCloseable {
         if (newMap != null && !newMap.isClosed()) {
             return newMap;
         } else {
-            newMap = new MultiFileMap(dir, 16, this);
+            newMap = new MultiFileMap(dir, 16, this, transactionPool);
             try {
                 newMap.loadFromDisk();
             } catch (IOException e) {
@@ -170,7 +177,7 @@ public class FileMapProvider implements TableProvider, AutoCloseable {
         if (!dir.mkdir()) {
             throw new RuntimeException("Can't create directory for the table");
         }
-        MultiFileMap result = new MultiFileMap(dir, 16, this, columnTypes);
+        MultiFileMap result = new MultiFileMap(dir, 16, this, transactionPool, columnTypes);
         result.writeToDisk();
         used.put(name, result);
         return result;
@@ -225,7 +232,7 @@ public class FileMapProvider implements TableProvider, AutoCloseable {
             for (int i = 0; i < columnCount; i++) {
                 Object object = array.get(i);
                 if (object.equals(null)) {
-                     newList.setColumnAt(i, null);
+                    newList.setColumnAt(i, null);
                 } else if (columnTypes.get(i) == Integer.class) {
                     if (object.getClass() == Integer.class) {
                         newList.setColumnAt(i, object);

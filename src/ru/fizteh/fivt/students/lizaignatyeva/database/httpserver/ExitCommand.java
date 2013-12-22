@@ -13,10 +13,10 @@ public class ExitCommand extends Command {
 
     @Override
     public void run(String[] args) throws Exception {
-        try {
-            server.stop();
-        } catch (Exception e) {
-            // do nothing
-        }
+        //try {
+        //    server.stop();
+        //} catch (Exception e) {
+        //    // do nothing
+        //}
     }
 }

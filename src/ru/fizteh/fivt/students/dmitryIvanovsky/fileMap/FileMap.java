@@ -689,7 +689,7 @@ public class FileMap implements Table, AutoCloseable {
                 }
             } finally {
                 currentDiff.clear();
-                parent.getPool().deleteTransaction(numberTransaction);
+                //parent.getPool().deleteTransaction(numberTransaction);
                 write.unlock();
                 if (err != null) {
                     throw new IllegalStateException(err);
@@ -735,7 +735,7 @@ public class FileMap implements Table, AutoCloseable {
             }
         }
         currentDiff.clear();
-        parent.getPool().deleteTransaction(numberTransaction);
+        //parent.getPool().deleteTransaction(numberTransaction);
         return count;
     }
 

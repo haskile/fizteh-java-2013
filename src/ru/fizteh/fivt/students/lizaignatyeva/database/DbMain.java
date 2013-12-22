@@ -35,7 +35,7 @@ public class DbMain {
         String dir = System.getProperty("fizteh.db.dir");
         MyTableProviderFactory providerFactory = new MyTableProviderFactory();
         MyTableProvider provider;
-        MyServer server;
+        final MyServer server;
 
         try {
             provider = providerFactory.create(dir);
@@ -49,5 +49,15 @@ public class DbMain {
         Path directory = Paths.get(dir);
         CommandRunner runner = new CommandRunner(directory.toFile(), createCommands(new Database(provider), server));
         runner.run(args);
+        Runtime.getRuntime().addShutdownHook(new Thread() {
+            @Override
+            public void run() {
+                try {
+                    server.stop();
+                } catch (Exception e) {
+                    // do nothing
+                }
+            }
+        });
     }
 }

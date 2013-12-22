@@ -30,7 +30,7 @@ public class GetServlet extends HttpServlet {
         }
         MyTable table = database.getTransaction(transactionId);
         if (table == null) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "No such transaction");
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "No such transaction");
             return;
         }
         String result;

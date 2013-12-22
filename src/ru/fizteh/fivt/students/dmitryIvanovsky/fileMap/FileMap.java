@@ -404,7 +404,7 @@ public class FileMap implements Table, AutoCloseable {
             return transaction;
         } else {
             transaction = parent.getPool().createNewTransaction(nameTable);
-            getLocalTransaction();
+            localTransaction.set(transaction);
             return transaction;
         }
     }

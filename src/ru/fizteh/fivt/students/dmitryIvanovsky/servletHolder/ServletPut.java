@@ -41,7 +41,7 @@ public class ServletPut extends HttpServlet {
             int transaction;
             try {
                 transaction = checkTid(tid);
-            } catch (Exception e) {
+            } catch (IllegalStateException e) {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "wrong tid");
                 return;
             }

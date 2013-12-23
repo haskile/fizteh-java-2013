@@ -30,7 +30,7 @@ public class ServletCommit extends HttpServlet {
             int transaction;
             try {
                 transaction = checkTid(name);
-            } catch (Exception e) {
+            } catch (IllegalStateException e) {
                 resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "wrong tid");
                 return;
             }

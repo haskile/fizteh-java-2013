@@ -38,7 +38,7 @@ public class CommitCommand extends ServletCommand {
         resp.setStatus(HttpServletResponse.SC_OK);
         resp.setContentType("text/plain");
         resp.setCharacterEncoding("UTF8");
-        resp.getWriter().println(size);
+        resp.getWriter().println("diff=" + size);
     }
 
     @Override

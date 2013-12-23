@@ -44,7 +44,7 @@ public class MyTableProvider implements TableProvider {
         try {
             table.write();
         } catch (IOException e) {
-            throw new IllegalArgumentException("TableProvider.createTable: name '" + name + "' failed: IO failure");
+            throw new IllegalArgumentException("TableProvider.createTable: name '" + name + "' failed: IO failure", e);
         }
         loadedTables.put(name, table);
         return table;

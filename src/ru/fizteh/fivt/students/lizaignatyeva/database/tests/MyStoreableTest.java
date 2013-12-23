@@ -13,7 +13,6 @@ import java.util.ArrayList;
 
 import static junit.framework.Assert.assertEquals;
 
-@RunWith(Theories.class)
 public class MyStoreableTest {
     private StoreableSignature storeableSignature;
     private ArrayList<Class<?>> classes;
@@ -57,7 +56,6 @@ public class MyStoreableTest {
             storeable.setColumnAt(i, values.get(i));
         }
         String serialized = storeable.serialize();
-        System.out.println(serialized);
         MyStoreable newStoreable = new MyStoreable(storeableSignature);
         newStoreable.deserialize(serialized);
         assertEquals(newStoreable, storeable);

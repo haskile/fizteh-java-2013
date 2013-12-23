@@ -23,6 +23,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class TransactionManager {
+
     private Map<Integer, String> tables = new HashMap<>();
     private Server server = null;
     private int port;
@@ -32,16 +33,16 @@ public class TransactionManager {
     private static final String NOT_STARTED = "not started";
     private Set<ServletCommand> servletCommands = new HashSet<>();
 
-   public TransactionManager(State state, StorableTableProviderImp tableProvider) {
-      this.state = state;
-      this.tableProvider = tableProvider;
-      servletCommands.add(new BeginCommand(this));
-      servletCommands.add(new CommitCommand(this));
-      servletCommands.add(new GetCommand(this));
-      servletCommands.add(new PutCommand(this));
-      servletCommands.add(new RollbackCommand(this));
-      servletCommands.add(new SizeCommand(this));
-   }
+    public TransactionManager(State state, StorableTableProviderImp tableProvider) {
+        this.state = state;
+        this.tableProvider = tableProvider;
+        servletCommands.add(new BeginCommand(this));
+        servletCommands.add(new CommitCommand(this));
+        servletCommands.add(new GetCommand(this));
+        servletCommands.add(new PutCommand(this));
+        servletCommands.add(new RollbackCommand(this));
+        servletCommands.add(new SizeCommand(this));
+    }
 
     public boolean setPort(String portString) {
         try {
@@ -67,7 +68,7 @@ public class TransactionManager {
         server.setHandler(context);
 
         try {
-          server.start();
+            server.start();
         } catch (Exception e) {
             state.printErrorMessage(NOT_STARTED + ": " + server.getState());
             server = null;
@@ -87,8 +88,9 @@ public class TransactionManager {
         } catch (Exception e) {
             state.printErrorMessage(NOT_STARTED + ": " + e);
             return;
+        } finally {
+            tables.clear();
         }
-        tables.clear();
         state.printUserMessage("stopped at " + port);
         server = null;
     }
@@ -118,13 +120,13 @@ public class TransactionManager {
     public StorableTable getTableByID(int id) {
         transactionKeeper.readLock().lock();
         try {
-           String tableName = tables.get(id);
-           if (tableName != null) {
-               return tableProvider.getTable(tableName);
-           }
-           return null;
+            String tableName = tables.get(id);
+            if (tableName != null) {
+                return tableProvider.getTable(tableName);
+            }
+            return null;
         } finally {
-           transactionKeeper.readLock().unlock();
+            transactionKeeper.readLock().unlock();
         }
     }
 
@@ -133,7 +135,7 @@ public class TransactionManager {
     }
 
     public void deleteTransaction(Integer id) {
-      tables.remove(id);
+        tables.remove(id);
     }
 
 }

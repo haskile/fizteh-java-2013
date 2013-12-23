@@ -38,8 +38,8 @@ public abstract class ServletCommand extends HttpServlet {
         transactionID = Integer.parseInt(id);
         StorableTable table = manager.getTableByID(transactionID);
         if (table == null) {
-            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "This transaction:" + transactionID +
-                    " doesn't appeal to any table");
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "This transaction:" + transactionID
+                    + " doesn't appeal to any table");
             return null;
         }
         return table;

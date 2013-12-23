@@ -29,14 +29,13 @@ public class CommitCommand extends ServletCommand {
         try {
             table.useTransantion(transactionID);
             size = table.commit();
+            table.removeTransaction(transactionID);
         } catch (IllegalStateException e) {
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
-            if (table.isClosed()) {
-                manager.deleteTransaction(transactionID);
-            }
             return;
         } finally {
             table.retrieveThreadTable();
+            manager.deleteTransaction(transactionID);
         }
         resp.setStatus(HttpServletResponse.SC_OK);
         resp.setContentType("text/plain");

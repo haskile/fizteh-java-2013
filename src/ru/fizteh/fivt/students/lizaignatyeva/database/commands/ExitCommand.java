@@ -15,7 +15,9 @@ public class ExitCommand extends Command {
     @Override
     public void run(String[] args) throws Exception {
         try {
-            database.currentTable.write();
+            if (database.currentTable != null) {
+                database.currentTable.write();
+            }
         } catch (Exception e) {
             System.err.println("Ooops! Error: " + e.getMessage());
         }

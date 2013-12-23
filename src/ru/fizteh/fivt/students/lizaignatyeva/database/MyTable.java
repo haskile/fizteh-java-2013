@@ -352,8 +352,7 @@ public class MyTable implements Table {
         try {
             FileUtils.remove(path);
         } catch (Exception e) {
-            //System.err.println("Error while updating database files: " + e.getMessage());
-            //System.exit(1);
+            throw new IOException("Failed to write database on disk");
         }
         FileUtils.mkDir(path.getAbsolutePath());
         writeConfig();
@@ -375,7 +374,7 @@ public class MyTable implements Table {
                 return className;
             }
         }
-        throw new IllegalArgumentException("Unsupported class");
+        throw new IllegalArgumentException("Unsupported class: " + clazz.getCanonicalName());
     }
 
     private void writeConfig() throws IOException {

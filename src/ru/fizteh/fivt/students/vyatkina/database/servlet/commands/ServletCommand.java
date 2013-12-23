@@ -32,7 +32,7 @@ public abstract class ServletCommand extends HttpServlet {
             return null;
         }
         if (!id.matches("[0-9]{5}")) {
-            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, id + ": invalid tid format");
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, id + ": invalid tid format");
             return null;
         }
         transactionID = Integer.parseInt(id);

@@ -144,7 +144,7 @@ public class MyTable implements Table {
         try {
             write();
         } catch (IOException e) {
-            throw new RuntimeException("Failed to write changes in table '" + name + "' to disk");
+            throw new RuntimeException("Failed to write changes in table '" + name + "' to disk", e);
         }
         uncommitedData = new HashMap<>();
         return result;
@@ -468,7 +468,7 @@ public class MyTable implements Table {
                 }
             }
         } catch (IndexOutOfBoundsException e) {
-            throw new ColumnFormatException("value contains less columns");
+            throw new ColumnFormatException("value contains less columns", e);
         }
         try {
             value.getColumnAt(getColumnsCount());

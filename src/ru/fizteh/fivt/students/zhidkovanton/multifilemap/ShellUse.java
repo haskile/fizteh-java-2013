@@ -21,9 +21,7 @@ public final class ShellUse extends BaseShellCommand {
             System.out.println(getArg(1) + " not exists");
         } else {
             System.out.println("using " + getArg(1));
-        }
-        dataBaseFactory.dataBase = dataBaseFactory.dataFactory.getTable(getArg(1));
-        if (dataBaseFactory.dataBase != null) {
+            dataBaseFactory.dataBase = dataBaseFactory.dataFactory.getTable(getArg(1));
             dataBaseFactory.dataBase.read();
         }
     }

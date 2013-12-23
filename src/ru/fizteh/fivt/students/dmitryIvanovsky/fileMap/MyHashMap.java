@@ -1,10 +1,6 @@
 package ru.fizteh.fivt.students.dmitryIvanovsky.fileMap;
 import ru.fizteh.fivt.storage.structured.Storeable;
-
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class MyHashMap {
     int size;
@@ -93,4 +89,5 @@ public class MyHashMap {
     public Map<String, Storeable> getMap(int i, int j) {
         return arrayMap[i][j];
     }
+
 }

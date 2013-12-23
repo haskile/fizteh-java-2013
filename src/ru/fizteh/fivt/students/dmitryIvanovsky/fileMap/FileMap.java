@@ -30,26 +30,25 @@ public class FileMap implements Table, AutoCloseable {
     private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
     private final Lock write = readWriteLock.writeLock();
     private final Lock read  = readWriteLock.readLock();
+    private int tableSize = 0;
     String nameTable;
-    MyHashMap tableData = new MyHashMap();
-    ThreadLocal<MyHashMap> changeTable = new ThreadLocal<MyHashMap>() {
-        @Override
-        protected MyHashMap initialValue() {
-            return new MyHashMap();
-        }
-    };
+    MyLazyHashMap tableData;
+    ThreadLocal<Integer> localTransaction;
     volatile boolean tableDrop = false;
     volatile boolean isTableClose = false;
+    volatile int sizeDataInFiles;
     FileMapProvider parent;
     List<Class<?>> columnType = new ArrayList<Class<?>>();
 
-    public FileMap(Path pathDb, String nameTable, FileMapProvider parent) throws Exception {
+    public FileMap(Path pathDb, final String nameTable, final FileMapProvider parent) throws Exception {
         this.nameTable = nameTable;
         this.pathDb = pathDb;
         this.parent = parent;
         this.mySystem = new CommandShell(pathDb.toString(), false, false);
+        this.tableData = new MyLazyHashMap(pathDb.resolve(nameTable), parent, this);
 
         File theDir = new File(String.valueOf(pathDb.resolve(nameTable)));
+        boolean flag = false;
         if (!theDir.exists()) {
             try {
                 mySystem.mkdir(new String[]{pathDb.resolve(nameTable).toString()});
@@ -57,16 +56,68 @@ public class FileMap implements Table, AutoCloseable {
                 e.addSuppressed(new ErrorFileMap("I can't create a folder table " + nameTable));
                 throw e;
             }
+            writeSizeTsv(0);
+            this.sizeDataInFiles = 0;
+        } else {
+            flag = true;
         }
-
-        loadTypeFile(pathDb);
 
         try {
             loadTable(nameTable);
+            loadTypeFile(pathDb);
+            if (flag) {
+                loadSizeFile();
+            }
         } catch (Exception e) {
             e.addSuppressed(new ErrorFileMap("Format error storage table " + nameTable));
             throw e;
         }
+
+        this.localTransaction = new ThreadLocal<Integer>() {
+            @Override
+            protected Integer initialValue() {
+                return parent.getPool().createNewTransaction(nameTable);
+            }
+        };
+    }
+
+    public FileMap(Path path, String table, final FileMapProvider parent, List<Class<?>> columnType) throws Exception {
+        this.nameTable = table;
+        this.pathDb = path;
+        this.parent = parent;
+        this.columnType = columnType;
+        this.mySystem = new CommandShell(path.toString(), false, false);
+        this.tableData = new MyLazyHashMap(path.resolve(table), parent, this);
+
+        File theDir = new File(String.valueOf(path.resolve(table)));
+        if (!theDir.exists()) {
+            try {
+                mySystem.mkdir(new String[]{path.resolve(table).toString()});
+            } catch (Exception e) {
+                e.addSuppressed(new ErrorFileMap("I can't create a folder table " + table));
+                throw e;
+            }
+            writeSizeTsv(0);
+            this.sizeDataInFiles = 0;
+        } else {
+            loadSizeFile();
+        }
+
+        writeFileTsv();
+
+        try {
+            loadTable(table);
+        } catch (Exception e) {
+            e.addSuppressed(new ErrorFileMap("Format error storage table " + table));
+            throw e;
+        }
+
+        this.localTransaction = new ThreadLocal<Integer>() {
+            @Override
+            protected Integer initialValue() {
+                return parent.getPool().createNewTransaction(nameTable);
+            }
+        };
     }
 
     private String readFileTsv(String fileName) throws IOException {
@@ -77,7 +128,7 @@ public class FileMap implements Table, AutoCloseable {
                 sb.append(s);
             }
         } catch (Exception e) {
-            throw new IOException("not found signature.tsv", e);
+            throw new IOException("not found " + fileName, e);
         }
         if (sb.length() == 0) {
             throw new IOException("tsv file is empty");
@@ -97,6 +148,13 @@ public class FileMap implements Table, AutoCloseable {
         }
     }
 
+    private void writeSizeTsv(int newSize) throws FileNotFoundException {
+        Path pathTsv = pathDb.resolve(nameTable).resolve("size.tsv");
+        try (PrintWriter out = new PrintWriter(pathTsv.toFile().getAbsoluteFile())) {
+            out.print(newSize);
+        }
+    }
+
     private void loadTypeFile(Path pathDb) throws IOException {
         String fileStr = readFileTsv(pathDb.resolve(nameTable).resolve("signature.tsv").toString());
         StringTokenizer token = new StringTokenizer(fileStr);
@@ -110,30 +168,12 @@ public class FileMap implements Table, AutoCloseable {
         }
     }
 
-    public FileMap(Path pathDb, String nameTable, FileMapProvider parent, List<Class<?>> columnType) throws Exception {
-        this.nameTable = nameTable;
-        this.pathDb = pathDb;
-        this.parent = parent;
-        this.columnType = columnType;
-        this.mySystem = new CommandShell(pathDb.toString(), false, false);
-
-        File theDir = new File(String.valueOf(pathDb.resolve(nameTable)));
-        if (!theDir.exists()) {
-            try {
-                mySystem.mkdir(new String[]{pathDb.resolve(nameTable).toString()});
-            } catch (Exception e) {
-                e.addSuppressed(new ErrorFileMap("I can't create a folder table " + nameTable));
-                throw e;
-            }
-        }
-
-        writeFileTsv();
-
+    private void loadSizeFile() throws IOException, ErrorFileMap {
+        String fileStr = readFileTsv(pathDb.resolve(nameTable).resolve("size.tsv").toString());
         try {
-            loadTable(nameTable);
+            this.sizeDataInFiles = Integer.valueOf(fileStr);
         } catch (Exception e) {
-            e.addSuppressed(new ErrorFileMap("Format error storage table " + nameTable));
-            throw e;
+            throw new ErrorFileMap("not correct size in size.tsv");
         }
     }
 
@@ -149,8 +189,12 @@ public class FileMap implements Table, AutoCloseable {
             throw new ErrorFileMap(pathDb + " empty table");
         }
 
+        boolean haveSize = false;
         for (File nameDir : listFileMap) {
-            if (nameDir.getName().equals("signature.tsv")) {
+            if (nameDir.getName().equals("size.tsv")) {
+                haveSize = true;
+            }
+            if (nameDir.getName().equals("signature.tsv") || nameDir.getName().equals("size.tsv")) {
                 continue;
             }
             if (!nameDir.isDirectory()) {
@@ -178,16 +222,19 @@ public class FileMap implements Table, AutoCloseable {
                 }
 
                 try {
-                    loadTableFile(randomFile, tableData, nameDir.getName());
+                    checkTableFile(randomFile, nameDir.getName());
                 } catch (Exception e) {
                     e.addSuppressed(new ErrorFileMap("Error in file " + randomFile.getAbsolutePath()));
                     throw e;
                 }
             }
         }
+        if (!haveSize) {
+            writeSizeTsv(tableSize);
+        }
     }
 
-    public void loadTableFile(File randomFile, MyHashMap dbMap, String nameDir) throws Exception {
+    public void checkTableFile(File randomFile, String nameDir) throws Exception {
         if (randomFile.isDirectory()) {
             throw new ErrorFileMap("data file can't be a directory");
         }
@@ -215,30 +262,8 @@ public class FileMap implements Table, AutoCloseable {
                 byte currentByte = dbFile.readByte();
                 if (currentByte == '\0') {
                     int point1 = dbFile.readInt();
-                    if (separator == -1) {
-                        separator = point1;
-                    }
                     long currentPoint = dbFile.getFilePointer();
-
-                    while (dbFile.getFilePointer() != separator) {
-                        if (dbFile.readByte() == '\0') {
-                            break;
-                        }
-                    }
-
-                    int point2;
-                    if (dbFile.getFilePointer() == separator) {
-                        point2 = (int) dbFile.length();
-                    } else {
-                        point2 = dbFile.readInt();
-                    }
-
                     dbFile.seek(point1);
-
-                    arrayByte = new byte[point2 - point1];
-                    dbFile.readFully(arrayByte);
-                    String value = new String(arrayByte, StandardCharsets.UTF_8);
-
                     arrayByte = new byte[vectorByte.size()];
                     for (int i = 0; i < vectorByte.size(); ++i) {
                         arrayByte[i] = vectorByte.elementAt(i).byteValue();
@@ -248,7 +273,7 @@ public class FileMap implements Table, AutoCloseable {
                     if (tableData.getHashDir(key) != intDir || tableData.getHashFile(key) != intFile) {
                         throw new ErrorFileMap("wrong key in the file");
                     }
-                    dbMap.put(key, parent.deserialize(this, value));
+                    tableSize += 1;
                     vectorByte.clear();
                     dbFile.seek(currentPoint);
                 } else {
@@ -270,11 +295,16 @@ public class FileMap implements Table, AutoCloseable {
     }
 
     private void refreshTableFiles(Set<String> changedKey) throws Exception {
+        refreshTableFiles(changedKey, getLocalTransaction());
+    }
+
+    private void refreshTableFiles(Set<String> changedKey, int numberTransaction) throws Exception {
         if (tableDrop || isTableClose) {
             throw new IllegalStateException("table was deleted");
         }
         writeFileTsv();
-        if (changeTable.get().isEmpty()) {
+        MyHashMap currentDiff = parent.getPool().getMap(numberTransaction);
+        if (currentDiff.isEmpty()) {
             return;
         }
 
@@ -284,6 +314,7 @@ public class FileMap implements Table, AutoCloseable {
         }
 
         for (Integer changedFile : changedFiles) {
+
             Integer numDir = changedFile / tableData.numberFile;
             Integer numFile = changedFile % tableData.numberFile;
             Path refreshDir = pathDb.resolve(nameTable).resolve(numDir.toString() + ".dir");
@@ -367,14 +398,39 @@ public class FileMap implements Table, AutoCloseable {
         return nameTable;
     }
 
+    private int getLocalTransaction() {
+        write.lock();
+        try {
+            int transaction = localTransaction.get();
+            if (parent.getPool().isExistTransaction(transaction)) {
+                return transaction;
+            } else {
+                transaction = parent.getPool().createNewTransaction(nameTable);
+                localTransaction.set(transaction);
+                return transaction;
+            }
+        } finally {
+            write.unlock();
+        }
+    }
+
     public int changeKey() {
+        return changeKey(getLocalTransaction());
+    }
+
+    public int changeKey(int numberTransaction) {
         if (tableDrop || isTableClose) {
             throw new IllegalStateException("table was deleted");
         }
-        return changeTable.get().size();
+        MyHashMap currentDiff = parent.getPool().getMap(numberTransaction);
+        return currentDiff.size();
     }
 
     public Storeable put(String key, Storeable value) throws ColumnFormatException {
+        return put(key, value, getLocalTransaction());
+    }
+
+    public Storeable put(String key, Storeable value, int numberTransaction) throws ColumnFormatException {
         checkArg(key);
         if (value == null) {
             throw new IllegalArgumentException("value can't be null");
@@ -437,14 +493,15 @@ public class FileMap implements Table, AutoCloseable {
             throw new ColumnFormatException(st.messageEqualsType(columnType));
         }
 
-        if (changeTable.get().containsKey(key)) {
-            Storeable newValue = changeTable.get().get(key);
+        MyHashMap currentDiff = parent.getPool().getMap(numberTransaction);
+        if (currentDiff.containsKey(key)) {
+            Storeable newValue = currentDiff.get(key);
             if (newValue == null) {
-                changeTable.get().put(key, value);
+                currentDiff.put(key, value);
                 return null;
             } else {
-                Storeable oldValue = changeTable.get().get(key);
-                changeTable.get().put(key, value);
+                Storeable oldValue = currentDiff.get(key);
+                currentDiff.put(key, value);
                 return oldValue;
             }
         } else {
@@ -455,7 +512,7 @@ public class FileMap implements Table, AutoCloseable {
             } finally {
                 read.unlock();
             }
-            changeTable.get().put(key, value);
+            currentDiff.put(key, value);
             return oldValue;
         }
     }
@@ -465,33 +522,42 @@ public class FileMap implements Table, AutoCloseable {
     }
 
     public Storeable get(String key) {
+        return get(key, getLocalTransaction());
+    }
+
+    public Storeable get(String key, int numberTransaction) {
         checkArg(key);
         if (tableDrop || isTableClose) {
             throw new IllegalStateException("table was deleted");
         }
 
         Storeable value = null;
-            if (changeTable.get().containsKey(key)) {
-                Storeable newValue = changeTable.get().get(key);
-                if (newValue == null) {
-                    value = null;
-                } else {
-                    value = changeTable.get().get(key);
-                    return value;
-                }
+        MyHashMap currentDiff = parent.getPool().getMap(numberTransaction);
+        if (currentDiff.containsKey(key)) {
+            Storeable newValue = currentDiff.get(key);
+            if (newValue == null) {
+                value = null;
             } else {
-                read.lock();
-                try {
-                    value = tableData.get(key);
-                } finally {
-                    read.unlock();
-                }
+                value = currentDiff.get(key);
+                return value;
             }
+        } else {
+            read.lock();
+            try {
+                value = tableData.get(key);
+            } finally {
+                read.unlock();
+            }
+        }
 
         return value;
     }
 
     public Storeable remove(String key) {
+        return remove(key, getLocalTransaction());
+    }
+
+    public Storeable remove(String key, int numberTransaction) {
         checkArg(key);
         if (tableDrop || isTableClose) {
             throw new IllegalStateException("table was deleted");
@@ -506,23 +572,24 @@ public class FileMap implements Table, AutoCloseable {
             read.unlock();
         }
 
-        if (changeTable.get().containsKey(key)) {
-            Storeable newValue = changeTable.get().get(key);
+        MyHashMap currentDiff = parent.getPool().getMap(numberTransaction);
+        if (currentDiff.containsKey(key)) {
+            Storeable newValue = currentDiff.get(key);
             if (value != null) {
                 if (newValue == null) {
                     resValue =  null;
                 } else {
-                    Storeable valueChange = changeTable.get().get(key);
-                    changeTable.get().put(key, null);
+                    Storeable valueChange = currentDiff.get(key);
+                    currentDiff.put(key, null);
                     resValue =  valueChange;
                 }
             } else {
-                changeTable.get().remove(key);
+                currentDiff.remove(key);
                 resValue =  newValue;
             }
         } else {
             if (value != null) {
-                changeTable.get().put(key, null);
+                currentDiff.put(key, null);
                 resValue =  value;
             } else {
                 resValue =  null;
@@ -533,19 +600,18 @@ public class FileMap implements Table, AutoCloseable {
     }
 
     public int size() {
+        return size(getLocalTransaction());
+    }
+
+    public int size(int numberTransaction) {
         if (tableDrop || isTableClose) {
             throw new IllegalStateException("table was deleted");
         }
 
-        int size = 0;
-        read.lock();
-        try {
-            size = tableData.size();
-        } finally {
-            read.unlock();
-        }
+        int tmpSize = this.sizeDataInFiles;
 
-        for (String key : changeTable.get().keySet()) {
+        MyHashMap currentDiff = parent.getPool().getMap(numberTransaction);
+        for (String key : currentDiff.keySet()) {
 
             boolean containsKey;
             read.lock();
@@ -556,31 +622,37 @@ public class FileMap implements Table, AutoCloseable {
             }
 
             if (containsKey) {
-                if (changeTable.get().get(key) == null) {
-                    --size;
+                if (currentDiff.get(key) == null) {
+                    --tmpSize;
                 }
             } else {
-                if (changeTable.get().get(key) != null) {
-                    ++size;
+                if (currentDiff.get(key) != null) {
+                    ++tmpSize;
                 }
             }
 
         }
 
-        return size;
+        return tmpSize;
     }
 
     public int commit() {
+        return commit(getLocalTransaction(), false);
+    }
+
+    public int commit(int numberTransaction, boolean needChangeTransaction) {
         if (tableDrop || isTableClose) {
             throw new IllegalStateException("table was deleted");
         }
         int count = 0;
+        int currentSize = this.size();
         Set<String> changedKey = new HashSet<>();
         Exception err = null;
         write.lock();
+        MyHashMap currentDiff = parent.getPool().getMap(numberTransaction);
         try {
-            for (String key : changeTable.get().keySet()) {
-                Storeable value = changeTable.get().get(key);
+            for (String key : currentDiff.keySet()) {
+                Storeable value = currentDiff.get(key);
                 Storeable oldValue = null;
                 oldValue = tableData.get(key);
                 if (value == null) {
@@ -599,7 +671,7 @@ public class FileMap implements Table, AutoCloseable {
                             changedKey.add(key);
                         }
                     }
-                    tableData.put(key, changeTable.get().get(key));
+                    tableData.put(key, currentDiff.get(key));
                 }
             }
         } catch (Exception e) {
@@ -607,6 +679,8 @@ public class FileMap implements Table, AutoCloseable {
         } finally {
             try {
                 refreshTableFiles(changedKey);
+                writeSizeTsv(currentSize);
+                this.sizeDataInFiles = currentSize;
             } catch (Exception errRefresh) {
                 if (err == null) {
                     err = errRefresh;
@@ -614,8 +688,11 @@ public class FileMap implements Table, AutoCloseable {
                     err.addSuppressed(errRefresh);
                 }
             } finally {
+                currentDiff.clear();
+                if (needChangeTransaction) {
+                    parent.getPool().deleteTransaction(numberTransaction);
+                }
                 write.unlock();
-                changeTable.get().clear();
                 if (err != null) {
                     throw new IllegalStateException(err);
                 }
@@ -625,12 +702,17 @@ public class FileMap implements Table, AutoCloseable {
     }
 
     public int rollback() {
+        return rollback(getLocalTransaction(), false);
+    }
+
+    public int rollback(int numberTransaction, boolean needChangeTransaction) {
         if (tableDrop || isTableClose) {
             throw new IllegalStateException("table was deleted");
         }
         int count = 0;
-        for (String key : changeTable.get().keySet()) {
-            Storeable diffValue = changeTable.get().get(key);
+        MyHashMap currentDiff = parent.getPool().getMap(numberTransaction);
+        for (String key : currentDiff.keySet()) {
+            Storeable diffValue = currentDiff.get(key);
 
             Storeable value = null;
             read.lock();
@@ -654,7 +736,10 @@ public class FileMap implements Table, AutoCloseable {
                 }
             }
         }
-        changeTable.get().clear();
+        currentDiff.clear();
+        if (needChangeTransaction) {
+            parent.getPool().deleteTransaction(numberTransaction);
+        }
         return count;
     }
 

@@ -106,9 +106,9 @@ public class MyTableProvider implements TableProvider {
         try {
             table = MyTable.read(directory, name, this);
         } catch (DataFormatException e) {
-            throw new IllegalArgumentException("Broken table found");
+            throw new IllegalArgumentException("Broken table found", e);
         } catch (IOException e) {
-            throw new RuntimeException("IOFailure happened during table reading");
+            throw new RuntimeException("IOFailure happened during table reading", e);
         } catch (Exception e) {
             return null;
         }

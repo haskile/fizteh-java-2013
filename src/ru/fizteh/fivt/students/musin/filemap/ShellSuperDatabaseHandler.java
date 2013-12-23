@@ -15,6 +15,7 @@ public class ShellSuperDatabaseHandler {
     private FileMapProvider provider;
     private MultiFileMap current;
     private DatabaseServer server;
+    private HTTPDatabaseServer httpServer;
     private RemoteFileMapProviderFactory remoteFactory;
     private RemoteFileMapProvider remoteProvider;
     private RemoteFileMap remoteCurrent;
@@ -23,6 +24,7 @@ public class ShellSuperDatabaseHandler {
     public ShellSuperDatabaseHandler(FileMapProvider provider) throws IOException {
         this.provider = provider;
         server = new DatabaseServer(provider);
+        httpServer = new HTTPDatabaseServer(provider, provider.getTransactionPool());
         current = null;
         remoteFactory = new RemoteFileMapProviderFactory();
         remoteProvider = null;
@@ -122,7 +124,7 @@ public class ShellSuperDatabaseHandler {
                                 return -1;
                             }
                         }
-                        Table table = null;
+                        Table table;
                         if (local) {
                             table = provider.createTable(args.get(0), columnTypes);
                         } else {
@@ -575,7 +577,7 @@ public class ShellSuperDatabaseHandler {
                         return -1;
                     }
                     if (server.isStarted()) {
-                        shell.writer.println("already started");
+                        shell.writer.println("not started: already started");
                     }
                     int newPort = 10001;
                     if (args.size() == 1) {
@@ -637,6 +639,57 @@ public class ShellSuperDatabaseHandler {
                     }
                     return 0;
                 }
+            }),
+            new Shell.ShellCommand("starthttp", new Shell.ShellExecutable() {
+                @Override
+                public int execute(Shell shell, ArrayList<String> args) {
+                    if (args.size() > 1) {
+                        shell.writer.println("starthttp: Too many arguments");
+                        return -1;
+                    }
+                    if (httpServer.isStarted()) {
+                        shell.writer.println("not started: already started");
+                    }
+                    int port = 10001;
+                    if (args.size() == 1) {
+                        try {
+                            port = Integer.parseInt(args.get(0));
+                        } catch (NumberFormatException e) {
+                            shell.writer.println("not started: Can't parse argument as integer");
+                            return -1;
+                        }
+                    }
+                    try {
+                        httpServer.start(port);
+                    } catch (Exception e) {
+                        shell.writer.println(String.format("not started: %s", e.getMessage()));
+                        return -1;
+                    }
+                    shell.writer.println(String.format("started at %d", port));
+                    return 0;
+                }
+            }),
+            new Shell.ShellCommand("stophttp", new Shell.ShellExecutable() {
+                @Override
+                public int execute(Shell shell, ArrayList<String> args) {
+                    if (args.size() > 0) {
+                        shell.writer.println("stophttp: Too many arguments");
+                        return -1;
+                    }
+                    if (!httpServer.isStarted()) {
+                        shell.writer.println("not started");
+                        return -1;
+                    }
+                    int port;
+                    try {
+                        port = httpServer.stop();
+                    } catch (Exception e) {
+                        shell.writer.println(e.getMessage());
+                        return -1;
+                    }
+                    shell.writer.println(String.format("stopped at %d", port));
+                    return 0;
+                }
             })
     };
 
@@ -648,18 +701,23 @@ public class ShellSuperDatabaseHandler {
         } catch (Exception e) {
             //Nothing
         }
-        try {
-            if (server != null) {
-                if (server.isStarted()) {
-                    try {
-                        server.stop();
-                    } catch (InterruptedException e) {
-                        //Exit function nothing to do
-                    }
+        if (server != null) {
+            if (server.isStarted()) {
+                try {
+                    server.stop();
+                } catch (InterruptedException e) {
+                    //Exit function nothing to do
                 }
             }
-        } catch (Exception e) {
-            //Nothing
+        }
+        if (httpServer != null) {
+            if (httpServer.isStarted()) {
+                try {
+                    httpServer.stop();
+                } catch (Exception e) {
+                    //Exit function nothing to do
+                }
+            }
         }
         try {
             if (provider != null) {

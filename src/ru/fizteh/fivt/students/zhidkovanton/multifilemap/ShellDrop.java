@@ -19,7 +19,7 @@ public final class ShellDrop extends BaseShellCommand {
                 dataBaseFactory.dataBase = null;
             }
             dataBaseFactory.dataFactory.removeTable(getArg(1));
-            System.out.println("removed");
+            System.out.println("dropped");
         } else {
             System.out.println(getArg(1) + " not exists");
         }

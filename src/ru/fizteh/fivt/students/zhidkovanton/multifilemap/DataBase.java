@@ -26,6 +26,7 @@ public class DataBase {
         }
 
         int hashCode = key.hashCode();
+        hashCode = Math.abs(hashCode);
         int ndirect = hashCode % 16;
         int nfile = hashCode / 16 % 16;
         String oldValue = state[16 * ndirect + nfile].get(key);
@@ -37,6 +38,7 @@ public class DataBase {
             throw new InvalidCommandException("Bad key or value!!!");
         }
         int hashCode = key.hashCode();
+        hashCode = Math.abs(hashCode);
         int ndirect = hashCode % 16;
         int nfile = hashCode / 16 % 16;
         String oldValue = state[16 * ndirect + nfile].put(key, value);
@@ -50,6 +52,7 @@ public class DataBase {
         }
 
         int hashCode = key.hashCode();
+        hashCode = Math.abs(hashCode);
         int ndirect = hashCode % 16;
         int nfile = hashCode / 16 % 16;
         String oldValue = state[16 * ndirect + nfile].remove(key);

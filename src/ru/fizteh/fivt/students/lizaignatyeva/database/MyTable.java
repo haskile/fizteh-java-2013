@@ -13,8 +13,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.ParseException;
 import java.util.*;
-import java.util.zip.DataFormatException;
-
 
 public class MyTable implements Table {
     private boolean isValid;
@@ -288,7 +286,7 @@ public class MyTable implements Table {
                 readEntry(buffer, dirName, fileName);
                 found = true;
             } catch (BufferUnderflowException e) {
-                throw new DataFormatException("Table '" + name + "' contains corrupted file " + filePath);
+                throw new DataFormatException("Table '" + name + "' contains corrupted file " + filePath, e);
             }
         }
         if (!found) {
@@ -325,7 +323,7 @@ public class MyTable implements Table {
         try {
             storeable = tableProvider.deserialize(this, value);
         } catch (ParseException e) {
-            throw new DataFormatException("Incorrect data: failed to deserialize json");
+            throw new DataFormatException("Incorrect data: failed to deserialize json", e);
         }
         data.put(key, storeable);
     }

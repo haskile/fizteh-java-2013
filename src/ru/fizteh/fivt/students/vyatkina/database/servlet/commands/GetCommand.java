@@ -28,7 +28,6 @@ public class GetCommand extends ServletCommand {
         if (table == null) {
             return;
         }
-
         String value;
         try {
             table.useTransantion(transactionID);

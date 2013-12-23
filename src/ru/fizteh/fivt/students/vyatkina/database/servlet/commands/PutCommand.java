@@ -42,11 +42,14 @@ public class PutCommand extends ServletCommand {
         try {
             table.useTransantion(transactionID);
             value = manager.makeDatabaseAdapter(table).put(key, value);
-        } catch (WrappedIOException e) {
+        } catch (WrappedIOException | IllegalArgumentException e) {
             resp.sendError(HttpServletResponse.SC_BAD_REQUEST, e.getMessage());
             return;
         } catch (IllegalStateException e) {
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+            if (table.isClosed()) {
+                manager.deleteTransaction(transactionID);
+            }
             return;
         } finally {
             table.retrieveThreadTable();

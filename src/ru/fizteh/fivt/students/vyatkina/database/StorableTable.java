@@ -19,4 +19,6 @@ public interface StorableTable extends Table, Closeable {
 
     void removeTransaction(int id);
 
+    boolean isClosed();
+
 }

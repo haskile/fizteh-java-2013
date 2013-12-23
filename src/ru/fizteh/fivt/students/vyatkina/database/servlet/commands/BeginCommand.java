@@ -20,6 +20,7 @@ public class BeginCommand extends ServletCommand {
 
         String tableName = getValue("table", req, resp);
         if (tableName == null) {
+            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Expected tableName, but null was found");
             return;
         }
         try {

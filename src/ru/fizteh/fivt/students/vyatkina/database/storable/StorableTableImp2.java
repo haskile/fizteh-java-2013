@@ -78,6 +78,11 @@ public class StorableTableImp2 implements StorableTable {
     }
 
     @Override
+    public boolean isClosed() {
+        return closeState.isAlreadyClosed();
+    }
+
+    @Override
     public String getName() {
         closeState.isClosedCheck();
         return name;

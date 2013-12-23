@@ -22,7 +22,6 @@ public abstract class ServletCommand extends HttpServlet {
         String value = req.getParameter(name);
         if (value == null) {
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, name + " expected");
-            return null;
         }
         return value;
     }
@@ -39,7 +38,8 @@ public abstract class ServletCommand extends HttpServlet {
         transactionID = Integer.parseInt(id);
         StorableTable table = manager.getTableByID(transactionID);
         if (table == null) {
-            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, id + ": unused tid");
+            resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "This transaction:" + transactionID +
+                    " doesn't appeal to any table");
             return null;
         }
         return table;

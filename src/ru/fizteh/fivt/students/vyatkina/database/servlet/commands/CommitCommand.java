@@ -31,6 +31,9 @@ public class CommitCommand extends ServletCommand {
             size = table.commit();
         } catch (IllegalStateException e) {
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+            if (table.isClosed()) {
+                manager.deleteTransaction(transactionID);
+            }
             return;
         } finally {
             table.retrieveThreadTable();

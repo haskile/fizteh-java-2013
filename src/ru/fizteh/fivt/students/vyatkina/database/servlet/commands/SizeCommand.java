@@ -33,6 +33,9 @@ public class SizeCommand extends ServletCommand {
             size = table.size();
         } catch (IllegalStateException e) {
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+            if (table.isClosed()) {
+                manager.deleteTransaction(transactionID);
+            }
             return;
         } finally {
             table.retrieveThreadTable();

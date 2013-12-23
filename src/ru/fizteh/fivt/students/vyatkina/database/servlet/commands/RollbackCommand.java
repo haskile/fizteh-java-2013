@@ -37,6 +37,9 @@ public class RollbackCommand extends ServletCommand {
 
         } catch (IllegalStateException e) {
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+            if (table.isClosed()) {
+                manager.deleteTransaction(transactionID);
+            }
             return;
         } finally {
             manager.deleteTransaction(transactionID);

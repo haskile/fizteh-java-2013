@@ -31,19 +31,50 @@ public class StorableTableImp2 implements StorableTable {
     private final StorableTableProviderImp tableProvider;
     private final StorableRowShape shape;
     private volatile Map<String, Storeable> mainMap;
-    private ThreadLocal<Map<String, Storeable>> localMap = new ThreadLocal<Map<String, Storeable>>() {
+    protected ThreadLocal<Map<String, Storeable>> localMap = new ThreadLocal<Map<String, Storeable>>() {
         protected Map<String, Storeable> initialValue() {
             return new HashMap<>();
         }
     };
+    private final Map<Integer, Map<String, Storeable>> transactionMap = new HashMap<>();
+    private ThreadLocal<Map<String, Storeable>> threadTable = new ThreadLocal<>();
     private final ReadWriteLock tableKeeper = new ReentrantReadWriteLock(true);
-    private final CloseState closeState;
+    protected final CloseState closeState;
 
     public StorableTableImp2(String name, StorableRowShape shape, StorableTableProviderImp tableProvider) {
         this.name = name;
         this.shape = shape;
         this.tableProvider = tableProvider;
         this.closeState = new CloseState(this + " is closed");
+    }
+
+    public void useTransantion(int id) {
+        closeState.isClosedCheck();
+        if (localMap.get() == null) {
+            threadTable.set(localMap.get());
+        }
+        if (!transactionMap.containsKey(id)) {
+            transactionMap.put(id, new HashMap<String, Storeable>());
+        }
+        localMap.set(transactionMap.get(id));
+    }
+
+    public void retrieveThreadTable() {
+        Map<String, Storeable> transaction = threadTable.get();
+        if (transaction != null) {
+            threadTable.set(transaction);
+        }
+    }
+
+    public void removeTransaction(int id) {
+        closeState.isClosedCheck();
+        Map<String, Storeable> transaction = transactionMap.get(id);
+        if (transaction != null) {
+            if (transaction == localMap.get()) {
+                localMap.set(threadTable.get());
+            }
+        }
+        transactionMap.remove(id);
     }
 
     @Override

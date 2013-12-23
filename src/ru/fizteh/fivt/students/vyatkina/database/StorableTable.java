@@ -12,4 +12,11 @@ public interface StorableTable extends Table, Closeable {
     int unsavedChanges();
 
     void putValuesFromDisk(Map<String, Storeable> diskValues);
+
+    void useTransantion(int id);
+
+    void retrieveThreadTable();
+
+    void removeTransaction(int id);
+
 }

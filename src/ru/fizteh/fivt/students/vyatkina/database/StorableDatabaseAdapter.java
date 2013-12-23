@@ -147,4 +147,5 @@ public class StorableDatabaseAdapter implements DatabaseAdapter {
         }
         return table.unsavedChanges();
     }
+
 }

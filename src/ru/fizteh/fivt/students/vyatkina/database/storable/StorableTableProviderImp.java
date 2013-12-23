@@ -40,7 +40,7 @@ public class StorableTableProviderImp implements StorableTableProvider {
     }
 
     @Override
-    public Table getTable(String name) {
+    public StorableTable getTable(String name) {
         closeState.isClosedCheck();
         validTableNameCheck(name);
         databaseKeeper.writeLock().lock();
@@ -50,7 +50,6 @@ public class StorableTableProviderImp implements StorableTableProvider {
         } finally {
             databaseKeeper.writeLock().unlock();
         }
-
     }
 
     private void loadTable(String tableName) {

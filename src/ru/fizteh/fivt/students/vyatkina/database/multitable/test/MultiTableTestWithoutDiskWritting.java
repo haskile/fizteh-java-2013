@@ -117,7 +117,8 @@ public class MultiTableTestWithoutDiskWritting {
 
     @Test
     public void removeKeyThatDoesNotExistShouldReturnNull() {
-        Assert.assertEquals("Remove table that does not exist should return null", null, table.remove(NOT_EXISTING_KEY));
+        Assert.assertEquals("Remove table that does not exist should return null", null,
+                table.remove(NOT_EXISTING_KEY));
     }
 
     @Test

@@ -351,8 +351,8 @@ public class MyTable implements Table {
         File path = globalDirectory.resolve(name).toFile();
         try {
             FileUtils.remove(path);
-        } catch (Exception e) {
-            throw new IOException("Failed to write database on disk");
+        } catch (IllegalArgumentException e) {
+            // we have no such directory, it's ok.
         }
         FileUtils.mkDir(path.getAbsolutePath());
         writeConfig();

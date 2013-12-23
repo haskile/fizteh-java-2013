@@ -185,6 +185,7 @@ public class MyTable implements Table {
     }
 
     private static final HashMap<String, Class> SUPPORTED_CLASSES = new HashMap<>();
+    private static final HashMap<Class, String> REVERSED_SUPPORTED_CLASSES = new HashMap<>();
 
     static {
         SUPPORTED_CLASSES.put("int", Integer.class);
@@ -194,6 +195,11 @@ public class MyTable implements Table {
         SUPPORTED_CLASSES.put("double", Double.class);
         SUPPORTED_CLASSES.put("boolean", Boolean.class);
         SUPPORTED_CLASSES.put("String", String.class);
+
+        for (String className : SUPPORTED_CLASSES.keySet()) {
+            Class clazz = SUPPORTED_CLASSES.get(className);
+            REVERSED_SUPPORTED_CLASSES.put(clazz, className);
+        }
     }
 
     public static List<Class<?>> convert(List<String> classNames) {
@@ -369,10 +375,8 @@ public class MyTable implements Table {
     }
 
     private String getClassName(Class clazz) {
-        for (String className : SUPPORTED_CLASSES.keySet()) {
-            if (SUPPORTED_CLASSES.get(className).equals(clazz)) {
-                return className;
-            }
+        if (REVERSED_SUPPORTED_CLASSES.containsKey(clazz)) {
+            return REVERSED_SUPPORTED_CLASSES.get(clazz);
         }
         throw new IllegalArgumentException("Unsupported class: " + clazz.getCanonicalName());
     }

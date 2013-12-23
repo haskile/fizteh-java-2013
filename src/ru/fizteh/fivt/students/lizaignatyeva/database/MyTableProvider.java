@@ -110,7 +110,7 @@ public class MyTableProvider implements TableProvider {
         } catch (IOException e) {
             throw new RuntimeException("IOFailure happened during table reading", e);
         } catch (Exception e) {
-            return null;
+            throw new RuntimeException("Failed to parse table", e);
         }
         loadedTables.put(name, table);
         return table;

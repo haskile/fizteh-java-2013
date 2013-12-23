@@ -10,7 +10,7 @@ public class State {
     public Map<String, String> state;
 
     public State() {
-       state = new HashMap<>();
+        state = new HashMap<>();
     }
 
     public String put(String key, String value) {
@@ -90,7 +90,7 @@ public class State {
         }
     }
 
-    public boolean isEmpty(){
+    public boolean isEmpty() {
         return state.isEmpty();
     }
 }

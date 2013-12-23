@@ -10,8 +10,10 @@ public class DataBase {
     private static State[] state;
     private String tableName = null;
 
-    public DataBase() {}
-    public DataBase(String tableName){
+    public DataBase() {
+    }
+
+    public DataBase(String tableName) {
         tableDir = System.getProperty("fizteh.db.dir");
         state = new State[256];
         for (int i = 0; i < 256; ++i) {

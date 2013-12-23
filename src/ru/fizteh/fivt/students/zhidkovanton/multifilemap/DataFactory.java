@@ -1,7 +1,8 @@
 package ru.fizteh.fivt.students.zhidkovanton.multifilemap;
 
-import java.io.File;
 import ru.fizteh.fivt.students.zhidkovanton.shell.InvalidCommandException;
+
+import java.io.File;
 
 public class DataFactory {
     private String currentTable = null;
@@ -11,7 +12,7 @@ public class DataFactory {
         tableDir = directory;
     }
 
-    public static void deleteDirectory(String dir){
+    public static void deleteDirectory(String dir) {
         File file = new File(dir);
         File[] files = file.listFiles();
         for (int i = 0; i < files.length; ++i) {
@@ -28,14 +29,14 @@ public class DataFactory {
         }
     }
 
-    public void removeTable(String name){
+    public void removeTable(String name) {
         if (isExists(name)) {
             String fullName = tableDir + File.separator + name;
             deleteDirectory(fullName);
         }
     }
 
-    public String getCurrentName(){
+    public String getCurrentName() {
         return currentTable;
     }
 
@@ -57,7 +58,7 @@ public class DataFactory {
         File file = new File(fullName);
 
         if (file.exists()) {
-            return  null;
+            return null;
         }
 
         if (!file.mkdir()) {
@@ -75,7 +76,7 @@ public class DataFactory {
         File file = new File(fullName);
 
         if (!file.exists()) {
-            return  null;
+            return null;
         }
         currentTable = name;
 
@@ -89,7 +90,7 @@ public class DataFactory {
         File file = new File(fullName);
 
         if (file.exists()) {
-            return  true;
+            return true;
         }
         return false;
     }

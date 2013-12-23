@@ -1,7 +1,6 @@
 package ru.fizteh.fivt.students.zhidkovanton.multifilemap;
 
 import ru.fizteh.fivt.students.zhidkovanton.shell.BaseShellCommand;
-import ru.fizteh.fivt.students.zhidkovanton.shell.Command;
 import ru.fizteh.fivt.students.zhidkovanton.shell.InvalidCommandException;
 
 public class ShellRemove extends BaseShellCommand {

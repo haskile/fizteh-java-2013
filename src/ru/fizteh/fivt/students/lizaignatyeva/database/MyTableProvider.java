@@ -13,7 +13,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.zip.DataFormatException;
 
 public class MyTableProvider implements TableProvider {
     private Path directory;

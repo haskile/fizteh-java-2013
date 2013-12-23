@@ -14,8 +14,6 @@ import java.nio.file.Paths;
 import java.text.ParseException;
 import java.util.*;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.zip.DataFormatException;
-
 
 public class MyTable implements Table {
     private boolean isValid;
@@ -213,6 +211,7 @@ public class MyTable implements Table {
     }
 
     private static final HashMap<String, Class> SUPPORTED_CLASSES = new HashMap<>();
+    private static final HashMap<Class, String> REVERSED_SUPPORTED_CLASSES = new HashMap<>();
 
     static {
         SUPPORTED_CLASSES.put("int", Integer.class);
@@ -222,6 +221,11 @@ public class MyTable implements Table {
         SUPPORTED_CLASSES.put("double", Double.class);
         SUPPORTED_CLASSES.put("boolean", Boolean.class);
         SUPPORTED_CLASSES.put("String", String.class);
+
+        for (String className : SUPPORTED_CLASSES.keySet()) {
+            Class clazz = SUPPORTED_CLASSES.get(className);
+            REVERSED_SUPPORTED_CLASSES.put(clazz, className);
+        }
     }
 
     public static List<Class<?>> convert(List<String> classNames) {
@@ -309,7 +313,7 @@ public class MyTable implements Table {
                 readEntry(buffer, dirName, fileName);
                 found = true;
             } catch (BufferUnderflowException e) {
-                throw new DataFormatException("Table '" + name + "' contains corrupted file " + filePath);
+                throw new DataFormatException("Table '" + name + "' contains corrupted file " + filePath, e);
             }
         }
         if (!found) {
@@ -346,7 +350,7 @@ public class MyTable implements Table {
         try {
             storeable = tableProvider.deserialize(this, value);
         } catch (ParseException e) {
-            throw new DataFormatException("Incorrect data: failed to deserialize json");
+            throw new DataFormatException("Incorrect data: failed to deserialize json", e);
         }
         data.put(key, storeable);
     }
@@ -402,12 +406,12 @@ public class MyTable implements Table {
     }
 
     private String getClassName(Class clazz) {
-        for (String className : SUPPORTED_CLASSES.keySet()) {
-            if (SUPPORTED_CLASSES.get(className).equals(clazz)) {
-                return className;
-            }
+        String className = REVERSED_SUPPORTED_CLASSES.get(clazz);
+        if (className != null) {
+            return className;
+        } else {
+            throw new IllegalArgumentException("Unsupported class: " + clazz.getCanonicalName());
         }
-        throw new IllegalArgumentException("Unsupported class");
     }
 
     private void writeConfig() throws IOException {
@@ -502,7 +506,7 @@ public class MyTable implements Table {
                 }
             }
         } catch (IndexOutOfBoundsException e) {
-            throw new ColumnFormatException("value contains less columns");
+            throw new ColumnFormatException("value contains less columns", e);
         }
         try {
             value.getColumnAt(getColumnsCount());

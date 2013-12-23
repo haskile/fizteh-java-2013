@@ -36,7 +36,7 @@ public class TransactionPool {
         for (int i = 0; i < id.length(); i++) {
             if (id.charAt(i) < '0' || id.charAt(i) > '9') {
                 throw new IllegalArgumentException(
-                        String.format("Illegal character $c should be a digit", id.charAt(i)));
+                        String.format("Illegal character %c should be a digit", id.charAt(i)));
             }
         }
     }
@@ -57,9 +57,9 @@ public class TransactionPool {
     }
 
     void removeTransaction(String id) {
+        checkTransactionId(id);
         lock.writeLock().lock();
         try {
-            checkTransactionId(id);
             if (transactions.remove(id) == null) {
                 throw new IllegalArgumentException("Transaction doesn't exist");
             }
@@ -70,9 +70,9 @@ public class TransactionPool {
     }
 
     Transaction getTransaction(String id) {
+        checkTransactionId(id);
         lock.readLock().lock();
         try {
-            checkTransactionId(id);
             Transaction result = transactions.get(id);
             if (result == null) {
                 throw new IllegalArgumentException("Transaction doesn't exist");

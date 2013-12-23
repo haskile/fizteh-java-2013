@@ -39,6 +39,7 @@ public class HTTPDatabaseServer {
             MultiFileMap table = provider.getTable(name);
             if (table == null) {
                 resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "Specified table doesn't exist");
+                return;
             }
             String id = transactionPool.createTransaction(table);
             resp.setStatus(HttpServletResponse.SC_OK);

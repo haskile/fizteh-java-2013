@@ -39,6 +39,7 @@ public class FileMap implements Table, AutoCloseable {
     volatile int sizeDataInFiles;
     FileMapProvider parent;
     List<Class<?>> columnType = new ArrayList<Class<?>>();
+    boolean isCorrectData = false;
 
     public FileMap(Path pathDb, final String nameTable, final FileMapProvider parent) throws Exception {
         this.nameTable = nameTable;
@@ -222,7 +223,10 @@ public class FileMap implements Table, AutoCloseable {
                 }
 
                 try {
-                    checkTableFile(randomFile, nameDir.getName());
+                    if (!isCorrectData) {
+                        checkTableFile(randomFile, nameDir.getName());
+                    }
+                    isCorrectData = true;
                 } catch (Exception e) {
                     e.addSuppressed(new ErrorFileMap("Error in file " + randomFile.getAbsolutePath()));
                     throw e;
@@ -256,18 +260,22 @@ public class FileMap implements Table, AutoCloseable {
 
             byte[] arrayByte;
             Vector<Byte> vectorByte = new Vector<Byte>();
-            long separator = -1;
+            boolean isFirstKey = true;
+            long shiftLast = dbFile.length();
 
-            while (dbFile.getFilePointer() != dbFile.length()) {
+            while (dbFile.getFilePointer() != shiftLast) {
                 byte currentByte = dbFile.readByte();
                 if (currentByte == '\0') {
                     int point1 = dbFile.readInt();
-                    long currentPoint = dbFile.getFilePointer();
-                    dbFile.seek(point1);
+                    if (isFirstKey) {
+                        shiftLast = point1;
+                    }
+                    isFirstKey = false;
                     arrayByte = new byte[vectorByte.size()];
                     for (int i = 0; i < vectorByte.size(); ++i) {
                         arrayByte[i] = vectorByte.elementAt(i).byteValue();
                     }
+
                     String key = new String(arrayByte, StandardCharsets.UTF_8);
 
                     if (tableData.getHashDir(key) != intDir || tableData.getHashFile(key) != intFile) {
@@ -275,7 +283,6 @@ public class FileMap implements Table, AutoCloseable {
                     }
                     tableSize += 1;
                     vectorByte.clear();
-                    dbFile.seek(currentPoint);
                 } else {
                     vectorByte.add(currentByte);
                 }

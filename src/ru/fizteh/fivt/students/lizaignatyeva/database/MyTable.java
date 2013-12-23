@@ -408,7 +408,7 @@ public class MyTable implements Table {
         int result = 0;
         for (String key: uncommitedData.keySet()) {
             if (!data.containsKey(key)) {
-                result ++;
+                result++;
             } else {
                 Storeable oldValue = data.get(key);
                 Storeable newValue = uncommitedData.get(key);

@@ -11,7 +11,7 @@ import java.util.HashSet;
 
 public class MyStoreable implements Storeable {
     public final StoreableSignature storeableSignature;
-    private ArrayList<Object> data;
+    private final ArrayList<Object> data;
 
     private static final HashSet<Class<?>> SUPPORTED_CLASSES = new HashSet<>();
 

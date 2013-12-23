@@ -375,10 +375,12 @@ public class MyTable implements Table {
     }
 
     private String getClassName(Class clazz) {
-        if (REVERSED_SUPPORTED_CLASSES.containsKey(clazz)) {
-            return REVERSED_SUPPORTED_CLASSES.get(clazz);
+        String className = REVERSED_SUPPORTED_CLASSES.get(clazz);
+        if (className != null) {
+            return className;
+        } else {
+            throw new IllegalArgumentException("Unsupported class: " + clazz.getCanonicalName());
         }
-        throw new IllegalArgumentException("Unsupported class: " + clazz.getCanonicalName());
     }
 
     private void writeConfig() throws IOException {

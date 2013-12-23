@@ -61,7 +61,8 @@ public class DataFactory {
         }
 
         if (!file.mkdir()) {
-            throw new InvalidCommandException("Cannot create table " + tableDir);
+            //throw new InvalidCommandException("Cannot create table " + tableDir);
+            System.exit(1);
         }
 
         return new DataBase();

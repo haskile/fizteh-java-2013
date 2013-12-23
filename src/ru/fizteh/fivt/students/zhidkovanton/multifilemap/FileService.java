@@ -68,6 +68,9 @@ public class FileService {
                 interactiveMode();
             } else {
                 notInteractiveMode(args);
+                if (dataBaseFactory.dataBase != null) {
+                    dataBaseFactory.dataBase.print();
+                }
             }
         } catch (ShellExitException e) {
             if (dataBaseFactory.dataBase != null) {

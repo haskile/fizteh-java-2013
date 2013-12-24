@@ -220,6 +220,11 @@ public class JettyServer {
             TableImplementation table = transactions.get(transactionID);
             
             Storeable value = table.get(transactionID);
+            
+            if (value == null) {
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, key + " not found");
+                return;
+            }
 
             response.setStatus(HttpServletResponse.SC_OK);
 

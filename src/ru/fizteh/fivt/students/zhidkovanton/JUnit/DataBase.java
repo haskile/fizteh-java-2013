@@ -94,13 +94,16 @@ public class DataBase implements Table {
                 throw new IllegalArgumentException("Wrong key!");
             }
         }
-
-        int hashCode = key.hashCode();
-        hashCode = Math.abs(hashCode);
-        int ndirect = hashCode % 16;
-        int nfile = hashCode / 16 % 16;
-        String oldValue = state[16 * ndirect + nfile].put(key, value);
-        return oldValue;
+        try{
+            int hashCode = key.hashCode();
+            hashCode = Math.abs(hashCode);
+            int ndirect = hashCode % 16;
+            int nfile = hashCode / 16 % 16;
+            String oldValue = state[16 * ndirect + nfile].put(key, value);
+            return oldValue;
+        } catch (NullPointerException e) {
+            throw new IllegalArgumentException();
+        }
     }
 
     @Override

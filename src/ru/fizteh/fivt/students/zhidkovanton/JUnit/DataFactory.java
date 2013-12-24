@@ -67,6 +67,9 @@ public class DataFactory implements TableProvider {
             return null;
         }
 
+        if (name == null) {
+            System.exit(1);
+        }
         if (!file.mkdir()) {
             throw new IllegalArgumentException("Cannot create table " + tableDir);
         }

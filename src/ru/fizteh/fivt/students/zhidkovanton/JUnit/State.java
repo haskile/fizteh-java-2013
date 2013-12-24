@@ -80,7 +80,7 @@ public class State {
         return ans;
     }
 
-    public void putNewMap(State newState){
+    public void putNewMap(State newState) {
         for (Map.Entry<String, String> curPair : state.entrySet()) {
             newState.put(curPair.getKey(), curPair.getValue());
         }

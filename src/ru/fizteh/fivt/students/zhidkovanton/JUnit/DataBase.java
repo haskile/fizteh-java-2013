@@ -40,7 +40,7 @@ public class DataBase implements Table {
     }
 
     @Override
-    public int rollback(){
+    public int rollback() {
         int ans = getNumberOfChanges();
 
         for (int i = 0; i < 256; ++i) {

@@ -95,7 +95,7 @@ public class DataFactory implements TableProvider {
         }
         currentTable = name;
 
-        return new DataBase(fullName);
+        return allTables.get(name);
     }
 
     public boolean isExists(String name) {

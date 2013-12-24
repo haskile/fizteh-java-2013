@@ -32,7 +32,7 @@ public final class ShellPut extends BaseShellCommand {
     public boolean isAvaliableCommand(final Command command) {
         if (name.equals(command.getArg(0))) {
             if (command.length() < numberOfArgs) {
-                throw new InvalidCommandException(name + " " + hint);
+                throw new IllegalArgumentException(name + " " + hint);
             }
             args = command;
             return true;

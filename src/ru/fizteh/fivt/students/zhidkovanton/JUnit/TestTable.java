@@ -54,11 +54,6 @@ public class TestTable {
         table.remove(null);
     }
 
-
-
-
-
-
     @Test
     public void testRollback() {
         Assert.assertEquals(table.size(), 0);

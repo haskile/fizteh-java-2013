@@ -24,14 +24,8 @@ public class DataBase implements Table {
 
     @Override
     public String get(String key) {
-        if (key == null) {
+        if (key == null || key.trim().equals("")) {
             throw new IllegalArgumentException("Bad key or value!!!");
-        }
-
-        for (int i = 0; i < key.length(); ++i) {
-            if (Character.isWhitespace(key.charAt(i))) {
-                throw new IllegalArgumentException("Wrong key!");
-            }
         }
 
         try {
@@ -93,11 +87,6 @@ public class DataBase implements Table {
             }
         }
 
-        for (int i = 0; i < value.length(); ++i) {
-            if (Character.isWhitespace(value.charAt(i))) {
-                throw new IllegalArgumentException("Wrong key!");
-            }
-        }
         int hashCode = key.hashCode();
         hashCode = Math.abs(hashCode);
         int ndirect = hashCode % 16;
@@ -109,14 +98,8 @@ public class DataBase implements Table {
 
     @Override
     public String remove(String key) {
-        if (key == null) {
+        if (key == null || key.trim().equals("")) {
             throw new IllegalArgumentException("Bad key or value!!!");
-        }
-
-        for (int i = 0; i < key.length(); ++i) {
-            if (Character.isWhitespace(key.charAt(i))) {
-                throw new IllegalArgumentException("Wrong key!");
-            }
         }
 
         int hashCode = key.hashCode();

@@ -21,7 +21,7 @@ public class TestTableProvider {
     }
 
     @Before
-    public void before() throws IOException{
+    public void before() throws IOException {
         provider = factory.create(folder.newFolder().getCanonicalPath());
         Assert.assertNotNull(provider);
     }
@@ -61,7 +61,7 @@ public class TestTableProvider {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testGetTableWithNull(){
+    public void testGetTableWithNull() {
         provider.getTable(null);
     }
 
@@ -71,7 +71,7 @@ public class TestTableProvider {
     }
 
     @Test(expected = IllegalArgumentException.class)
-    public void testRemoveTableWithNull(){
+    public void testRemoveTableWithNull() {
         provider.removeTable(null);
     }
 

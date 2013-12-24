@@ -14,7 +14,7 @@ public final class ShellCreate extends BaseShellCommand {
 
     @Override
     public void execute() {
-        DataBase oldValue = dataBaseFactory.dataFactory.createTable(getArg(1));
+        DataBase oldValue = (DataBase) dataBaseFactory.dataFactory.createTable(getArg(1));
         if (oldValue != null) {
             System.out.println("created");
         } else {

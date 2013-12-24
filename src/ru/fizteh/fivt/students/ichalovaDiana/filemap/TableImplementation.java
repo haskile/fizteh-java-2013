@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -18,6 +19,8 @@ import ru.fizteh.fivt.storage.structured.Table;
 public class TableImplementation implements Table, AutoCloseable {
     private static final int DIR_NUM = 16;
     private static final int FILE_NUM = 16;
+    
+    private static final String NO_TRANSACTION = "0";
     
     private final Path databaseDirectory;
     private final String tableName;
@@ -31,6 +34,11 @@ public class TableImplementation implements Table, AutoCloseable {
     private final Lock writeLock = readWriteLock.writeLock();
     
     private volatile boolean isClosed = false;
+    
+    private ConcurrentHashMap<String, Map<String, Storeable>[][]> transactionsPutChanges 
+        = new ConcurrentHashMap<String, Map<String, Storeable>[][]>();
+    private ConcurrentHashMap<String, Set<String>[][]> transactionsRemoveChanges 
+        = new ConcurrentHashMap<String, Set<String>[][]>();
     
     private ThreadLocal<Map<String, Storeable>[][]> putChanges = new ThreadLocal<Map<String, Storeable>[][]>() {
         @Override
@@ -104,6 +112,33 @@ public class TableImplementation implements Table, AutoCloseable {
         
         return getOriginValue(key);
     }
+    
+    public Storeable get(String transactionID, String key) {
+        isClosed();
+        
+        tableExists();
+        
+        isValidKey(key);
+        
+        Storeable value;
+        
+        int nDirectory = DirectoryAndFileNumberCalculator.getnDirectory(key);
+        int nFile = DirectoryAndFileNumberCalculator.getnFile(key);
+        
+        Map<String, Storeable>[][] putChanges = transactionsPutChanges.get(transactionID);
+        Set<String>[][] removeChanges = transactionsRemoveChanges.get(transactionID);
+        
+        value = putChanges[nDirectory][nFile].get(key);
+        if (value != null) {
+            return value;
+        }
+        
+        if (removeChanges[nDirectory][nFile].contains(key)) {
+            return null;
+        }
+        
+        return getOriginValue(key);
+    }
 
     @Override
     public Storeable put(String key, Storeable value) throws ColumnFormatException {
@@ -126,6 +161,35 @@ public class TableImplementation implements Table, AutoCloseable {
         
         if (removeChanges.get()[nDirectory][nFile].contains(key)) {
             removeChanges.get()[nDirectory][nFile].remove(key);
+            return null;
+        }
+        
+        return getOriginValue(key);
+    }
+    
+    public Storeable put(String transactionID, String key, Storeable value) throws ColumnFormatException {
+        isClosed();
+        
+        tableExists();
+        
+        isValidKey(key);
+        isValidValue(value);
+        
+        int nDirectory = DirectoryAndFileNumberCalculator.getnDirectory(key);
+        int nFile = DirectoryAndFileNumberCalculator.getnFile(key);
+        
+        Map<String, Storeable>[][] putChanges = transactionsPutChanges.get(transactionID);
+        Set<String>[][] removeChanges = transactionsRemoveChanges.get(transactionID);
+        
+        Storeable prevValue = putChanges[nDirectory][nFile].get(key);
+        putChanges[nDirectory][nFile].put(key, value);
+        
+        if (prevValue != null) {
+            return prevValue;
+        }
+        
+        if (removeChanges[nDirectory][nFile].contains(key)) {
+            removeChanges[nDirectory][nFile].remove(key);
             return null;
         }
         
@@ -168,7 +232,26 @@ public class TableImplementation implements Table, AutoCloseable {
         int size;
         readLock.lock();
         try {
-            size = computeOriginSize() + computeAdditionalSize();
+            size = computeOriginSize() + computeAdditionalSize(NO_TRANSACTION);
+        } catch (IOException e) {
+            throw new RuntimeException("Error while computing size: "
+                    + ((e.getMessage() != null) ? e.getMessage() : "unknown error"), e);
+        } finally {
+            readLock.unlock();
+        }
+        
+        return size;
+    }
+    
+    public int size(String transactionID) {
+        isClosed();
+        
+        tableExists();
+        
+        int size;
+        readLock.lock();
+        try {
+            size = computeOriginSize() + computeAdditionalSize(transactionID);
         } catch (IOException e) {
             throw new RuntimeException("Error while computing size: "
                     + ((e.getMessage() != null) ? e.getMessage() : "unknown error"), e);
@@ -203,17 +286,43 @@ public class TableImplementation implements Table, AutoCloseable {
             writeLock.unlock();
         }
         
-        for (int nDirectory = 0; nDirectory < DIR_NUM; ++nDirectory) {
-            for (int nFile = 0; nFile < FILE_NUM; ++nFile) {
-                putChanges.get()[nDirectory][nFile].clear();
-                removeChanges.get()[nDirectory][nFile].clear();
-            }
-        }
+        clearAllChanges();
         
         return changesNumber;
     }
-
-    @Override
+    
+    public int commit(String transactionID) throws IOException {
+        isClosed();
+        
+        tableExists();
+        
+        Map<String, Storeable>[][] putChanges = transactionsPutChanges.get(transactionID);
+        Set<String>[][] removeChanges = transactionsRemoveChanges.get(transactionID);
+        
+        int changesNumber;
+        writeLock.lock();
+        try {
+            changesNumber = countChanges();
+            
+            for (int nDirectory = 0; nDirectory < DIR_NUM; ++nDirectory) {
+                for (int nFile = 0; nFile < FILE_NUM; ++nFile) {
+                    if (!putChanges[nDirectory][nFile].isEmpty() 
+                            || !removeChanges[nDirectory][nFile].isEmpty()) {
+                        
+                        saveAllChangesToFile(nDirectory, nFile);  
+                    }
+                }
+            }
+        } finally {
+            writeLock.unlock();
+        }
+        
+        transactionsPutChanges.remove(transactionID);
+        transactionsRemoveChanges.remove(transactionID);
+        
+        return changesNumber;
+    }
+    
     public int rollback() {
         isClosed();
         
@@ -222,6 +331,19 @@ public class TableImplementation implements Table, AutoCloseable {
         int changesNumber = countChanges();
         
         clearAllChanges();
+        
+        return changesNumber;
+    }
+    
+    public int rollback(String transactionID) {
+        isClosed();
+        
+        tableExists();
+        
+        int changesNumber = countChanges();
+        
+        transactionsPutChanges.remove(transactionID);
+        transactionsRemoveChanges.remove(transactionID);
         
         return changesNumber;
     }
@@ -283,14 +405,25 @@ public class TableImplementation implements Table, AutoCloseable {
         
     }
     
-    private int computeAdditionalSize() {
+    private int computeAdditionalSize(String transactionID) {
         int additionalSize = 0;
+        
+        Map<String, Storeable>[][] putChanges;
+        Set<String>[][] removeChanges;
+        
+        if (transactionID == NO_TRANSACTION) {
+            putChanges = this.putChanges.get();
+            removeChanges = this.removeChanges.get();
+        } else {
+            putChanges = transactionsPutChanges.get(transactionID);
+            removeChanges = transactionsRemoveChanges.get(transactionID);
+        }
         
         readLock.lock();
         try {
             for (int nDirectory = 0; nDirectory < DIR_NUM; ++nDirectory) {
                 for (int nFile = 0; nFile < FILE_NUM; ++nFile) {
-                    for (String key : putChanges.get()[nDirectory][nFile].keySet()) {
+                    for (String key : putChanges[nDirectory][nFile].keySet()) {
                         
                         Storeable originValue = getOriginValue(key);
                         if (originValue == null) {
@@ -298,7 +431,7 @@ public class TableImplementation implements Table, AutoCloseable {
                         }
                     }
                     
-                    for (String key : removeChanges.get()[nDirectory][nFile]) {
+                    for (String key : removeChanges[nDirectory][nFile]) {
                         
                         Storeable originValue = getOriginValue(key);
                         if (originValue != null) {
@@ -402,6 +535,25 @@ public class TableImplementation implements Table, AutoCloseable {
         }
         
         return true;
+    }
+    
+    void createTransaction(String transactionID) {
+        
+        Map<String, Storeable>[][] tempMapArray = new HashMap[DIR_NUM][FILE_NUM];
+        for (int nDirectory = 0; nDirectory < DIR_NUM; ++nDirectory) {
+            for (int nFile = 0; nFile < FILE_NUM; ++nFile) {
+                tempMapArray[nDirectory][nFile] = new HashMap<String, Storeable>();
+            }
+        }
+        transactionsPutChanges.put(transactionID, tempMapArray);
+        
+        Set<String>[][] tempSetArray = new HashSet[DIR_NUM][FILE_NUM];
+        for (int nDirectory = 0; nDirectory < DIR_NUM; ++nDirectory) {
+            for (int nFile = 0; nFile < FILE_NUM; ++nFile) {
+                tempSetArray[nDirectory][nFile] = new HashSet<String>();
+            }
+        }
+        transactionsRemoveChanges.put(transactionID, tempSetArray);
     }
     
     private int getStoreableSize(Storeable storeable) {

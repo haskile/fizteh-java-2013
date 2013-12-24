@@ -74,6 +74,9 @@ public class DataBase implements Table {
 
     @Override
     public int size() {
+        if (state == null) {
+            throw new IllegalArgumentException();
+        }
         int ans = 0;
         for (int i = 0; i < 256; ++i) {
             if (state[i] != null) {
@@ -195,7 +198,9 @@ public class DataBase implements Table {
 
     public int getNumberOfChanges() {
         int ans = 0;
-
+        if (state == null) {
+            throw new IllegalArgumentException();
+        }
         for (int i = 0; i < 256; ++i) {
             if (clone[i] != null) {
                 ans += clone[i].getNumberOfChanges(state[i]);

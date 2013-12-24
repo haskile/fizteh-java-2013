@@ -11,9 +11,6 @@ public class DataBase implements Table {
     private static State[] clone;
     private String tableName = null;
 
-    public DataBase() {
-    }
-
     public DataBase(String tableName) {
         tableDir = System.getProperty("fizteh.db.dir");
         state = new State[256];
@@ -86,7 +83,7 @@ public class DataBase implements Table {
 
     @Override
     public String put(String key, String value) {
-        if (key == null || value == null || key.trim() == "" || value.trim() == "") {
+        if (key == null || value == null || key.trim().equals("") || value.trim().equals("")) {
             throw new IllegalArgumentException();
         }
 

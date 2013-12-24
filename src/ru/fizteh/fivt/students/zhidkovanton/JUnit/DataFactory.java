@@ -72,7 +72,7 @@ public class DataFactory implements TableProvider {
             throw new IllegalArgumentException();
         }
 
-        return new DataBase();
+        return new DataBase(fullName);
     }
 
     @Override

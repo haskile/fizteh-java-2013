@@ -31,6 +31,12 @@ public class DataBase implements Table {
             throw new IllegalArgumentException("Bad key or value!!!");
         }
 
+        for (int i = 0; i < key.length(); ++i) {
+            if (Character.isWhitespace(key.charAt(i))) {
+                throw new IllegalArgumentException("Wrong key!");
+            }
+        }
+
         int hashCode = key.hashCode();
         hashCode = Math.abs(hashCode);
         int ndirect = hashCode % 16;
@@ -76,6 +82,19 @@ public class DataBase implements Table {
         if (key == null || value == null) {
             throw new IllegalArgumentException();
         }
+
+        for (int i = 0; i < key.length(); ++i) {
+            if (Character.isWhitespace(key.charAt(i))) {
+                throw new IllegalArgumentException("Wrong key!");
+            }
+        }
+
+        for (int i = 0; i < value.length(); ++i) {
+            if (Character.isWhitespace(value.charAt(i))) {
+                throw new IllegalArgumentException("Wrong key!");
+            }
+        }
+
         int hashCode = key.hashCode();
         hashCode = Math.abs(hashCode);
         int ndirect = hashCode % 16;
@@ -88,6 +107,12 @@ public class DataBase implements Table {
     public String remove(String key) {
         if (key == null) {
             throw new IllegalArgumentException("Bad key or value!!!");
+        }
+
+        for (int i = 0; i < key.length(); ++i) {
+            if (Character.isWhitespace(key.charAt(i))) {
+                throw new IllegalArgumentException("Wrong key!");
+            }
         }
 
         int hashCode = key.hashCode();

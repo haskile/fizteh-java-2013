@@ -54,7 +54,7 @@ public class FileService {
         try {
             TableProviderFactory factory = new DataFactoryProvider();
 
-            dataBaseFactory = new DataBaseFactory((DataFactory) factory.create(System.getProperty("fizteh.db.dir")));
+            dataBaseFactory = new DataBaseFactory(factory.create(System.getProperty("fizteh.db.dir")));
 
             shell = new Shell();
 

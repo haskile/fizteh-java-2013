@@ -23,8 +23,6 @@ public class JettyServer {
     static final int DEFAULT_PORT = 10001;
     static final int MAX_TRANSACTION_ID = 99999;
     
-    private int lastUsedTransactionID = -1;
-    
     private Server server;
     private int port;
     
@@ -83,7 +81,7 @@ public class JettyServer {
     
     private String getNewTransactionID(TableImplementation table) {
         String tid;
-        for (int id = lastUsedTransactionID + 1; id <= MAX_TRANSACTION_ID; ++id) {
+        for (int id = 0; id <= MAX_TRANSACTION_ID; ++id) {
             tid = String.format("%05d", id);
             
             if (!transactions.containsKey(tid)) {
@@ -91,10 +89,6 @@ public class JettyServer {
                 try {
                     if (!transactions.containsKey(tid)) {
                         transactions.put(tid, table);
-                        lastUsedTransactionID = id;
-                        if (lastUsedTransactionID > MAX_TRANSACTION_ID - 100) {
-                            lastUsedTransactionID = 0;
-                        }
                         return tid;
                     }
                 } finally {
@@ -110,6 +104,8 @@ public class JettyServer {
         @Override
         protected void doGet(HttpServletRequest request, HttpServletResponse response)
                 throws ServletException, IOException {
+            
+            System.out.println("BEGIN");
             
             String tablename = request.getParameter("table");
             
@@ -148,6 +144,8 @@ public class JettyServer {
         protected void doGet(HttpServletRequest request, HttpServletResponse response)
                 throws ServletException, IOException {
             
+            System.out.println("COMMIT");
+            
             String transactionID = request.getParameter("tid");
             
             if (transactionID == null) {
@@ -180,6 +178,8 @@ public class JettyServer {
         protected void doGet(HttpServletRequest request, HttpServletResponse response)
                 throws ServletException, IOException {
             
+            System.out.println("ROLLBACK");
+            
             String transactionID = request.getParameter("tid");
             
             if (transactionID == null) {
@@ -211,6 +211,8 @@ public class JettyServer {
         @Override
         protected void doGet(HttpServletRequest request, HttpServletResponse response)
                 throws ServletException, IOException {
+            
+            System.out.println("GET");
             
             String transactionID = request.getParameter("tid");
             String key = request.getParameter("key");
@@ -248,6 +250,8 @@ public class JettyServer {
         @Override
         protected void doGet(HttpServletRequest request, HttpServletResponse response)
                 throws ServletException, IOException {
+            
+            System.out.println("PUT");
             
             String transactionID = request.getParameter("tid");
             String key = request.getParameter("key");
@@ -294,6 +298,8 @@ public class JettyServer {
         @Override
         protected void doGet(HttpServletRequest request, HttpServletResponse response)
                 throws ServletException, IOException {
+            
+            System.out.println("SIZE");
             
             String transactionID = request.getParameter("tid");
             

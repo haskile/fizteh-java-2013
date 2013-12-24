@@ -96,7 +96,7 @@ public class State {
                     int valueLength = in.readInt();
                     if ((keyLength <= 0) || (valueLength <= 0)) {
                         in.close();
-                        throw new IOException("wrong format");
+                        throw new IllegalArgumentException("wrong format");
                     }
 
                     byte[] key;
@@ -107,7 +107,7 @@ public class State {
                         value = new byte[valueLength];
                     } catch (OutOfMemoryError e) {
                         in.close();
-                        throw new IOException("too large key or value");
+                        throw new IllegalArgumentException("too large key or value");
                     }
                     in.read(key);
                     in.read(value);
@@ -118,7 +118,7 @@ public class State {
                 in.close();
             }
         } catch (IOException e) {
-            throw new FileAccessException(e.getMessage());
+            throw new IllegalArgumentException(e.getMessage());
         }
     }
 

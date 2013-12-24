@@ -139,7 +139,7 @@ public class DataBase implements Table {
         if (tableName == null) {
             return;
         }
-        String shablon = tableDir + File.separator + tableName + File.separator;
+        String shablon = tableName + File.separator;
 
         for (int i = 0; i < 16; ++i) {
             String directory = shablon + Integer.toString(i) + ".dir";
@@ -212,7 +212,7 @@ public class DataBase implements Table {
             state[i].clear();
         }
 
-        String shablon = tableDir + File.separator + tableName + File.separator;
+        String shablon = tableName + File.separator;
 
         for (int i = 0; i < 16; ++i) {
             String directory = shablon + Integer.toString(i) + ".dir";

@@ -107,7 +107,7 @@ public class JettyServer {
             String tablename = request.getParameter("table");
             
             if (tablename == null) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "missing arguments: should be table");
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "missing arguments: should be table");
                 return;
             }
             
@@ -144,7 +144,7 @@ public class JettyServer {
             String transactionID = request.getParameter("tid");
             
             if (transactionID == null) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "missing arguments: should be tid");
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "missing arguments: should be tid");
                 return;
             }
             if (!transactions.containsKey(transactionID)) {
@@ -176,7 +176,7 @@ public class JettyServer {
             String transactionID = request.getParameter("tid");
             
             if (transactionID == null) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "missing arguments: should be tid");
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "missing arguments: should be tid");
                 return;
             }
             if (!transactions.containsKey(transactionID)) {
@@ -209,7 +209,7 @@ public class JettyServer {
             String key = request.getParameter("key");
             
             if (transactionID == null || key == null) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "missing arguments: should be tid and key");
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "missing arguments: should be tid and key");
                 return;
             }
             if (!transactions.containsKey(transactionID)) {
@@ -241,7 +241,7 @@ public class JettyServer {
             String valueString = request.getParameter("value");
             
             if (transactionID == null || key == null || valueString == null) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, 
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, 
                         "missing arguments: should be tid, key and value");
                 return;
             }
@@ -251,9 +251,6 @@ public class JettyServer {
             }
             
             TableImplementation table = transactions.get(transactionID);
-            
-            System.out.println(valueString);
-            System.out.println(key);
             
             Storeable value;
             try {
@@ -283,7 +280,7 @@ public class JettyServer {
             String transactionID = request.getParameter("tid");
             
             if (transactionID == null) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "missing arguments: should be tid");
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "missing arguments: should be tid");
                 return;
             }
             if (!transactions.containsKey(transactionID)) {

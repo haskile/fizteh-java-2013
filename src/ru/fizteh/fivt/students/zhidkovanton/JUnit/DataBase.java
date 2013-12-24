@@ -74,14 +74,13 @@ public class DataBase implements Table {
     @Override
     public String put(String key, String value) {
         if (key == null || value == null) {
-            throw new IllegalArgumentException("Bad key or value!!!");
+            throw new IllegalArgumentException();
         }
         int hashCode = key.hashCode();
         hashCode = Math.abs(hashCode);
         int ndirect = hashCode % 16;
         int nfile = hashCode / 16 % 16;
         String oldValue = state[16 * ndirect + nfile].put(key, value);
-        boolean a = state[0].isEmpty();
         return oldValue;
     }
 

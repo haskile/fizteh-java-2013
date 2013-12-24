@@ -266,6 +266,11 @@ public class JettyServer {
             }
             
             Storeable oldValue = table.put(transactionID, key, value);
+            
+            if (oldValue == null) {
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "new value");
+                return;
+            }
 
             response.setStatus(HttpServletResponse.SC_OK);
 

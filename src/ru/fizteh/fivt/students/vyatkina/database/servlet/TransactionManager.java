@@ -15,10 +15,10 @@ import ru.fizteh.fivt.students.vyatkina.database.servlet.commands.ServletCommand
 import ru.fizteh.fivt.students.vyatkina.database.servlet.commands.SizeCommand;
 import ru.fizteh.fivt.students.vyatkina.database.storable.StorableTableProviderImp;
 
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -31,7 +31,7 @@ public class TransactionManager {
     private StorableTableProviderImp tableProvider;
     private ReadWriteLock transactionKeeper = new ReentrantReadWriteLock(true);
     private static final String NOT_STARTED = "not started";
-    private Set<ServletCommand> servletCommands = new HashSet<>();
+    private List<ServletCommand> servletCommands = new ArrayList<>();
 
     public TransactionManager(State state, StorableTableProviderImp tableProvider) {
         this.state = state;
@@ -135,7 +135,12 @@ public class TransactionManager {
     }
 
     public void deleteTransaction(Integer id) {
+        transactionKeeper.writeLock().lock();
+        try {
         tables.remove(id);
+        } finally {
+            transactionKeeper.writeLock().unlock();
+        }
     }
 
 }

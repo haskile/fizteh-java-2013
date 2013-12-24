@@ -20,7 +20,7 @@ public class TableImplementation implements Table, AutoCloseable {
     private static final int DIR_NUM = 16;
     private static final int FILE_NUM = 16;
     
-    private static final String NO_TRANSACTION = "0";
+    static final String NO_TRANSACTION = "0";
     
     private final Path databaseDirectory;
     private final String tableName;

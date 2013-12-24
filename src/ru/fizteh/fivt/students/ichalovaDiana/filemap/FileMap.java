@@ -191,7 +191,7 @@ public class FileMap {
                 String tableName = arguments[1];
                 
                 if (FileMap.table != null) {
-                    int changesNumber = FileMap.table.countChanges();
+                    int changesNumber = FileMap.table.countChanges(TableImplementation.NO_TRANSACTION);
                     if (changesNumber > 0) {
                         System.out.println(changesNumber + " unsaved changes");
                         return;

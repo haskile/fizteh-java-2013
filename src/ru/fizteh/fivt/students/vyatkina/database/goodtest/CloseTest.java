@@ -19,12 +19,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CloseTest {
+
     private StorableTableProviderFactory factory;
     private String location;
-    private String TABLE_NAME = "GoodTable";
+    private static final String TABLE_NAME = "GoodTable";
     private final List<Class<?>> classList;
-    private final StorableRow SAMPLE_VALUE;
-    private final String KEY = "JustAKey";
+    private final StorableRow sampleValue;
+    private static final String KEY = "JustAKey";
 
 
     public CloseTest() {
@@ -35,21 +36,22 @@ public class CloseTest {
         ArrayList<Object> valueList = new ArrayList<>();
         valueList.add(new String("Bla"));
         valueList.add(new Integer(2));
-        SAMPLE_VALUE = new StorableRow(shape, valueList);
+        sampleValue = new StorableRow(shape, valueList);
     }
+
     @Rule
     public TemporaryFolder folder = new TemporaryFolder();
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
     @Before
-    public void init () {
+    public void init() {
         factory = new StorableTableProviderFactory();
         location = folder.getRoot().toPath().resolve("tableProviderPlace").toString();
     }
 
     @Test
-    public void createTableProviderAndCloseFactory () throws IOException {
+    public void createTableProviderAndCloseFactory() throws IOException {
         TableProvider tableProvider = factory.create(location);
         factory.close();
         thrown.expect(IllegalStateException.class);
@@ -57,9 +59,9 @@ public class CloseTest {
     }
 
     @Test
-    public void createTableProviderAndCloseIt () throws IOException {
-        StorableTableProvider tableProvider =  (StorableTableProvider) factory.create(location);
-        Table table = tableProvider.createTable(TABLE_NAME,classList);
+    public void createTableProviderAndCloseIt() throws IOException {
+        StorableTableProvider tableProvider = (StorableTableProvider) factory.create(location);
+        Table table = tableProvider.createTable(TABLE_NAME, classList);
         tableProvider.close();
         thrown.expect(IllegalStateException.class);
         tableProvider.getTable(TABLE_NAME);
@@ -67,44 +69,44 @@ public class CloseTest {
     }
 
     @Test
-    public void closeTableProviderTwiceShouldNotFail () throws IOException {
-        StorableTableProvider tableProvider =  (StorableTableProvider) factory.create(location);
+    public void closeTableProviderTwiceShouldNotFail() throws IOException {
+        StorableTableProvider tableProvider = (StorableTableProvider) factory.create(location);
         tableProvider.close();
         tableProvider.close();
         factory.close();
     }
 
     @Test
-    public void closeTableFromTable () throws IOException {
-        StorableTableProvider tableProvider =  (StorableTableProvider) factory.create(location);
-        StorableTable table = (StorableTable) tableProvider.createTable(TABLE_NAME,classList);
+    public void closeTableFromTable() throws IOException {
+        StorableTableProvider tableProvider = (StorableTableProvider) factory.create(location);
+        StorableTable table = (StorableTable) tableProvider.createTable(TABLE_NAME, classList);
         table.close();
         thrown.expect(IllegalStateException.class);
-        table.put (null,null);
+        table.put(null, null);
     }
 
     @Test
-    public void closeTableProviderAndThenTryToUseTable () throws IOException {
-        StorableTableProvider tableProvider =  (StorableTableProvider) factory.create(location);
-        StorableTable table = (StorableTable) tableProvider.createTable(TABLE_NAME,classList);
+    public void closeTableProviderAndThenTryToUseTable() throws IOException {
+        StorableTableProvider tableProvider = (StorableTableProvider) factory.create(location);
+        StorableTable table = (StorableTable) tableProvider.createTable(TABLE_NAME, classList);
         tableProvider.close();
         thrown.expect(IllegalStateException.class);
-        table.put (null,null);
+        table.put(null, null);
     }
 
     @Test
-    public void closeFactoryAndThenUseTable () throws IOException {
-        StorableTableProvider tableProvider =  (StorableTableProvider) factory.create(location);
-        StorableTable table = (StorableTable) tableProvider.createTable(TABLE_NAME,classList);
+    public void closeFactoryAndThenUseTable() throws IOException {
+        StorableTableProvider tableProvider = (StorableTableProvider) factory.create(location);
+        StorableTable table = (StorableTable) tableProvider.createTable(TABLE_NAME, classList);
         factory.close();
         thrown.expect(IllegalStateException.class);
-        table.put (null,null);
+        table.put(null, null);
     }
 
     @Test
-    public void closeTableAndGetAnotherInTableProvider () throws IOException {
-        StorableTableProvider tableProvider =  (StorableTableProvider) factory.create(location);
-        StorableTable table = (StorableTable) tableProvider.createTable(TABLE_NAME,classList);
+    public void closeTableAndGetAnotherInTableProvider() throws IOException {
+        StorableTableProvider tableProvider = (StorableTableProvider) factory.create(location);
+        StorableTable table = (StorableTable) tableProvider.createTable(TABLE_NAME, classList);
         Assert.assertEquals("In tableProvider should be table", table, tableProvider.getTable(TABLE_NAME));
         table.close();
         Assert.assertNotEquals("In tableProvider should  be an other table", table, tableProvider.getTable(TABLE_NAME));
@@ -115,11 +117,11 @@ public class CloseTest {
     }
 
     @Test
-    public void inNewTableWithTheSameNameShouldNotBeOldNotCommitedValues () throws IOException {
-        StorableTableProvider tableProvider =  (StorableTableProvider) factory.create(location);
-        StorableTable oldTable = (StorableTable) tableProvider.createTable(TABLE_NAME,classList);
+    public void inNewTableWithTheSameNameShouldNotBeOldNotCommitedValues() throws IOException {
+        StorableTableProvider tableProvider = (StorableTableProvider) factory.create(location);
+        StorableTable oldTable = (StorableTable) tableProvider.createTable(TABLE_NAME, classList);
         Assert.assertEquals("In tableProvider should be  table", oldTable, tableProvider.getTable(TABLE_NAME));
-        Assert.assertEquals("New value added should be null", null,oldTable.put(KEY,SAMPLE_VALUE));
+        Assert.assertEquals("New value added should be null", null, oldTable.put(KEY, sampleValue));
         oldTable.close();
         StorableTable newTable = (StorableTable) tableProvider.getTable(TABLE_NAME);
         Assert.assertEquals("In new table should not be old values", null, newTable.get(KEY));
@@ -127,15 +129,15 @@ public class CloseTest {
     }
 
     @Test
-    public void inNewTableWithTheSameNameShouldNotBeOldCommitedValues () throws IOException {
-        StorableTableProvider tableProvider =  (StorableTableProvider) factory.create(location);
-        StorableTable oldTable = (StorableTable) tableProvider.createTable(TABLE_NAME,classList);
+    public void inNewTableWithTheSameNameShouldNotBeOldCommitedValues() throws IOException {
+        StorableTableProvider tableProvider = (StorableTableProvider) factory.create(location);
+        StorableTable oldTable = (StorableTable) tableProvider.createTable(TABLE_NAME, classList);
         Assert.assertEquals("In tableProvider should be  table", oldTable, tableProvider.getTable(TABLE_NAME));
-        Assert.assertEquals("New value added should be null", null,oldTable.put(KEY,SAMPLE_VALUE));
+        Assert.assertEquals("New value added should be null", null, oldTable.put(KEY, sampleValue));
         Assert.assertEquals("Commit one value", 1, oldTable.commit());
         oldTable.close();
         StorableTable newTable = (StorableTable) tableProvider.getTable(TABLE_NAME);
-        Assert.assertEquals("In new table should not be old values", SAMPLE_VALUE, newTable.get(KEY));
+        Assert.assertEquals("In new table should not be old values", sampleValue, newTable.get(KEY));
         factory.close();
     }
 

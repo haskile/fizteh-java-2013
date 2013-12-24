@@ -6,27 +6,27 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class CloseState {
 
     private AtomicBoolean isClosed = new AtomicBoolean(false);
-    private final String StandardCloseMessage;
+    private final String standardCloseMessage;
 
-    public CloseState () {
-        StandardCloseMessage = "The object is closed";
+    public CloseState() {
+        standardCloseMessage = "The object is closed";
     }
 
-    public CloseState (String standardCloseMessage) {
-        this.StandardCloseMessage = standardCloseMessage;
+    public CloseState(String standardCloseMessage) {
+        this.standardCloseMessage = standardCloseMessage;
     }
 
-    public void close () {
+    public void close() {
         isClosed.set(true);
     }
 
-    public boolean isAlreadyClosed () {
-       return isClosed.get();
+    public boolean isAlreadyClosed() {
+        return isClosed.get();
     }
 
     public void isClosedCheck() {
         if (isClosed.get()) {
-            throw new IllegalStateException(StandardCloseMessage);
+            throw new IllegalStateException(standardCloseMessage);
         }
     }
 

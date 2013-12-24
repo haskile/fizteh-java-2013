@@ -86,7 +86,7 @@ public class DataBase implements Table {
 
     @Override
     public String put(String key, String value) {
-        if (key == null || value == null) {
+        if (key == null || value == null || key.trim() == "" || value.trim() == "") {
             throw new IllegalArgumentException();
         }
 

@@ -4,10 +4,14 @@ import ru.fizteh.fivt.storage.strings.TableProvider;
 import ru.fizteh.fivt.storage.strings.Table;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 public class DataFactory implements TableProvider {
     private String currentTable = null;
     private String tableDir;
+    private Map<String, DataBase> allTables = new HashMap<>();
+
 
     public DataFactory(String directory) {
         tableDir = directory;
@@ -64,15 +68,21 @@ public class DataFactory implements TableProvider {
 
         File file = new File(fullName);
 
-        if (file.exists()) {
-            return null;
+        DataBase dataBase;
+        if (allTables.get(name) != null) {
+            dataBase = allTables.get(name);
+        } else {
+            dataBase = new DataBase(name);
+            allTables.put(name, dataBase);
         }
 
-        if (!file.mkdir()) {
-            throw new IllegalArgumentException();
+        if (!file.exists()) {
+            if (!file.mkdir()) {
+                throw new IllegalArgumentException();
+            }
         }
 
-        return new DataBase(name);
+        return dataBase;
     }
 
     @Override

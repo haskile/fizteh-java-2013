@@ -37,12 +37,16 @@ public class DataBase implements Table {
             }
         }
 
-        int hashCode = key.hashCode();
-        hashCode = Math.abs(hashCode);
-        int ndirect = hashCode % 16;
-        int nfile = hashCode / 16 % 16;
-        String oldValue = state[16 * ndirect + nfile].get(key);
-        return oldValue;
+        try {
+            int hashCode = key.hashCode();
+            hashCode = Math.abs(hashCode);
+            int ndirect = hashCode % 16;
+            int nfile = hashCode / 16 % 16;
+            String oldValue = state[16 * ndirect + nfile].get(key);
+            return oldValue;
+        } catch (NullPointerException e) {
+            throw new IllegalArgumentException();
+        }
     }
 
     @Override
@@ -72,7 +76,9 @@ public class DataBase implements Table {
     public int size() {
         int ans = 0;
         for (int i = 0; i < 256; ++i) {
-            ans += state[i].size();
+            if (state[i] != null) {
+                ans += state[i].size();
+            }
         }
         return ans;
     }
@@ -191,7 +197,9 @@ public class DataBase implements Table {
         int ans = 0;
 
         for (int i = 0; i < 256; ++i) {
-            ans += clone[i].getNumberOfChanges(state[i]);
+            if (clone[i] != null) {
+                ans += clone[i].getNumberOfChanges(state[i]);
+            }
         }
         return ans;
     }

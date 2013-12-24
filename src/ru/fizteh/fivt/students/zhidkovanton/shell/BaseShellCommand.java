@@ -15,10 +15,10 @@ public abstract class BaseShellCommand implements ShellCommand {
     public boolean isAvaliableCommand(final Command command) {
         if (name.equals(command.getArg(0))) {
             if (command.length() > numberOfArgs) {
-                throw new InvalidCommandException(name + ": too many arguments");
+                throw new IllegalArgumentException(name + ": too many arguments");
             }
             if (command.length() < numberOfArgs) {
-                throw new InvalidCommandException(name + " " + hint);
+                throw new IllegalArgumentException(name + " " + hint);
             }
             args = command;
             return true;

@@ -51,25 +51,25 @@ public class FileService {
     }
 
     public static void main(String[] args) throws IOException {
-
-        TableProviderFactory factory = new DataFactoryProvider();
-
-        dataBaseFactory = new DataBaseFactory((DataFactory) factory.create(System.getProperty("fizteh.db.dir")));
-
-        shell = new Shell();
-
-        shell.add(new ShellPut(dataBaseFactory));
-        shell.add(new ShellExit());
-        shell.add(new ShellGet(dataBaseFactory));
-        shell.add(new ShellRemove(dataBaseFactory));
-        shell.add(new ShellCreate(dataBaseFactory));
-        shell.add(new ShellDrop(dataBaseFactory));
-        shell.add(new ShellUse(dataBaseFactory));
-        shell.add(new ShellSize(dataBaseFactory));
-        shell.add(new ShellRollback(dataBaseFactory));
-        shell.add(new ShellCommit(dataBaseFactory));
-
         try {
+            TableProviderFactory factory = new DataFactoryProvider();
+
+            dataBaseFactory = new DataBaseFactory((DataFactory) factory.create(System.getProperty("fizteh.db.dir")));
+
+            shell = new Shell();
+
+            shell.add(new ShellPut(dataBaseFactory));
+            shell.add(new ShellExit());
+            shell.add(new ShellGet(dataBaseFactory));
+            shell.add(new ShellRemove(dataBaseFactory));
+            shell.add(new ShellCreate(dataBaseFactory));
+            shell.add(new ShellDrop(dataBaseFactory));
+            shell.add(new ShellUse(dataBaseFactory));
+            shell.add(new ShellSize(dataBaseFactory));
+            shell.add(new ShellRollback(dataBaseFactory));
+            shell.add(new ShellCommit(dataBaseFactory));
+
+
             if (args.length == 0) {
                 interactiveMode();
             } else {

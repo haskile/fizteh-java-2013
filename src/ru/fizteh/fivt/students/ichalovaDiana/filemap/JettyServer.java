@@ -209,7 +209,8 @@ public class JettyServer {
             String key = request.getParameter("key");
             
             if (transactionID == null || key == null) {
-                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "missing arguments: should be tid and key");
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                        "missing arguments: should be tid and key");
                 return;
             }
             if (!transactions.containsKey(transactionID)) {
@@ -261,7 +262,7 @@ public class JettyServer {
             try {
                 value = tableProvider.deserialize(table, valueString);
             } catch (ParseException e) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "invalid value: " + e.getMessage() + " " + e.getErrorOffset());
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "invalid value: " + e.getMessage());
                 return;
             }
             

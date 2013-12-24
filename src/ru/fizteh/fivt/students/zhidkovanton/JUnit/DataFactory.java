@@ -36,7 +36,7 @@ public class DataFactory implements TableProvider {
             String fullName = tableDir + File.separator + name;
             deleteDirectory(fullName);
         } else {
-            throw new IllegalStateException("Table doesn't exist");
+            throw new IllegalStateException();
         }
 
     }
@@ -47,12 +47,12 @@ public class DataFactory implements TableProvider {
 
     private void checkName(String name) {
         if ((name == null) || name.trim().length() == 0) {
-            throw new IllegalArgumentException("Cannot create table! Wrong name!");
+            throw new IllegalArgumentException();
         }
 
         if (name.matches("[" + '"' + "'\\/:/*/?/</>/|/.\\\\]+") || name.contains(File.separator)
                 || name.contains(".")) {
-            throw new IllegalArgumentException("Wrong symbols in name!");
+            throw new IllegalArgumentException();
         }
     }
 
@@ -67,11 +67,8 @@ public class DataFactory implements TableProvider {
             return null;
         }
 
-        if (name == null) {
-            System.exit(1);
-        }
         if (!file.mkdir()) {
-            throw new IllegalArgumentException("Cannot create table " + tableDir);
+            throw new IllegalArgumentException();
         }
 
         return new DataBase();

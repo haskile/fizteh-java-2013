@@ -14,7 +14,8 @@ public final class ShellDrop extends BaseShellCommand {
 
     @Override
     public void execute() {
-        if (dataBaseFactory.dataFactory.isExists(getArg(1))) {
+        DataFactory dataFactory = (DataFactory) dataBaseFactory.dataFactory;
+        if (dataFactory.isExists(getArg(1))) {
             if (dataBaseFactory.dataBase != null) {
                 if (getArg(1).equals(dataBaseFactory.dataBase.getName())) {
                     dataBaseFactory.dataBase = null;

@@ -16,17 +16,21 @@ public final class ShellUse extends BaseShellCommand {
     public void execute() {
         int numberOfChanges = 0;
         if (dataBaseFactory.dataBase != null) {
-            numberOfChanges = dataBaseFactory.dataBase.getNumberOfChanges();
+            DataBase dataBase = (DataBase) dataBaseFactory.dataBase;
+            numberOfChanges = dataBase.getNumberOfChanges();
         }
         if (numberOfChanges != 0) {
             System.out.println(numberOfChanges + " unsaved changes");
         } else {
-            if (!dataBaseFactory.dataFactory.isExists(getArg(1))) {
+            DataFactory dataFactory = (DataFactory) dataBaseFactory.dataFactory;
+
+            if (!dataFactory.isExists(getArg(1))) {
                 System.out.println(getArg(1) + " not exists");
             } else {
                 System.out.println("using " + getArg(1));
                 dataBaseFactory.dataBase = (DataBase) dataBaseFactory.dataFactory.getTable(getArg(1));
-                dataBaseFactory.dataBase.read();
+                DataBase dataBase = (DataBase) dataBaseFactory.dataBase;
+                dataBase.read();
             }
         }
     }

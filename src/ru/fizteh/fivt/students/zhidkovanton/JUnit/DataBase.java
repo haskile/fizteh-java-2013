@@ -108,7 +108,7 @@ public class DataBase implements Table {
         if (tableName == null) {
             return;
         }
-        String shablon = tableName + File.separator;
+        String shablon = tableDir + File.separator + tableName + File.separator;
 
         for (int i = 0; i < 16; ++i) {
             String directory = shablon + Integer.toString(i) + ".dir";
@@ -177,7 +177,7 @@ public class DataBase implements Table {
             state[i].clear();
         }
 
-        String shablon = tableName + File.separator;
+        String shablon = tableDir + File.separator + tableName + File.separator;
 
         for (int i = 0; i < 16; ++i) {
             String directory = shablon + Integer.toString(i) + ".dir";

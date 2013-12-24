@@ -1,6 +1,7 @@
 package ru.fizteh.fivt.students.zhidkovanton.JUnit;
 
 import ru.fizteh.fivt.storage.strings.TableProvider;
+import ru.fizteh.fivt.storage.strings.Table;
 
 import java.io.File;
 
@@ -57,7 +58,7 @@ public class DataFactory implements TableProvider {
     }
 
     @Override
-    public DataBase createTable(String name) {
+    public Table createTable(String name) {
         checkName(name);
         String fullName = tableDir + File.separator + name;
 
@@ -75,7 +76,7 @@ public class DataFactory implements TableProvider {
     }
 
     @Override
-    public DataBase getTable(String name) {
+    public Table getTable(String name) {
         checkName(name);
         String fullName = tableDir + File.separator + name;
 

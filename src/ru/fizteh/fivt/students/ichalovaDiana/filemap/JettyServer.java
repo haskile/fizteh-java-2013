@@ -148,7 +148,7 @@ public class JettyServer {
                 return;
             }
             if (!transactions.containsKey(transactionID)) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "transaction not found");
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "transaction not found");
                 return;
             }
             
@@ -180,7 +180,7 @@ public class JettyServer {
                 return;
             }
             if (!transactions.containsKey(transactionID)) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "transaction not found");
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "transaction not found");
                 return;
             }
             
@@ -213,7 +213,7 @@ public class JettyServer {
                 return;
             }
             if (!transactions.containsKey(transactionID)) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "transaction not found");
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "transaction not found");
                 return;
             }
             
@@ -251,7 +251,7 @@ public class JettyServer {
                 return;
             }
             if (!transactions.containsKey(transactionID)) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "transaction not found");
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "transaction not found");
                 return;
             }
             
@@ -294,7 +294,7 @@ public class JettyServer {
                 return;
             }
             if (!transactions.containsKey(transactionID)) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "transaction not found");
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "transaction not found");
                 return;
             }
             

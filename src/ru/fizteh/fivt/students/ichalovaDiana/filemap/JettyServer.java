@@ -105,8 +105,6 @@ public class JettyServer {
         protected void doGet(HttpServletRequest request, HttpServletResponse response)
                 throws ServletException, IOException {
             
-            System.out.println("BEGIN");
-            
             String tablename = request.getParameter("table");
             
             if (tablename == null) {
@@ -144,8 +142,6 @@ public class JettyServer {
         protected void doGet(HttpServletRequest request, HttpServletResponse response)
                 throws ServletException, IOException {
             
-            System.out.println("COMMIT");
-            
             String transactionID = request.getParameter("tid");
             
             if (transactionID == null) {
@@ -178,8 +174,6 @@ public class JettyServer {
         protected void doGet(HttpServletRequest request, HttpServletResponse response)
                 throws ServletException, IOException {
             
-            System.out.println("ROLLBACK");
-            
             String transactionID = request.getParameter("tid");
             
             if (transactionID == null) {
@@ -211,8 +205,6 @@ public class JettyServer {
         @Override
         protected void doGet(HttpServletRequest request, HttpServletResponse response)
                 throws ServletException, IOException {
-            
-            System.out.println("GET");
             
             String transactionID = request.getParameter("tid");
             String key = request.getParameter("key");
@@ -250,8 +242,6 @@ public class JettyServer {
         @Override
         protected void doGet(HttpServletRequest request, HttpServletResponse response)
                 throws ServletException, IOException {
-            
-            System.out.println("PUT");
             
             String transactionID = request.getParameter("tid");
             String key = request.getParameter("key");
@@ -298,8 +288,6 @@ public class JettyServer {
         @Override
         protected void doGet(HttpServletRequest request, HttpServletResponse response)
                 throws ServletException, IOException {
-            
-            System.out.println("SIZE");
             
             String transactionID = request.getParameter("tid");
             

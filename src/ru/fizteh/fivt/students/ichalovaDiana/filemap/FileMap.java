@@ -473,6 +473,10 @@ public class FileMap {
                 if (arguments.length != ARG_NUM) {
                     throw new IllegalArgumentException("Illegal number of arguments");
                 }
+                
+                if (server != null && server.isStarted()) {
+                    server.stop();
+                }
 
                 System.out.println("exit");
                 System.exit(0);

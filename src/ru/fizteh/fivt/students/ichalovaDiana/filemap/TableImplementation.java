@@ -40,7 +40,7 @@ public class TableImplementation implements Table, AutoCloseable {
     private ConcurrentHashMap<String, Set<String>[][]> transactionsRemoveChanges 
         = new ConcurrentHashMap<String, Set<String>[][]>();
     
-    /*private ThreadLocal<Map<String, Storeable>[][]> putChanges = new ThreadLocal<Map<String, Storeable>[][]>() {
+    private ThreadLocal<Map<String, Storeable>[][]> putChanges = new ThreadLocal<Map<String, Storeable>[][]>() {
         @Override
         protected Map<String, Storeable>[][] initialValue() {
             Map<String, Storeable>[][] tempMapArray = new HashMap[DIR_NUM][FILE_NUM];
@@ -51,8 +51,8 @@ public class TableImplementation implements Table, AutoCloseable {
             }
             return tempMapArray;
         }
-    };*/
-    /*private ThreadLocal<Set<String>[][]> removeChanges = new ThreadLocal<Set<String>[][]>() {
+    };
+    private ThreadLocal<Set<String>[][]> removeChanges = new ThreadLocal<Set<String>[][]>() {
         @Override
         protected Set<String>[][] initialValue() {
             Set<String>[][] tempSetArray = new HashSet[DIR_NUM][FILE_NUM];
@@ -63,7 +63,7 @@ public class TableImplementation implements Table, AutoCloseable {
             }
             return tempSetArray;
         }
-    };*/
+    };
     
     public TableImplementation(TableProviderImplementation tableProvider, Path databaseDirectory, 
             String tableName, List<Class<?>> columnTypes) throws IOException {
@@ -90,7 +90,7 @@ public class TableImplementation implements Table, AutoCloseable {
 
     @Override
     public Storeable get(String key) {
-/*        isClosed();
+        isClosed();
         
         tableExists();
         
@@ -110,8 +110,7 @@ public class TableImplementation implements Table, AutoCloseable {
             return null;
         }
         
-        return getOriginValue(key);*/
-        return null;
+        return getOriginValue(key);
     }
     
     public Storeable get(String transactionID, String key) {
@@ -143,7 +142,7 @@ public class TableImplementation implements Table, AutoCloseable {
 
     @Override
     public Storeable put(String key, Storeable value) throws ColumnFormatException {
-        /*isClosed();
+        isClosed();
         
         tableExists();
         
@@ -165,8 +164,7 @@ public class TableImplementation implements Table, AutoCloseable {
             return null;
         }
         
-        return getOriginValue(key);*/
-        return null;
+        return getOriginValue(key);
     }
     
     public Storeable put(String transactionID, String key, Storeable value) throws ColumnFormatException {
@@ -200,7 +198,7 @@ public class TableImplementation implements Table, AutoCloseable {
 
     @Override
     public Storeable remove(String key) {
-  /*      isClosed();
+        isClosed();
         
         tableExists();
         
@@ -222,8 +220,7 @@ public class TableImplementation implements Table, AutoCloseable {
         
         removeChanges.get()[nDirectory][nFile].add(key);
         
-        return getOriginValue(key); */
-        return null;
+        return getOriginValue(key);
     }
 
     @Override
@@ -267,7 +264,7 @@ public class TableImplementation implements Table, AutoCloseable {
 
     @Override
     public int commit() throws IOException {
-       /* isClosed();
+        isClosed();
         
         tableExists();
         
@@ -291,8 +288,7 @@ public class TableImplementation implements Table, AutoCloseable {
         
         clearAllChanges();
         
-        return changesNumber;*/
-        return 0;
+        return changesNumber;
     }
     
     public int commit(String transactionID) throws IOException {
@@ -353,12 +349,12 @@ public class TableImplementation implements Table, AutoCloseable {
     }
     
     private void clearAllChanges() {
-        /*for (int nDirectory = 0; nDirectory < DIR_NUM; ++nDirectory) {
+        for (int nDirectory = 0; nDirectory < DIR_NUM; ++nDirectory) {
             for (int nFile = 0; nFile < FILE_NUM; ++nFile) {
                 putChanges.get()[nDirectory][nFile].clear();
                 removeChanges.get()[nDirectory][nFile].clear();
             }
-        }*/
+        }
     }
     
     @Override
@@ -383,13 +379,13 @@ public class TableImplementation implements Table, AutoCloseable {
         Map<String, Storeable>[][] putChanges;
         Set<String>[][] removeChanges;
         
-        //if (transactionID == NO_TRANSACTION) {
-            //putChanges = this.putChanges.get();
-            //removeChanges = this.removeChanges.get();
-        //} else {
+        if (transactionID == NO_TRANSACTION) {
+            putChanges = this.putChanges.get();
+            removeChanges = this.removeChanges.get();
+        } else {
             putChanges = transactionsPutChanges.get(transactionID);
             removeChanges = transactionsRemoveChanges.get(transactionID);
-        //}
+        }
         
         readLock.lock();
         try {
@@ -426,13 +422,13 @@ public class TableImplementation implements Table, AutoCloseable {
         Map<String, Storeable>[][] putChanges;
         Set<String>[][] removeChanges;
         
-        //if (transactionID == NO_TRANSACTION) {
-            //putChanges = this.putChanges.get();
-            //removeChanges = this.removeChanges.get();
-       // } else {
+        if (transactionID == NO_TRANSACTION) {
+            putChanges = this.putChanges.get();
+            removeChanges = this.removeChanges.get();
+        } else {
             putChanges = transactionsPutChanges.get(transactionID);
             removeChanges = transactionsRemoveChanges.get(transactionID);
-        //}
+        }
         
         readLock.lock();
         try {
@@ -484,7 +480,7 @@ public class TableImplementation implements Table, AutoCloseable {
     
     private void saveAllChangesToFile(int nDirectory, int nFile) throws IOException {
         
-        /*try {
+        try {
             Storeable value;
             String rawValue;
             for (String key : putChanges.get()[nDirectory][nFile].keySet()) {
@@ -501,7 +497,7 @@ public class TableImplementation implements Table, AutoCloseable {
                     + ((e.getMessage() != null) ? e.getMessage() : "unknown error"), e);
         } finally {
             database[nDirectory][nFile].save();
-        }*/
+        }
     }
     
     private void saveAllChangesToFile(String transactionID, int nDirectory, int nFile) throws IOException {
@@ -509,13 +505,13 @@ public class TableImplementation implements Table, AutoCloseable {
         Map<String, Storeable>[][] putChanges;
         Set<String>[][] removeChanges;
         
-        //if (transactionID == NO_TRANSACTION) {
-            //putChanges = this.putChanges.get();
-            //removeChanges = this.removeChanges.get();
-       // } else {
+        if (transactionID == NO_TRANSACTION) {
+            putChanges = this.putChanges.get();
+            removeChanges = this.removeChanges.get();
+        } else {
             putChanges = transactionsPutChanges.get(transactionID);
             removeChanges = transactionsRemoveChanges.get(transactionID);
-        //}
+        }
         
         try {
             Storeable value;

@@ -1,5 +1,6 @@
 package ru.fizteh.fivt.students.chernigovsky.junit;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -9,22 +10,22 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public abstract class AbstractTable<ValueType> {
-    private volatile HashMap<String, ValueType> hashMap;
-    private ThreadLocal<HashMap<String, ValueType>> changedEntries;
-    private ThreadLocal<HashMap<String, ValueType>> removedEntries;
-    private ReadWriteLock tableLock;
-    private boolean autoCommit;
-    private String tableName;
+    protected final HashMap<String, ValueType> commitedEntries;
+    protected final ThreadLocal<HashMap<String, ValueType>> changedEntries;
+    protected final ThreadLocal<HashMap<String, ValueType>> removedEntries;
+    protected final ReadWriteLock tableLock;
+    protected final boolean autoCommit;
+    protected final String tableName;
     private final Pattern pattern = Pattern.compile("\\s");
 
     public Set<Map.Entry<String, ValueType>> getEntrySet() {
-        return hashMap.entrySet();
+        return commitedEntries.entrySet();
     }
 
     public AbstractTable(String name, boolean flag) {
         tableName = name;
         autoCommit = flag;
-        hashMap = new HashMap<String, ValueType>();
+        commitedEntries = new HashMap<String, ValueType>();
         tableLock = new ReentrantReadWriteLock(true);
         changedEntries = new ThreadLocal<HashMap<String, ValueType>>() {
             protected HashMap<String, ValueType> initialValue() {
@@ -36,6 +37,15 @@ public abstract class AbstractTable<ValueType> {
                 return new HashMap<String, ValueType>();
             }
         };
+    }
+
+    public AbstractTable(AbstractTable table) {
+        tableName = table.tableName;
+        autoCommit = table.autoCommit;
+        commitedEntries = table.commitedEntries;
+        changedEntries = table.changedEntries;
+        removedEntries = table.removedEntries;
+        tableLock = table.tableLock;
     }
 
     public String getName(){
@@ -50,13 +60,13 @@ public abstract class AbstractTable<ValueType> {
         try {
             tableLock.readLock().lock();
             for (String string : changedEntries.get().keySet()) {
-                if (hashMap.get(string) == null || !valuesEqual(hashMap.get(string), changedEntries.get().get(string))) {
+                if (commitedEntries.get(string) == null || !valuesEqual(commitedEntries.get(string), changedEntries.get().get(string))) {
                     ++diffCount;
                 }
             }
 
             for (String string : removedEntries.get().keySet()) {
-                if (hashMap.get(string) != null) {
+                if (commitedEntries.get(string) != null) {
                     ++diffCount;
                 }
             }
@@ -95,7 +105,7 @@ public abstract class AbstractTable<ValueType> {
         ValueType value;
         try {
             tableLock.readLock().lock();
-            value = hashMap.get(key);
+            value = commitedEntries.get(key);
         } finally {
             tableLock.readLock().unlock();
         }
@@ -118,7 +128,7 @@ public abstract class AbstractTable<ValueType> {
         ValueType oldValue = get(key);
         try {
             tableLock.readLock().lock();
-            ValueType commitedValue = hashMap.get(key);
+            ValueType commitedValue = commitedEntries.get(key);
         } finally {
             tableLock.readLock().unlock();
         }
@@ -144,7 +154,12 @@ public abstract class AbstractTable<ValueType> {
 
         ValueType ans = putting(key, value);
         if (autoCommit) {
-            commit();
+            try {
+                commit();
+            } catch (IOException ex) {
+                throw new IllegalStateException("Write error");
+            }
+
         }
         return ans;
 
@@ -182,7 +197,11 @@ public abstract class AbstractTable<ValueType> {
 
         ValueType ans = removing(key);
         if (autoCommit) {
-            commit();
+            try {
+                commit();
+            } catch (IOException ex) {
+                throw new IllegalStateException();
+            }
         }
         return ans;
 
@@ -197,16 +216,16 @@ public abstract class AbstractTable<ValueType> {
         int size;
         try {
             tableLock.readLock().lock();
-            size = hashMap.size();
+            size = commitedEntries.size();
 
             for (String string : changedEntries.get().keySet()) {
-                if (hashMap.get(string) == null) {
+                if (commitedEntries.get(string) == null) {
                     ++size;
                 }
             }
 
             for (String string : removedEntries.get().keySet()) {
-                if (hashMap.get(string) != null) {
+                if (commitedEntries.get(string) != null) {
                     --size;
                 }
             }
@@ -222,17 +241,17 @@ public abstract class AbstractTable<ValueType> {
      *
      * @return Количество сохранённых ключей.
      */
-    public int commit() {
+    public int commit() throws IOException {
         int changed = getDiffCount();
 
         try {
             tableLock.writeLock().lock();
             for (Map.Entry<String, ValueType> entry : changedEntries.get().entrySet()) {
-                hashMap.put(entry.getKey(), entry.getValue());
+                commitedEntries.put(entry.getKey(), entry.getValue());
             }
 
             for (Map.Entry<String, ValueType> entry : removedEntries.get().entrySet()) {
-                hashMap.remove(entry.getKey());
+                commitedEntries.remove(entry.getKey());
             }
         } finally {
             tableLock.writeLock().unlock();

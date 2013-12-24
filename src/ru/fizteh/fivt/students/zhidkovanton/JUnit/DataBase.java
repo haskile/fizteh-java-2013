@@ -206,7 +206,7 @@ public class DataBase implements Table {
 
     public void read() {
         if (tableName == null) {
-            throw new FileAccessException("Can't read file because of no file to read");
+            throw new IllegalArgumentException("Can't read file because of no file to read");
         }
         for (int i = 0; i < 256; ++i) {
             state[i].clear();

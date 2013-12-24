@@ -271,7 +271,7 @@ public class TableImplementation implements Table, AutoCloseable {
         int changesNumber;
         writeLock.lock();
         try {
-            changesNumber = countChanges();
+            changesNumber = countChanges(NO_TRANSACTION);
             
             for (int nDirectory = 0; nDirectory < DIR_NUM; ++nDirectory) {
                 for (int nFile = 0; nFile < FILE_NUM; ++nFile) {
@@ -302,7 +302,7 @@ public class TableImplementation implements Table, AutoCloseable {
         int changesNumber;
         writeLock.lock();
         try {
-            changesNumber = countChanges();
+            changesNumber = countChanges(transactionID);
             
             for (int nDirectory = 0; nDirectory < DIR_NUM; ++nDirectory) {
                 for (int nFile = 0; nFile < FILE_NUM; ++nFile) {
@@ -328,7 +328,7 @@ public class TableImplementation implements Table, AutoCloseable {
         
         tableExists();
         
-        int changesNumber = countChanges();
+        int changesNumber = countChanges(NO_TRANSACTION);
         
         clearAllChanges();
         
@@ -340,7 +340,7 @@ public class TableImplementation implements Table, AutoCloseable {
         
         tableExists();
         
-        int changesNumber = countChanges();
+        int changesNumber = countChanges(transactionID);
         
         transactionsPutChanges.remove(transactionID);
         transactionsRemoveChanges.remove(transactionID);
@@ -371,25 +371,36 @@ public class TableImplementation implements Table, AutoCloseable {
         return columnTypes.get(columnIndex);
     }
     
-    public int countChanges() {
+    public int countChanges(String transactionID) {
         isClosed();
         
         int changesNumber = 0;
+        
+        Map<String, Storeable>[][] putChanges;
+        Set<String>[][] removeChanges;
+        
+        if (transactionID == NO_TRANSACTION) {
+            putChanges = this.putChanges.get();
+            removeChanges = this.removeChanges.get();
+        } else {
+            putChanges = transactionsPutChanges.get(transactionID);
+            removeChanges = transactionsRemoveChanges.get(transactionID);
+        }
         
         readLock.lock();
         try {
             for (int nDirectory = 0; nDirectory < DIR_NUM; ++nDirectory) {
                 for (int nFile = 0; nFile < FILE_NUM; ++nFile) {
-                    for (String key : putChanges.get()[nDirectory][nFile].keySet()) {
+                    for (String key : putChanges[nDirectory][nFile].keySet()) {
                         
-                        Storeable value = putChanges.get()[nDirectory][nFile].get(key);
+                        Storeable value = putChanges[nDirectory][nFile].get(key);
                         Storeable originValue = getOriginValue(key);
                         if (originValue == null || !storeableAreEqual(value, originValue)) {
                             changesNumber += 1;
                         }
                     }
                     
-                    for (String key : removeChanges.get()[nDirectory][nFile]) {
+                    for (String key : removeChanges[nDirectory][nFile]) {
                         
                         Storeable originValue = getOriginValue(key);
                         if (originValue != null) {

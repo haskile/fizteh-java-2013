@@ -1,6 +1,7 @@
 package ru.fizteh.fivt.students.zhidkovanton.JUnit;
 
 import ru.fizteh.fivt.students.zhidkovanton.shell.InvalidCommandException;
+import ru.fizteh.fivt.storage.strings.TableProviderFactory;
 import ru.fizteh.fivt.students.zhidkovanton.shell.Main;
 import ru.fizteh.fivt.students.zhidkovanton.shell.Parser;
 import ru.fizteh.fivt.students.zhidkovanton.shell.Shell;
@@ -51,7 +52,9 @@ public class FileService {
 
     public static void main(String[] args) throws IOException {
 
-        dataBaseFactory = new DataBaseFactory(System.getProperty("fizteh.db.dir"));
+        TableProviderFactory factory = new DataFactoryProvider();
+
+        dataBaseFactory = (DataBaseFactory) factory.create(System.getProperty("fizteh.db.dir"));
 
         shell = new Shell();
 

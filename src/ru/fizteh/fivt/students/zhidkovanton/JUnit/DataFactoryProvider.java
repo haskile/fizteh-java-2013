@@ -12,12 +12,12 @@ public class DataFactoryProvider implements TableProviderFactory {
             throw new IllegalArgumentException();
         }
         File directoryFile = new File(dir);
-        if (!directoryFile.exists()){
-            if (!directoryFile.mkdir()){
+        if (!directoryFile.exists()) {
+            if (!directoryFile.mkdir()) {
                 throw new IllegalArgumentException();
             }
         }
-        if (!directoryFile.isDirectory()){
+        if (!directoryFile.isDirectory()) {
             throw new IllegalArgumentException();
         }
         return new DataFactory(dir);

@@ -68,21 +68,19 @@ public class DataFactory implements TableProvider {
 
         File file = new File(fullName);
 
-        DataBase dataBase;
-        if (allTables.get(name) != null) {
-            dataBase = allTables.get(name);
-        } else {
-            dataBase = new DataBase(name);
-            allTables.put(name, dataBase);
-        }
-
-        if (!file.exists()) {
-            if (!file.mkdir()) {
-                throw new IllegalArgumentException();
+        if (file.exists()) {
+            if (allTables.get(name) == null) {
+                allTables.put(name, new DataBase(name));
             }
+            return null;
         }
 
-        return dataBase;
+        if (!file.mkdir()) {
+            throw new IllegalArgumentException();
+        }
+
+        allTables.put(name, new DataBase(name));
+        return allTables.get(name);
     }
 
     @Override

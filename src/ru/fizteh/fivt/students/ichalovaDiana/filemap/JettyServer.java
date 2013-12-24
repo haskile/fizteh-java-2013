@@ -2,6 +2,7 @@ package ru.fizteh.fivt.students.ichalovaDiana.filemap;
 
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -21,6 +22,8 @@ public class JettyServer {
     
     static final int DEFAULT_PORT = 10001;
     static final int MAX_TRANSACTION_ID = 99999;
+    
+    private int lastUsedTransactionID = -1;
     
     private Server server;
     private int port;
@@ -80,7 +83,7 @@ public class JettyServer {
     
     private String getNewTransactionID(TableImplementation table) {
         String tid;
-        for (int id = 0; id <= MAX_TRANSACTION_ID; ++id) {
+        for (int id = lastUsedTransactionID + 1; id <= MAX_TRANSACTION_ID; ++id) {
             tid = String.format("%05d", id);
             
             if (!transactions.containsKey(tid)) {
@@ -88,6 +91,10 @@ public class JettyServer {
                 try {
                     if (!transactions.containsKey(tid)) {
                         transactions.put(tid, table);
+                        lastUsedTransactionID = id;
+                        if (lastUsedTransactionID > MAX_TRANSACTION_ID - 100) {
+                            lastUsedTransactionID = 0;
+                        }
                         return tid;
                     }
                 } finally {

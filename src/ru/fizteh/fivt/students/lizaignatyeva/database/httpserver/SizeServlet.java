@@ -1,8 +1,5 @@
 package ru.fizteh.fivt.students.lizaignatyeva.database.httpserver;
 
-import org.omg.CORBA.INTERNAL;
-import ru.fizteh.fivt.students.lizaignatyeva.database.MyTable;
-
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -23,21 +20,30 @@ public class SizeServlet extends HttpServlet {
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "No tid provided");
             return;
         }
-        MyTable table = database.getTransaction(transactionId);
-        if (table == null) {
+        if (!Database.isValidTransactionName(transactionId)) {
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Incorrect tid format");
+            return;
+        }
+        Database.Transaction transaction = database.getTransaction(transactionId);
+        if (transaction == null) {
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "No such tid");
             return;
         }
-        int result;
+        transaction.start();
         try {
-            result = table.size();
-        } catch (Exception e) {
-            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to get size: " + e.getMessage());
-            return;
+            int result;
+            try {
+                result = transaction.table.size();
+            } catch (Exception e) {
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to get size: " + e.getMessage());
+                return;
+            }
+            resp.setStatus(HttpServletResponse.SC_OK);
+            resp.setContentType("text/plain");
+            resp.setCharacterEncoding("UTF8");
+            resp.getWriter().println(result);
+        } finally {
+            transaction.end();
         }
-        resp.setStatus(HttpServletResponse.SC_OK);
-        resp.setContentType("text/plain");
-        resp.setCharacterEncoding("UTF8");
-        resp.getWriter().println(result);
     }
 }

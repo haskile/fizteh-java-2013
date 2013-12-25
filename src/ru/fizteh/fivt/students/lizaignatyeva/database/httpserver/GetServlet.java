@@ -28,29 +28,38 @@ public class GetServlet extends HttpServlet {
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "No key provided");
             return;
         }
-        MyTable table = database.getTransaction(transactionId);
-        if (table == null) {
+        if (!Database.isValidTransactionName(transactionId)) {
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Incorrect tid format");
+            return;
+        }
+        Database.Transaction transaction = database.getTransaction(transactionId);
+        if (transaction == null) {
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "No such transaction");
             return;
         }
-        String result;
+        transaction.start();
         try {
-            Storeable value = table.get(key);
-            if (value == null) {
-                resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "No such key"); // SC_NOT_FOUND ?
+            String result;
+            try {
+                Storeable value = transaction.table.get(key);
+                if (value == null) {
+                    resp.sendError(HttpServletResponse.SC_BAD_REQUEST, "No such key"); // SC_NOT_FOUND ?
+                    return;
+                }
+                result = database.tableProvider.serialize(transaction.table, value);
+            } catch (IllegalArgumentException e) {
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Illegal key");
+                return;
+            } catch (Exception e) {
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to get");
                 return;
             }
-            result = database.tableProvider.serialize(table, value);
-        } catch (IllegalArgumentException e) {
-            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Illegal key");
-            return;
-        } catch (Exception e) {
-            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to get");
-            return;
+            resp.setStatus(HttpServletResponse.SC_OK);
+            resp.setContentType("text/plain");
+            resp.setCharacterEncoding("UTF8");
+            resp.getWriter().println(result);
+        } finally {
+            transaction.end();
         }
-        resp.setStatus(HttpServletResponse.SC_OK);
-        resp.setContentType("text/plain");
-        resp.setCharacterEncoding("UTF8");
-        resp.getWriter().println(result);
     }
 }

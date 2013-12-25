@@ -22,22 +22,31 @@ public class CommitServlet extends HttpServlet {
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "No tid provided");
             return;
         }
-        MyTable table = database.getTransaction(transactionId);
-        if (table == null) {
+        if (!Database.isValidTransactionName(transactionId)) {
+            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Incorrect tid format");
+            return;
+        }
+        Database.Transaction transaction = database.getTransaction(transactionId);
+        if (transaction == null) {
             resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "No such tid");
             return;
         }
-        int result;
+        transaction.start();
         try {
-            result = table.commit();
-        } catch (Exception e) {
-            resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to commit: " + e.getMessage());
-            return;
+            int result;
+            try {
+                result = transaction.table.commit();
+            } catch (Exception e) {
+                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to commit: " + e.getMessage());
+                return;
+            }
+            database.cancelTransaction(transactionId);
+            resp.setStatus(HttpServletResponse.SC_OK);
+            resp.setContentType("text/plain");
+            resp.setCharacterEncoding("UTF8");
+            resp.getWriter().println("diff=" + result);
+        } finally {
+            transaction.end();
         }
-        database.cancelTransaction(transactionId);
-        resp.setStatus(HttpServletResponse.SC_OK);
-        resp.setContentType("text/plain");
-        resp.setCharacterEncoding("UTF8");
-        resp.getWriter().println("diff=" + result);
     }
 }

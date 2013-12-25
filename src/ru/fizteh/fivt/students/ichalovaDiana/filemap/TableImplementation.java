@@ -278,7 +278,7 @@ public class TableImplementation implements Table, AutoCloseable {
                     if (!putChanges.get()[nDirectory][nFile].isEmpty() 
                             || !removeChanges.get()[nDirectory][nFile].isEmpty()) {
                         
-                        saveAllChangesToFile(nDirectory, nFile);  
+                        saveAllChangesToFile(NO_TRANSACTION, nDirectory, nFile);  
                     }
                 }
             }
@@ -309,7 +309,7 @@ public class TableImplementation implements Table, AutoCloseable {
                     if (!putChanges[nDirectory][nFile].isEmpty() 
                             || !removeChanges[nDirectory][nFile].isEmpty()) {
                         
-                        saveAllChangesToFile(nDirectory, nFile);  
+                        saveAllChangesToFile(transactionID, nDirectory, nFile);  
                     }
                 }
             }
@@ -476,28 +476,6 @@ public class TableImplementation implements Table, AutoCloseable {
         }
         
         return size;
-    }
-    
-    private void saveAllChangesToFile(int nDirectory, int nFile) throws IOException {
-        
-        try {
-            Storeable value;
-            String rawValue;
-            for (String key : putChanges.get()[nDirectory][nFile].keySet()) {
-                value = putChanges.get()[nDirectory][nFile].get(key);
-                rawValue = tableProvider.serialize(this, value);
-                database[nDirectory][nFile].put(key, rawValue);
-            }
-            
-            for (String key : removeChanges.get()[nDirectory][nFile]) {
-                database[nDirectory][nFile].remove(key);
-            }
-        } catch (IOException e) {
-            throw new IOException("Error while putting value to file: "
-                    + ((e.getMessage() != null) ? e.getMessage() : "unknown error"), e);
-        } finally {
-            database[nDirectory][nFile].save();
-        }
     }
     
     private void saveAllChangesToFile(String transactionID, int nDirectory, int nFile) throws IOException {

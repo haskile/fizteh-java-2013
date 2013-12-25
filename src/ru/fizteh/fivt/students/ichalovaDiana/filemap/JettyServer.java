@@ -2,7 +2,6 @@ package ru.fizteh.fivt.students.ichalovaDiana.filemap;
 
 import java.io.IOException;
 import java.text.ParseException;
-import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;

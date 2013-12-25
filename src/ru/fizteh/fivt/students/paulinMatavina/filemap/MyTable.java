@@ -3,10 +3,12 @@ package ru.fizteh.fivt.students.paulinMatavina.filemap;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
 import java.util.StringTokenizer;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import ru.fizteh.fivt.storage.structured.*;
@@ -29,9 +31,11 @@ public class MyTable extends State implements Table, AutoCloseable {
     private final String signatureName = "signature.tsv";
     public HashMap<Class<?>, String> possibleTypes;
     private ReentrantReadWriteLock diskOperationLock;
+    private ReentrantLock sizeLock;
     
     private void init(String dbName) throws IOException, ParseException {   
         diskOperationLock = new ReentrantReadWriteLock(true);
+        sizeLock = new ReentrantLock(true);
         isDropped = false;
         isClosed = false;
         data = new FileState[FOLDER_NUM][FILE_IN_FOLD_NUM];
@@ -96,11 +100,8 @@ public class MyTable extends State implements Table, AutoCloseable {
         }
         provider = prov;
         rootPath = property; 
-        shell = new ShellState();
-        shell.cd(rootPath);
-        shell.cd(dbName);
-        getObjList(signatureName);
         init(dbName);
+        getObjList(signatureName);
     }
     
     private void checkDbDir(String path) {
@@ -110,7 +111,7 @@ public class MyTable extends State implements Table, AutoCloseable {
                 throw new IllegalStateException(path + " is not a directory");
             }          
             for (String file : f.list()) {
-                if (file.equals(signatureName)) {
+                if (file.equals(signatureName) || file.equals("size.tsv")) {
                     continue;
                 }              
                 if (!file.matches("([0-9]|1[0-5])\\.dir")) {
@@ -143,21 +144,16 @@ public class MyTable extends State implements Table, AutoCloseable {
         data = new FileState[FOLDER_NUM][FILE_IN_FOLD_NUM];
         for (int i = 0; i < FOLDER_NUM; i++) {
             String fold = Integer.toString(i) + ".dir";
-            if (!fileExist(fold)) {
-                for (int j = 0; j < FILE_IN_FOLD_NUM; j++) {
-                    String file = Integer.toString(j) + ".dat";
-                    String filePath = shell.makeNewSource(fold, file);
-                    data[i][j] = new FileState(filePath, i, j, provider, this);
-                }
-                continue;
+            if (fileExist(fold)) {
+                checkFolder(shell.makeNewSource(fold));
             }
-            checkFolder(shell.makeNewSource(fold));
             for (int j = 0; j < FILE_IN_FOLD_NUM; j++) {
                 String file = Integer.toString(j) + ".dat";
                 String filePath = shell.makeNewSource(fold, file);
                 data[i][j] = new FileState(filePath, i, j, provider, this);
             }
         }
+        writeSize();
     }
     
     public void dropped() {
@@ -177,18 +173,17 @@ public class MyTable extends State implements Table, AutoCloseable {
     public int commit() throws IOException {
         checkCurrentTableState();
         
-        int chNum = 0;
-        
+        int chNum = 0;      
         diskOperationLock.writeLock().lock();
         try {
-            chNum = changesNum();
+            writeSize();
             for (int i = 0; i < FOLDER_NUM; i++) {
                 String fold = Integer.toString(i) + ".dir";
                 if (!fileExist(fold)) {
                     shell.mkdir(new String[] {fold});
                 }
                 for (int j = 0; j < FILE_IN_FOLD_NUM; j++) {
-                    data[i][j].commit();
+                    chNum += data[i][j].commit();
                 }
                
                 File folderFile = new File(shell.makeNewSource(fold));
@@ -197,6 +192,8 @@ public class MyTable extends State implements Table, AutoCloseable {
                     shell.rm(arg);
                 }
             }
+        } catch (ParseException e) {
+            throw new RuntimeException(e.getMessage(), e);
         } finally {
             diskOperationLock.writeLock().unlock();
         }
@@ -276,15 +273,74 @@ public class MyTable extends State implements Table, AutoCloseable {
     @Override
     public int size() {
         checkCurrentTableState();
-        
-        int result = 0;
-        
+        int delta = 0;
         for (int i = 0; i < FOLDER_NUM; i++) {
             for (int j = 0; j < FILE_IN_FOLD_NUM; j++) {
-                result += data[i][j].size();
-            }
+                 delta += data[i][j].getDeltaSize();
+            }       
+        }
+        
+        int result = readSize() + delta;
+        if (result < 0) {
+            throw new IllegalStateException("size.tsv: broken file");
         }
         return result;
+    }
+    
+    private int readSize() {
+        File sizeFile = new File(shell.makeNewSource("size.tsv"));
+        if (!sizeFile.exists()) {
+            try {
+                sizeFile.createNewFile();
+            } catch (Exception e) {
+                throw new RuntimeException("error when creating size.tsv", e);
+            }
+            return 0;
+        }
+        
+        Scanner stream = null;
+        sizeLock.lock();
+        try {
+            stream = new Scanner(sizeFile);
+            if (stream.hasNextInt()) {
+                return stream.nextInt();
+            } else {
+                throw new IllegalStateException("empty size.tsv");
+            }
+        } catch (Exception e) { 
+            throw new RuntimeException("error reading size.tsv", e);
+        } finally {
+            sizeLock.unlock();
+            if (stream != null) {
+                try {
+                    stream.close();
+                } catch (Throwable e) {
+                    //do nothing
+                }
+            }
+        }
+    }
+    
+    private void writeSize() {
+        File sizeFile = new File(shell.makeNewSource("size.tsv"));
+        PrintStream stream = null;
+        sizeLock.lock();
+        try {
+            int size = size();
+            stream = new PrintStream(sizeFile);
+            stream.print(size);
+        } catch (Exception e) { 
+            throw new RuntimeException("error writing size.tsv", e);
+        } finally {
+            sizeLock.unlock();
+            if (stream != null) {
+                try {
+                    stream.close();
+                } catch (Throwable e) {
+                    //do nothing
+                }
+            }
+        }
     }
     
     @Override
@@ -295,10 +351,9 @@ public class MyTable extends State implements Table, AutoCloseable {
         
         diskOperationLock.readLock().lock();
         try {
-            chNum = changesNum();
             for (int i = 0; i < FOLDER_NUM; i++) {
                 for (int j = 0; j < FILE_IN_FOLD_NUM; j++) {
-                    data[i][j].assignData();
+                    chNum += data[i][j].rollback();
                 }
             }
         } finally {

@@ -12,11 +12,14 @@ import java.text.ParseException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class MyTableProvider implements TableProvider {
     private Path directory;
 
     private HashMap<String, MyTable> loadedTables;
+
+    private final ReentrantLock lock = new ReentrantLock(true);
 
     public MyTableProvider(Path directory) {
         this.directory = directory;
@@ -25,28 +28,33 @@ public class MyTableProvider implements TableProvider {
 
     @Override
     public MyTable createTable(String name, List<Class<?>> columnTypes) throws IOException {
-        checkTableName(name);
-        if (columnTypes == null || columnTypes.size() == 0) {
-            throw new IllegalArgumentException("TableProvider.createTable: null columnTypes is illegal");
-        }
-        for (Class clazz : columnTypes) {
-            if (clazz == null) {
-                throw new IllegalArgumentException("TableProvider.createTable: null column type");
-            }
-        }
-        StoreableSignature storeableSignature = new StoreableSignature(columnTypes);
-        MyStoreable storeable = new MyStoreable(storeableSignature); // test for class correctness
-        MyTable table = new MyTable(directory, name, storeableSignature, this);
-        if (MyTable.exists(directory, name)) {
-            return null;
-        }
+        lock.lock();
         try {
-            table.write();
-        } catch (IOException e) {
-            throw new IllegalArgumentException("TableProvider.createTable: name '" + name + "' failed: IO failure", e);
+            checkTableName(name);
+            if (columnTypes == null || columnTypes.size() == 0) {
+                throw new IllegalArgumentException("TableProvider.createTable: null columnTypes is illegal");
+            }
+            for (Class clazz : columnTypes) {
+                if (clazz == null) {
+                    throw new IllegalArgumentException("TableProvider.createTable: null column type");
+                }
+            }
+            StoreableSignature storeableSignature = new StoreableSignature(columnTypes);
+            MyStoreable storeable = new MyStoreable(storeableSignature); // test for class correctness
+            MyTable table = new MyTable(directory, name, storeableSignature, this);
+            if (MyTable.exists(directory, name)) {
+                return null;
+            }
+            try {
+                table.write();
+            } catch (IOException e) {
+                throw new IllegalArgumentException("TableProvider.createTable: name '" + name + "' failed: IO failure");
+            }
+            loadedTables.put(name, table);
+            return table;
+        } finally {
+            lock.unlock();
         }
-        loadedTables.put(name, table);
-        return table;
     }
 
     @Override
@@ -95,38 +103,49 @@ public class MyTableProvider implements TableProvider {
     @Override
     public MyTable getTable(String name) {
         checkTableName(name);
-        if (loadedTables.containsKey(name)) {
-            return loadedTables.get(name);
-        }
-        if (!MyTable.exists(directory, name)) {
-            return null;
-        }
-        MyTable table;
+
+        lock.lock();
         try {
-            table = MyTable.read(directory, name, this);
-        } catch (DataFormatException e) {
-            throw new IllegalArgumentException("Broken table found", e);
-        } catch (IOException e) {
-            throw new RuntimeException("IOFailure happened during table reading", e);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to parse table", e);
+            if (loadedTables.containsKey(name)) {
+                return loadedTables.get(name);
+            }
+            if (!MyTable.exists(directory, name)) {
+                return null;
+            }
+            MyTable table;
+            try {
+                table = MyTable.read(directory, name, this);
+            } catch (DataFormatException e) {
+                throw new IllegalArgumentException("Broken table found");
+            } catch (IOException e) {
+                throw new RuntimeException("IOFailure happened during table reading");
+            } catch (Exception e) {
+                return null;
+            }
+            loadedTables.put(name, table);
+            return table;
+        } finally {
+            lock.unlock();
         }
-        loadedTables.put(name, table);
-        return table;
     }
 
     @Override
     public void removeTable(String name) {
-        checkTableName(name);
-        if (!MyTable.exists(directory, name)) {
-            throw new IllegalStateException("TableProvider.removeTable: table '" + name + "' does not exist");
+        lock.lock();
+        try {
+            checkTableName(name);
+            if (!MyTable.exists(directory, name)) {
+                throw new IllegalStateException("TableProvider.removeTable: table '" + name + "' does not exist");
+            }
+            if (loadedTables.containsKey(name)) {
+                loadedTables.get(name).markAsDeleted();
+                loadedTables.remove(name);
+            }
+            File path = directory.resolve(name).toFile();
+            FileUtils.remove(path);
+        } finally {
+            lock.unlock();
         }
-        if (loadedTables.containsKey(name)) {
-            loadedTables.get(name).markAsDeleted();
-            loadedTables.remove(name);
-        }
-        File path = directory.resolve(name).toFile();
-        FileUtils.remove(path);
     }
 
     private static final HashSet<String> FORBIDDEN_SUBSTRINGS = new HashSet<>();

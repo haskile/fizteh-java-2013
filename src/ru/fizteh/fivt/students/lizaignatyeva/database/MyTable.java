@@ -13,35 +13,45 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.ParseException;
 import java.util.*;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class MyTable implements Table {
     private boolean isValid;
     private Path globalDirectory;
     private String name;
     private HashMap<String, Storeable> data;
-    private HashMap<String, Storeable> uncommitedData;
-    private int currentSize;
+    private ThreadLocal<HashMap<String, Storeable>> uncommitedData;
     public final StoreableSignature columnTypes;
     private MyTableProvider tableProvider;
     private static final String CONFIG_FILE = "signature.tsv";
 
-    private static final int BASE = 16;
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
 
+    private static final int BASE = 16;
 
     public MyTable(Path globalDirectory, String name, StoreableSignature columnTypes, MyTableProvider tableProvider) {
         this.isValid = true;
         this.globalDirectory = globalDirectory;
         this.name = name;
-        this.currentSize = 0;
         this.columnTypes = columnTypes;
         this.tableProvider = tableProvider;
         this.data = new HashMap<>();
-        this.uncommitedData = new HashMap<>();
+        this.uncommitedData = new ThreadLocal<HashMap<String, Storeable>>() {
+            @Override
+            protected HashMap<String, Storeable> initialValue() {
+                return new HashMap<>();
+            }
+        };
     }
 
     private void checkValidness() {
-        if (!isValid) {
-            throw new IllegalStateException("This table has been deleted");
+        lock.readLock().lock();
+        try {
+            if (!isValid) {
+                throw new IllegalStateException("This table has been deleted");
+            }
+        } finally {
+            lock.readLock().unlock();
         }
     }
 
@@ -64,13 +74,15 @@ public class MyTable implements Table {
     public Storeable get(String key) {
         checkValidness();
         checkKey(key);
-        if (uncommitedData.containsKey(key)) {
-            return uncommitedData.get(key);
+        if (uncommitedData.get().containsKey(key)) {
+            return uncommitedData.get().get(key);
         }
-        if (data.containsKey(key)) {
+        lock.readLock().lock();
+        try {
             return data.get(key);
+        } finally {
+            lock.readLock().unlock();
         }
-        return null;
     }
 
     @Override
@@ -83,15 +95,19 @@ public class MyTable implements Table {
             realValue.setColumnAt(index, value.getColumnAt(index));
         }
         Storeable result = null;
-        if (uncommitedData.containsKey(key)) {
-            result = uncommitedData.get(key);
-        } else if (data.containsKey(key)) {
-            result = data.get(key);
+        if (uncommitedData.get().containsKey(key)) {
+            result = uncommitedData.get().get(key);
+        } else {
+            lock.readLock().lock();
+            try {
+                if (data.containsKey(key)) {
+                    result = data.get(key);
+                }
+            } finally {
+                lock.readLock().unlock();
+            }
         }
-        if (result == null) {
-            currentSize++;
-        }
-        uncommitedData.put(key, realValue);
+        uncommitedData.get().put(key, realValue);
         return result;
     }
 
@@ -100,21 +116,28 @@ public class MyTable implements Table {
         checkValidness();
         checkKey(key);
         Storeable result = null;
-        if (uncommitedData.containsKey(key)) {
-            result = uncommitedData.get(key);
-            if (data.containsKey(key)) {
-                uncommitedData.put(key, null);
-            } else {
-                uncommitedData.remove(key);
+        if (uncommitedData.get().containsKey(key)) {
+            result = uncommitedData.get().get(key);
+            lock.readLock().lock();
+            try {
+                if (data.containsKey(key)) {
+                    uncommitedData.get().put(key, null);
+                } else {
+                    uncommitedData.get().remove(key);
+                }
+            } finally {
+                lock.readLock().unlock();
             }
         } else {
-            if (data.containsKey(key)) {
-                result = data.get(key);
-                uncommitedData.put(key, null);
+            lock.readLock().lock();
+            try {
+                if (data.containsKey(key)) {
+                    result = data.get(key);
+                    uncommitedData.get().put(key, null);
+                }
+            } finally {
+                lock.readLock().unlock();
             }
-        }
-        if (result != null) {
-            currentSize--;
         }
         return result;
     }
@@ -122,55 +145,55 @@ public class MyTable implements Table {
     @Override
     public int size() {
         checkValidness();
-        return currentSize;
+        lock.readLock().lock();
+        HashSet<String> keys = new HashSet<>();
+        for (String key : data.keySet()) {
+            keys.add(key);
+        }
+        lock.readLock().unlock();
+        for (String key : uncommitedData.get().keySet()) {
+            Storeable value = uncommitedData.get().get(key);
+            if (value != null) {
+                keys.add(key);
+            } else {
+                keys.remove(key);
+            }
+        }
+        return keys.size();
     }
 
     @Override
     public int commit() {
-        checkValidness();
-        int result = keysToCommit();
-        for (String key : uncommitedData.keySet()) {
-            Storeable value = uncommitedData.get(key);
-            if (value == null) {
-                if (data.containsKey(key)) {
-                    data.remove(key);
-                }
-            } else {
-                data.put(key, value);
-            }
-        }
+        lock.writeLock().lock();
         try {
-            write();
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to write changes in table '" + name + "' to disk", e);
+            checkValidness();
+            int result = keysToCommit();
+            for (String key : uncommitedData.get().keySet()) {
+                Storeable value = uncommitedData.get().get(key);
+                if (value == null) {
+                    data.remove(key);
+                } else {
+                    data.put(key, value);
+                }
+            }
+            try {
+                write();
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to write changes in table '" + name + "' to disk");
+            }
+            uncommitedData.set(new HashMap<String, Storeable>());
+            return result;
+        } finally {
+            lock.writeLock().unlock();
         }
-        uncommitedData = new HashMap<>();
-        return result;
     }
 
     @Override
     public int rollback() {
         checkValidness();
         int result = keysToCommit();
-        uncommitedData = new HashMap<>();
-        currentSize = data.size();
+        uncommitedData.set(new HashMap<String, Storeable>());
         return result;
-    }
-
-    private void recalcSize() {
-        HashSet<String> keys = new HashSet<>();
-        for (String key : data.keySet()) {
-            keys.add(key);
-        }
-        for (String key : uncommitedData.keySet()) {
-            Storeable value = uncommitedData.get(key);
-            if (value == null) {
-                keys.remove(key);
-            } else {
-                keys.add(key);
-            }
-        }
-        currentSize = keys.size();
     }
 
     public static boolean exists(Path globalDirectory, String name) {
@@ -233,7 +256,6 @@ public class MyTable implements Table {
             }
             table.readDirectory(dir);
         }
-        table.recalcSize();
         return table;
     }
 
@@ -351,24 +373,30 @@ public class MyTable implements Table {
     }
 
     public void write() throws IOException {
-        checkValidness();
-        File path = globalDirectory.resolve(name).toFile();
+        lock.writeLock().lock();
         try {
-            FileUtils.remove(path);
-        } catch (IllegalArgumentException e) {
-            // we have no such directory, it's ok.
-        }
-        FileUtils.mkDir(path.getAbsolutePath());
-        writeConfig();
-        for (String key: data.keySet()) {
-            String value = tableProvider.serialize(this, data.get(key));
-            File directory = FileUtils.mkDir(path.getAbsolutePath()
-                    + File.separator + getDirName(key));
-            File file = FileUtils.mkFile(directory, getFileName(key));
-            try (FileOutputStream fileOutputStream = new FileOutputStream(file.getCanonicalPath(), true);
-                 BufferedOutputStream outputStream = new BufferedOutputStream(fileOutputStream)) {
-                writeEntry(key, value, outputStream);
+            checkValidness();
+            File path = globalDirectory.resolve(name).toFile();
+            try {
+                FileUtils.remove(path);
+            } catch (Exception e) {
+                //System.err.println("Error while updating database files: " + e.getMessage());
+                //System.exit(1);
             }
+            FileUtils.mkDir(path.getAbsolutePath());
+            writeConfig();
+            for (String key: data.keySet()) {
+                String value = tableProvider.serialize(this, data.get(key));
+                File directory = FileUtils.mkDir(path.getAbsolutePath()
+                        + File.separator + getDirName(key));
+                File file = FileUtils.mkFile(directory, getFileName(key));
+                try (BufferedOutputStream outputStream = new BufferedOutputStream(
+                        new FileOutputStream(file.getCanonicalPath(), true))) {
+                    writeEntry(key, value, outputStream);
+                }
+            }
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 
@@ -409,19 +437,24 @@ public class MyTable implements Table {
     }
 
     public int keysToCommit() {
-        int result = 0;
-        for (String key: uncommitedData.keySet()) {
-            if (!data.containsKey(key)) {
-                result++;
-            } else {
-                Storeable oldValue = data.get(key);
-                Storeable newValue = uncommitedData.get(key);
-                if (!oldValue.equals(newValue)) {
-                    result++;
+        lock.readLock().lock();
+        try {
+            int result = 0;
+            for (String key: uncommitedData.get().keySet()) {
+                if (!data.containsKey(key)) {
+                    result ++;
+                } else {
+                    Storeable oldValue = data.get(key);
+                    Storeable newValue = uncommitedData.get().get(key);
+                    if (!oldValue.equals(newValue)) {
+                        result++;
+                    }
                 }
             }
+            return result;
+        } finally {
+            lock.readLock().unlock();
         }
-        return result;
     }
 
     private static int getDirNumber(String key) {
@@ -445,7 +478,9 @@ public class MyTable implements Table {
     }
 
     public void markAsDeleted() {
+        lock.writeLock().lock();
         isValid = false;
+        lock.writeLock().unlock();
     }
 
     private void checkKey(String key) {

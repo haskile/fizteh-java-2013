@@ -1,7 +1,6 @@
 package ru.fizteh.fivt.students.lizaignatyeva.database.httpserver;
 
 import ru.fizteh.fivt.storage.structured.Storeable;
-import ru.fizteh.fivt.students.lizaignatyeva.database.MyTable;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;

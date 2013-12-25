@@ -65,7 +65,9 @@ public class PutServlet extends HttpServlet {
             try {
                 result = database.tableProvider.serialize(transaction.table, oldValue);
             } catch (Exception e) {
-                resp.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Failed to deserialize: " + e.getMessage());
+                resp.sendError(
+                        HttpServletResponse.SC_INTERNAL_SERVER_ERROR,
+                        "Failed to deserialize: " + e.getMessage());
                 return;
             }
             resp.setStatus(HttpServletResponse.SC_OK);

@@ -59,10 +59,14 @@ public class Database {
     public Transaction getTransaction(String transactionName) {
         transactionLock.readLock().lock();
         try {
-            return new Transaction(
+            if (transactions.containsKey(transactionName)) {
+                return new Transaction(
                     transactions.get(transactionName),
                     transactionsChanges.get(transactionName),
                     transactionLocks.get(transactionName));
+            } else {
+                return null;
+            }
         } finally {
             transactionLock.readLock().unlock();
         }

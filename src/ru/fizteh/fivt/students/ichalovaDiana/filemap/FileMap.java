@@ -27,7 +27,7 @@ public class FileMap {
         Runtime.getRuntime().addShutdownHook(new Thread() {
             @Override
             public void run() {
-                if (server != null) {
+                if (server != null && server.isStarted()) {
                     try {
                         server.stop();
                     } catch (Exception e) {
@@ -472,10 +472,6 @@ public class FileMap {
 
                 if (arguments.length != ARG_NUM) {
                     throw new IllegalArgumentException("Illegal number of arguments");
-                }
-                
-                if (server != null && server.isStarted()) {
-                    server.stop();
                 }
 
                 System.out.println("exit");

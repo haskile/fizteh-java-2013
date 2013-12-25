@@ -18,5 +18,6 @@ public class ExitCommand extends Command {
         } catch (Exception e) {
             // do nothing
         }
+        System.exit(0);
     }
 }

@@ -12,14 +12,14 @@ import java.text.ParseException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class MyTableProvider implements TableProvider {
     private Path directory;
 
     private HashMap<String, MyTable> loadedTables;
 
-    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
+    private final ReentrantLock lock = new ReentrantLock(true);
 
     public MyTableProvider(Path directory) {
         this.directory = directory;
@@ -28,7 +28,7 @@ public class MyTableProvider implements TableProvider {
 
     @Override
     public MyTable createTable(String name, List<Class<?>> columnTypes) throws IOException {
-        lock.writeLock().lock();
+        lock.lock();
         try {
             checkTableName(name);
             if (columnTypes == null || columnTypes.size() == 0) {
@@ -53,7 +53,7 @@ public class MyTableProvider implements TableProvider {
             loadedTables.put(name, table);
             return table;
         } finally {
-            lock.writeLock().unlock();
+            lock.unlock();
         }
     }
 
@@ -104,17 +104,11 @@ public class MyTableProvider implements TableProvider {
     public MyTable getTable(String name) {
         checkTableName(name);
 
-        lock.readLock().lock();
+        lock.lock();
         try {
             if (loadedTables.containsKey(name)) {
                 return loadedTables.get(name);
             }
-        } finally {
-            lock.readLock().unlock();
-        }
-
-        lock.writeLock().lock();
-        try {
             if (!MyTable.exists(directory, name)) {
                 return null;
             }
@@ -131,13 +125,13 @@ public class MyTableProvider implements TableProvider {
             loadedTables.put(name, table);
             return table;
         } finally {
-            lock.writeLock().unlock();
+            lock.unlock();
         }
     }
 
     @Override
     public void removeTable(String name) {
-        lock.writeLock().lock();
+        lock.lock();
         try {
             checkTableName(name);
             if (!MyTable.exists(directory, name)) {
@@ -150,7 +144,7 @@ public class MyTableProvider implements TableProvider {
             File path = directory.resolve(name).toFile();
             FileUtils.remove(path);
         } finally {
-            lock.writeLock().unlock();
+            lock.unlock();
         }
     }
 

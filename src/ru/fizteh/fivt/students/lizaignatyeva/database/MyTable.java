@@ -79,13 +79,10 @@ public class MyTable implements Table {
         }
         lock.readLock().lock();
         try {
-            if (data.containsKey(key)) {
-                return data.get(key);
-            }
+            return data.get(key);
         } finally {
             lock.readLock().unlock();
         }
-        return null;
     }
 
     @Override
@@ -174,9 +171,7 @@ public class MyTable implements Table {
             for (String key : uncommitedData.get().keySet()) {
                 Storeable value = uncommitedData.get().get(key);
                 if (value == null) {
-                    if (data.containsKey(key)) {
-                        data.remove(key);
-                    }
+                    data.remove(key);
                 } else {
                     data.put(key, value);
                 }

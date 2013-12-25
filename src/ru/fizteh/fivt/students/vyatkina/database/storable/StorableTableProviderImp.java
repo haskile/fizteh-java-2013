@@ -40,18 +40,16 @@ public class StorableTableProviderImp implements StorableTableProvider {
     }
 
     @Override
-    public Table getTable(String name) {
+    public StorableTable getTable(String name) {
         closeState.isClosedCheck();
         validTableNameCheck(name);
         databaseKeeper.writeLock().lock();
         try {
             loadTable(name);
             return tables.get(name);
-        }
-        finally {
+        } finally {
             databaseKeeper.writeLock().unlock();
         }
-
     }
 
     private void loadTable(String tableName) {
@@ -75,8 +73,7 @@ public class StorableTableProviderImp implements StorableTableProvider {
                 }
                 table.putValuesFromDisk(deserializedDiskValues);
                 tables.put(table.getName(), table);
-            }
-            catch (IOException | ParseException e) {
+            } catch (IOException | ParseException e) {
                 throw new WrappedIOException();
             }
         } else {
@@ -103,8 +100,7 @@ public class StorableTableProviderImp implements StorableTableProvider {
             Files.createDirectories(location.resolve(name));
             writeTableSignature(tableDirectory(name), columnTypes);
             return table;
-        }
-        finally {
+        } finally {
             databaseKeeper.writeLock().unlock();
         }
     }
@@ -121,18 +117,16 @@ public class StorableTableProviderImp implements StorableTableProvider {
             }
             deleteTableFromDisk(tableDirectory(name).toFile());
             tables.remove(name);
-        }
-        finally {
+        } finally {
             databaseKeeper.writeLock().unlock();
         }
     }
 
-    void removeOldReference(Table table)throws IOException{
+    void removeOldReference(Table table) throws IOException {
         try {
             databaseKeeper.writeLock().lock();
             tables.remove(table.getName());
-        }
-        finally {
+        } finally {
             databaseKeeper.writeLock().unlock();
         }
     }
@@ -173,8 +167,7 @@ public class StorableTableProviderImp implements StorableTableProvider {
                 }
             }
             return result;
-        }
-        catch (JSONException e) {
+        } catch (JSONException e) {
             throw new ParseException(e.getMessage(), 0);
         }
     }
@@ -239,11 +232,9 @@ public class StorableTableProviderImp implements StorableTableProvider {
             for (StorableTable table : tables.values()) {
                 table.commit();
             }
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             throw new WrappedIOException(e);
-        }
-        finally {
+        } finally {
             databaseKeeper.writeLock().unlock();
         }
     }
@@ -281,8 +272,7 @@ public class StorableTableProviderImp implements StorableTableProvider {
                 table.close();
             }
             closeState.close();
-        }
-        finally {
+        } finally {
             databaseKeeper.writeLock().unlock();
         }
     }

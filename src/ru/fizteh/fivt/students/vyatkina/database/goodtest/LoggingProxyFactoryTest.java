@@ -17,49 +17,50 @@ import java.util.HashSet;
 import java.util.Iterator;
 
 public class LoggingProxyFactoryTest {
+
     private LoggingProxyFactory factory = new LoggingProxyFactoryImp();
     private XmasWizard xmasWizard;
     private StringWriter writer;
-    private Class <XmasWizard> interfaceClass = XmasWizard.class;
+    private Class<XmasWizard> interfaceClass = XmasWizard.class;
 
     public interface XmasWizard {
-      void deliverAllPresents (Collection<Child> children,Collection <Object> presents);
-      void deliverPresent (Child child, Object present);
-      boolean beHappy ();
-      Collection <Child> alreadyHappyChildren ();
+
+        void deliverAllPresents(Collection<Child> children, Collection<Object> presents);
+
+        void deliverPresent(Child child, Object present);
+
+        boolean beHappy();
+
+        Collection<Child> alreadyHappyChildren();
     }
 
     private class DedMoroz implements XmasWizard {
-        HashSet <Child> happyChilden = new HashSet();
+
+        HashSet<Child> happyChilden = new HashSet<>();
+
         @Override
-        public void deliverAllPresents(Collection <Child> children, Collection <Object> presents) {
-           if (children == null) {
-               return;
-           }
-           if (presents == null || children.size() < presents.size()) {
-               throw new PresentForChildNotFoundExeption();
-           }
+        public void deliverAllPresents(Collection<Child> children, Collection<Object> presents) {
+            if (children == null) {
+                return;
+            }
+            if (presents == null || children.size() < presents.size()) {
+                throw new PresentForChildNotFoundExeption();
+            }
             Iterator it = presents.iterator();
-            for (Child child: children) {
+            for (Child child : children) {
                 deliverPresent(child, it.next());
             }
         }
 
         @Override
         public void deliverPresent(Child child, Object present) {
-           happyChilden.add(child);
-           child.getPresent(present);
+            happyChilden.add(child);
+            child.getPresent(present);
         }
 
         @Override
         public boolean beHappy() {
-            if (happyChilden.isEmpty()) {
-               // System.out.println("I'm useless");
-                return false;
-            } else {
-            //System.out.println("I'm so glad I can please children");
-                return true;
-            }
+            return !(happyChilden.isEmpty());
         }
 
         @Override
@@ -69,144 +70,154 @@ public class LoggingProxyFactoryTest {
     }
 
     @Before
-    public void init () throws Exception {
+    public void init() throws Exception {
         this.xmasWizard = new DedMoroz();
         this.writer = new StringWriter();
     }
 
     @After
-    public void inFile () throws IOException {
-       // System.out.println("In file:");
-       // System.out.println(writer.toString());
+    public void inFile() throws IOException {
+        // System.out.println("In file:");
+        // System.out.println(writer.toString());
         writer.close();
     }
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
-   @Test
-    public void createProxyWithNullArgumentsShouldFail () {
+    @Test
+    public void createProxyWithNullArgumentsShouldFail() {
         thrown.expect(IllegalArgumentException.class);
-        factory.wrap(null,null,null);
+        factory.wrap(null, null, null);
     }
 
-   @Test
-    public void beHappyShouldReturnFalse () {
-        XmasWizard proxy = (XmasWizard) factory.wrap(writer,xmasWizard,interfaceClass);
+    @Test
+    public void beHappyShouldReturnFalse() {
+        XmasWizard proxy = (XmasWizard) factory.wrap(writer, xmasWizard, interfaceClass);
         Assert.assertEquals("He should not be happy", false, proxy.beHappy());
     }
 
     @Test
-    public void deliverPresentShouldWriteGoodThings () {
-       Child Anny = new Child("Anny");
-        XmasWizard proxy = (XmasWizard) factory.wrap(writer,xmasWizard,interfaceClass);
-        proxy.deliverPresent(Anny,Present.class);
+    public void deliverPresentShouldWriteGoodThings() {
+        Child anny = new Child("Anny");
+        XmasWizard proxy = (XmasWizard) factory.wrap(writer, xmasWizard, interfaceClass);
+        proxy.deliverPresent(anny, Present.class);
         Assert.assertEquals("He should be happy", true, proxy.beHappy());
-        proxy.deliverPresent(Anny, new Present ("Cat"));
+        proxy.deliverPresent(anny, new Present("Cat"));
     }
 
     @Test
-    public void deliverAllPresentsShouldWriteInteresting () {
-        ArrayList <Child> children = new ArrayList();
-        children.add(new Child ("Mary"));
-        children.add(new Child ("David"));
-        ArrayList <Object> presents = new ArrayList<>();
+    public void deliverAllPresentsShouldWriteInteresting() {
+        ArrayList<Child> children = new ArrayList();
+        children.add(new Child("Mary"));
+        children.add(new Child("David"));
+        ArrayList<Object> presents = new ArrayList<>();
         presents.add(new Present("Butterfly"));
         presents.add(new Present("Tardis"));
-        XmasWizard proxy = (XmasWizard) factory.wrap(writer,xmasWizard,interfaceClass);
-        proxy.deliverAllPresents(children,presents);
+        XmasWizard proxy = (XmasWizard) factory.wrap(writer, xmasWizard, interfaceClass);
+        proxy.deliverAllPresents(children, presents);
     }
 
     @Test
-    public void deliverStrangePresentsShouldBeInteresting () {
-        ArrayList <Child> children = new ArrayList();
-        children.add(new Child ("Tommy"));
-        children.add(new Child ("Alice"));
-        ArrayList <Object> presents = new ArrayList<>();
+    public void deliverStrangePresentsShouldBeInteresting() {
+        ArrayList<Child> children = new ArrayList();
+        children.add(new Child("Tommy"));
+        children.add(new Child("Alice"));
+        ArrayList<Object> presents = new ArrayList<>();
         presents.add(children);
         presents.add(children);
-        XmasWizard proxy = (XmasWizard) factory.wrap(writer,xmasWizard,interfaceClass);
-        proxy.deliverAllPresents(children,presents);
+        XmasWizard proxy = (XmasWizard) factory.wrap(writer, xmasWizard, interfaceClass);
+        proxy.deliverAllPresents(children, presents);
     }
 
     @Test
-    public void happyChildrenCollectionReturn () {
-        ArrayList <Child> children = new ArrayList();
-        children.add(new Child ("Mary"));
-        children.add(new Child ("David"));
-        ArrayList <Object> presents = new ArrayList<>();
+    public void happyChildrenCollectionReturn() {
+        ArrayList<Child> children = new ArrayList();
+        children.add(new Child("Mary"));
+        children.add(new Child("David"));
+        ArrayList<Object> presents = new ArrayList<>();
         presents.add(new Present("Butterfly"));
         presents.add(new Present("Tardis"));
-        XmasWizard proxy = (XmasWizard) factory.wrap(writer,xmasWizard,interfaceClass);
-        proxy.deliverAllPresents(children,presents);
+        XmasWizard proxy = (XmasWizard) factory.wrap(writer, xmasWizard, interfaceClass);
+        proxy.deliverAllPresents(children, presents);
         proxy.alreadyHappyChildren();
     }
 
     @Test
-    public void presentInPresentssimpleCycle () {
-        ArrayList <Child> children = new ArrayList();
-        children.add(new Child ("Andrew"));
-        children.add(new Child ("Gadya"));
-        ArrayList <Object> presents = new ArrayList<>();
+    public void presentInPresentssimpleCycle() {
+        ArrayList<Child> children = new ArrayList();
+        children.add(new Child("Andrew"));
+        children.add(new Child("Gadya"));
+        ArrayList<Object> presents = new ArrayList<>();
         presents.add(new Present());
         presents.add(presents);
-        XmasWizard proxy = (XmasWizard) factory.wrap(writer,xmasWizard,interfaceClass);
-        proxy.deliverAllPresents(children,presents);
+        XmasWizard proxy = (XmasWizard) factory.wrap(writer, xmasWizard, interfaceClass);
+        proxy.deliverAllPresents(children, presents);
     }
 
     @Test
-    public void presentConsistObjectThatConsistPresent () {
-        Child Sally = new Child ("Sally");
-        ArrayList <Object> unpackedPresent = new ArrayList<>();
-        ArrayList <Object> inside = new ArrayList<>();
+    public void presentConsistObjectThatConsistPresent() {
+        Child sally = new Child("Sally");
+        ArrayList<Object> unpackedPresent = new ArrayList<>();
+        ArrayList<Object> inside = new ArrayList<>();
         inside.add(unpackedPresent);
         unpackedPresent.add(inside);
-        XmasWizard proxy = (XmasWizard) factory.wrap(writer,xmasWizard,interfaceClass);
+        XmasWizard proxy = (XmasWizard) factory.wrap(writer, xmasWizard, interfaceClass);
         thrown.expect(StackOverflowError.class);
-        proxy.deliverPresent(Sally,unpackedPresent);
+        proxy.deliverPresent(sally, unpackedPresent);
     }
 
     @Test
-    public void presentConsistItself () {
-        Child Alina = new Child ("Alina");
-        ArrayList <Object> present = new ArrayList<>();
+    public void presentConsistItself() {
+        Child alina = new Child("Alina");
+        ArrayList<Object> present = new ArrayList<>();
         present.add(null);
         present.add(present);
-        XmasWizard proxy = (XmasWizard) factory.wrap(writer,xmasWizard,interfaceClass);
-        proxy.deliverPresent(Alina,present);
+        XmasWizard proxy = (XmasWizard) factory.wrap(writer, xmasWizard, interfaceClass);
+        proxy.deliverPresent(alina, present);
     }
 
     private class Child {
+
         String name;
-        public Child (String name) {
+
+        public Child(String name) {
             this.name = name;
         }
-        void getPresent (Object present) {
-            String reaction = present == null? "There is nothing there..." : "That a lovely " + present + "!";
-           // System.out.println(name + ": "+ reaction);
-        };
+
+        void getPresent(Object present) {
+            String reaction = present == null ? "There is nothing there..." : "That a lovely " + present + "!";
+            // System.out.println(name + ": "+ reaction);
+        }
+
+        ;
 
         @Override
-        public String toString () {
+        public String toString() {
             return "Child " + name;
         }
     }
 
     private class Present {
+
         private final Object inside;
-        public Present () {
+
+        public Present() {
             inside = null;
         }
-        public Present (Object inside) {
+
+        public Present(Object inside) {
             this.inside = inside;
         }
+
         @Override
-        public String toString () {
-            return inside == null? "nothing" : inside.toString();
+        public String toString() {
+            return inside == null ? "nothing" : inside.toString();
         }
     }
 
     class PresentForChildNotFoundExeption extends RuntimeException {
+
         public PresentForChildNotFoundExeption() {
             super();
         }
